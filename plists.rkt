@@ -4,8 +4,8 @@
 
 (provide (all-defined-out))
 
-(struct dict (entries) #:transparent)
-(struct entry (key value) #:transparent)
+(struct dict (entries) #:prefab)
+(struct entry (key value) #:prefab)
 
 (define (make-dict . entries)
   (dict entries))
