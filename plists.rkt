@@ -4,28 +4,11 @@
 
 (provide (all-defined-out))
 
-(struct dict (entries) #:prefab)
-(struct entry (key value) #:prefab)
-
-(define (make-dict . entries)
-  (dict entries))
   
-(define (dict->plist d)
-  (match d
-    [(dict entries) (cons 'dict (map dict->plist entries))]
-    [(entry k v) (list 'assoc-pair (symbol->string k) (dict->plist v))]
-    [(? exact-integer? n) (list 'integer n)]
-    [(? real? n) (list 'real n)]
-    [(? string? s) s]
-    [(list elts ...) (cons 'array (map dict->plist elts))]
-    [#f (list 'false)]
-    [#t (list 'true)]))
-                       
-
 (define (plist->dict pl)
   (match pl
-    [(list 'dict entries ...) (dict (map plist->dict entries))]
-    [(list 'assoc-pair k v) (entry (string->symbol k) (plist->dict v))]
+    [(list 'dict entries ...) (map plist->dict entries)]
+    [(list 'assoc-pair k v) (cons (string->symbol k) (plist->dict v))]
     [(list 'integer n) n]
     [(list 'real n) n]
     [(? string? s) s]
@@ -33,11 +16,30 @@
     [(list 'true) #t]
     [(list 'array elts ...) (map plist->dict elts)]))
 
+(define (dict->plist d)
+  (match d
+    [(? dict? d) 
+     (cons 'dict 
+           (dict-map d (lambda (k v) 
+                       (list 'assoc-pair (symbol->string k) (dict->plist v)))))]                                       
+    [(? exact-integer? n) (list 'integer n)]
+    [(? real? n) (list 'real n)]
+    [(? string? s) s]
+    [(list elts ...) (cons 'array (map dict->plist elts))]
+    [#f (list 'false)]
+    [#t (list 'true)]))
+
+
 (define (dict->xexpr d)
   (match d
-    [(dict entries) (cons 'dict (cons null (foldr append '() (map dict->xexpr entries))))]
-    [(entry k v) 
-     (list (list 'key null (symbol->string k)) (dict->xexpr v))]
+    [(? dict? d) 
+     (cons 'dict 
+           (cons null (foldr append '()
+                             (dict-map d (lambda (k v) 
+                                    (list (list 'key null (symbol->string k))
+                                          (dict->xexpr v)))))))]
+    
+    
     [(? exact-integer? n) (list 'integer null (number->string n))]
     [(? real? n) (list 'real null (number->string n))]
     [(? string? s) (list 'string null s)]
@@ -47,9 +49,9 @@
 
 (define (xexpr->dict x)
   (match x
-    [(list 'dict null entries ...) (dict (xexpr->dict entries))]
+    [(list 'dict null entries ...) (xexpr->dict entries)]
     [(list (list 'key null k) v entries ...) 
-     (cons (entry (string->symbol k) (xexpr->dict v))
+     (cons (cons (string->symbol k) (xexpr->dict v))
            (xexpr->dict entries))]
     [(list 'integer null n) (string->number n)]
     [(list 'real null n) (string->number n)]
@@ -59,40 +61,18 @@
     [(list 'array null elts ...) (map xexpr->dict elts)]
     [null null]))
 
+;
+;
+;
+;(define (dict-as-function d)
+;  (let ([h (dict->hashtable d)])
+;    (define (aux acc keys)
+;      (if (null? keys)
+;          acc
+;          (aux (hash-ref acc (car keys)) (cdr keys))))
+;    (lambda (k . keys) (aux h (cons k keys)))))
+;
 
-(define (dict->hashtable d)
-  (define (process-entry e)
-    (let ([k (entry-key e)]
-          [v (entry-value e)])
-      (list k
-            (match v
-              [(dict _) (dict->hashtable v)]
-              [_ v]))))
-  (apply hash (append* (map process-entry (dict-entries d)))))
-      
-
-(define (hashtable->dict h)
-  (if (hash? h)
-      (dict (hash-map h (lambda (k v) 
-                        (entry k (hashtable->dict v)))))
-      h))
-  
-
-(define (dict-as-function d)
-  (let ([h (dict->hashtable d)])
-    (define (aux acc keys)
-      (if (null? keys)
-          acc
-          (aux (hash-ref acc (car keys)) (cdr keys))))
-    (lambda (k . keys) (aux h (cons k keys)))))
-
-(define (dict-map d proc)
-  (map (lambda (e) (proc (entry-key e) (entry-value e)))
-       (dict-entries d)))
-
-(define (dict-for-each d proc)
-  (for-each (lambda (e) (proc (entry-key e) (entry-value e)))
-       (dict-entries d)))
   
 (define (write-dict d path)
   (call-with-output-file path
