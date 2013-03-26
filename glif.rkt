@@ -3,6 +3,29 @@
          xml/path
          "plists.rkt")
 
+
+(provide read-glif-file
+         write-glif-file
+         (struct-out ufo:glyph)
+         (struct-out ufo:advance)
+         (struct-out ufo:image)
+         (struct-out ufo:guideline)
+         (struct-out ufo:anchor)
+         (struct-out ufo:contour)
+         (struct-out ufo:component)
+         (struct-out ufo:point)
+         ufo:make-advance
+         ufo:make-guideline
+         ufo:make-image
+         ufo:make-anchor
+         ufo:make-contour
+         ufo:make-component
+         ufo:make-point
+         glyph1->glyph2
+         glyph2->glyph1)
+         
+         
+         
 (struct ufo:glyph (format name advance unicodes note image
                          guidelines anchors contours components lib) 
   #:transparent)
@@ -272,15 +295,16 @@
              
      
 (define (read-glif-file path)
-  (xml->xexpr 
+  (xexpr->glyph
+   (xml->xexpr 
    ((eliminate-whitespace 
      '(glyph advance unicode image guideline anchor 
-             outline contour point component lib dict)
+             outline contour point component lib dict array)
      identity)
    (document-element
-    (call-with-input-file path read-xml)))))
+    (call-with-input-file path read-xml))))))
 
-(define (write-glif g path)
+(define (write-glif-file g path)
   (call-with-output-file
       path
     (lambda (o)
