@@ -113,7 +113,7 @@
          [fullname (string-append prefix name suffix)])
     (if (name-exists? fullname existing-names)
         (handle-name-clash name prefix suffix existing-names)
-        name)))
+        fullname)))
 
 (define (handle-name-clash name prefix suffix existing-names)
   (let ([max-length (- 255 (+ (string-length prefix)

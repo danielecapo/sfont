@@ -76,7 +76,7 @@
             #f))
 
 (define (read-ufo3 creator reader)
-  (ufo:font 2 creator
+  (ufo:font 3 creator
             ((reader 'info))
             ((reader 'groups))
             ((reader 'kerning))
@@ -104,7 +104,7 @@
     (when dir
       (if proc
           (proc path)
-          (copy-directory/files path dir))))
+          (copy-directory/files dir path))))
   (define (write-on-text-file text path)
     (when text 
       (call-with-output-file path 
@@ -131,16 +131,17 @@
     (letrec ([aux (lambda (glyphs acc names)
                     (if (null? glyphs)
                         (make-hash (reverse acc))
-                        (let ([name (namesymbol->filename (ufo:glyph-name (car glyphs))
+                        (let ([name (namesymbol->filename (ufo:glyph-name (cdar glyphs))
                                                           "" ".glif" names)])
                           (begin
-                            (write-glif-file (car glyphs) (build-path glyphsdir name))
+                            (write-glif-file (cdar glyphs) (build-path glyphsdir name))
                             (aux (cdr glyphs) 
-                                 (cons (cons (ufo:glyph-name (car glyphs)) name) acc)
+                                 (cons (cons (ufo:glyph-name (cdar glyphs)) name) acc)
                                  (cons name names))))))])
                             
-      (write-on-plist (aux '() glyphs '())
+      (write-on-plist (aux  glyphs '() '())
                       (build-path glyphsdir "contents.plist"))))
+      
   (define (write-layers)
     (for-each (lambda (layer)
                 (begin
@@ -152,7 +153,7 @@
               layers-names))
   (define (write-layercontents)
     (write-on-plist 
-     (map (lambda (layer) (list (car layer) (cdr layer)))
+     (map (lambda (layer) (list (symbol->string (car layer)) (cdr layer)))
           layers-names)
      (make-ufo-path "layercontents.plist")))
   
@@ -161,8 +162,8 @@
       
   (let ([s (list 
             (cons 'meta (lambda () 
-                          (write-on-plist (list (cons 'creator (ufo:font-creator font))
-                                                (cons 'formatVersion (ufo:font-format font)))
+                          (write-on-plist (hash 'creator (ufo:font-creator font)
+                                                'formatVersion (ufo:font-format font))
                                           (make-ufo-path "metainfo.plist"))))
             (cons 'info (lambda () 
                           (write-on-plist (ufo:font-fontinfo font) 
@@ -176,7 +177,7 @@
             (cons 'lib (lambda () (write-on-plist (ufo:font-lib font) 
                                                   (make-ufo-path "lib.plist"))))
             (cons 'layers write-layers)
-            (cons 'layrecontents write-layercontents)
+            (cons 'layercontents write-layercontents)
             (cons 'data (lambda () (write-directory (ufo:font-data font) (make-ufo-path "data") proc-data)))
             (cons 'images (lambda () (write-directory (ufo:font-images font) (make-ufo-path "images") proc-images))))])
     (lambda (k) (dict-ref s k))))
@@ -184,30 +185,36 @@
 (define (ufo:write-ufo font path [proc-data #f] [proc-images #f])
   (let ([format (ufo:font-format font)]
         [writer (ufo:writer font path proc-data proc-images)])
-    (cond ([(= format 2) (write-ufo2 writer)]
-           [(= format 3) (write-ufo3 writer)]
-           [#t (error "I can only write Ufo 2 and Ufo 3 files")]))))
+    (begin
+      (when (directory-exists? path)
+        (delete-directory/files path))
+      (make-directory path)
+      (cond [(= format 2) (write-ufo2 writer)]
+            [(= format 3) (write-ufo3 writer)]
+            [#t (error "I can only write Ufo 2 and Ufo 3 files")]))))
 
 (define (write-ufo2 writer)
-  ((writer 'meta)
-  ((writer 'info))
-  ((writer 'groups))
-  ((writer 'kerning))
-  ((writer 'features))
-  ((writer 'layers))
-  ((writer 'lib))))
+  (begin
+    ((writer 'meta))
+    ((writer 'info))
+    ((writer 'groups))
+    ((writer 'kerning))
+    ((writer 'features))
+    ((writer 'layers))
+    ((writer 'lib))))
 
 (define (write-ufo3 writer)
-  ((writer 'meta)
-  ((writer 'info))
-  ((writer 'groups))
-  ((writer 'kerning))
-  ((writer 'features))
-  ((writer 'layers))
-  ((writer 'lib)))
-  ((writer 'layercontents))
-  ((writer 'data))
-  ((writer 'images)))
+  (begin
+    ((writer 'meta))
+    ((writer 'info))
+    ((writer 'groups))
+    ((writer 'kerning))
+    ((writer 'features))
+    ((writer 'layers))
+    ((writer 'lib))
+    ((writer 'layercontents))
+    ((writer 'data))
+    ((writer 'images))))
 
 
                  

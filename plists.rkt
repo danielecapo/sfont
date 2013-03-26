@@ -22,7 +22,7 @@
   (match d
     [(list) (list 'array)]
     [(list elts ...) (cons 'array (map dict->plist elts))]
-    [(? dict? d) 
+    [(? hash? d) 
      (cons 'dict 
            (dict-map d (lambda (k v) 
                        (list 'assoc-pair (symbol->string k) (dict->plist v)))))]                                       
@@ -37,7 +37,7 @@
   (match d
     [(list) (list 'array null)]
     [(list elts ...) (cons 'array (cons null (map dict->xexpr elts)))]
-    [(? dict? d) 
+    [(? hash? d) 
      (cons 'dict 
            (cons null (foldr append '()
                              (dict-map d (lambda (k v) 
