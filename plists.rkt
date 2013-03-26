@@ -1,6 +1,8 @@
 #lang racket
 
-(require xml/plist)
+(require xml/plist
+         xml/path
+         xml)
 
 (provide (all-defined-out))
 
@@ -58,6 +60,7 @@
     [(list 'integer null n) (string->number n)]
     [(list 'real null n) (string->number n)]
     [(list 'string null s) s]
+    [(list 'string null) ""]
     [(list 'false null) #f]
     [(list 'true null) #t]
     [(list 'array null elts ...) (map xexpr->dict elts)]
@@ -83,7 +86,17 @@
     #:exists 'replace))
 
 (define (read-dict path)
-  (plist->dict (call-with-input-file path read-plist)))
+     (xexpr->dict
+      (se-path* '(plist)
+                (xml->xexpr 
+                 ((eliminate-whitespace 
+                   '(plist lib dict array)
+                   identity)
+                  (document-element
+                   (call-with-input-file path read-xml)))))))
+  
+    
+    ;(plist->dict (call-with-input-file path read-plist)))
 
 
 ;(define g (xml->xexpr 
