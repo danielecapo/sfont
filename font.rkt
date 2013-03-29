@@ -9,6 +9,51 @@
   (format creator fontinfo groups kerning features layers lib data images)
   #:transparent)
 
+(define (ufo:layer-name layer)
+  (car layer))
+
+(define (ufo:layer-glyphs layer)
+  (cdr layer))
+
+(define (ufo:get-layer font [layer 'public.default])
+  (assoc layer (ufo:font-layers font)))
+
+(define (ufo:map-layers proc font)
+  (map proc (ufo:font-layers font)))
+
+(define (ufo:for-each-layer proc font)
+  (for-each proc (ufo:font-layers font)))
+
+(define (ufo:filter-layer proc layer)
+  (cons (ufo:layer-name layer) (filter proc (ufo:layer-glyphs layer))))
+
+(define (ufo:get-glyph font glyph [layer 'public.default])
+  (let ([l (ufo:get-layer font layer)])
+    (if l
+        (dict-ref (ufo:layer-glyphs l) glyph #f)
+        #f)))
+
+(define (ufo:get-layers-glyph font glyph)
+  (ufo:map-layers 
+   (lambda (l) 
+     (let ([name (ufo:layer-name l)])
+       (cons name (ufo:get-glyph font glyph name))))
+   font))
+  
+  
+(define (ufo:map-glyphs proc font [layer 'public.default])
+  (let ([l (ufo:get-layer font layer)])
+    (if l
+        (map (lambda (g) (proc (cdr g)))
+             (ufo:layer-glyphs l))
+        #f)))
+
+(define (ufo:for-each-glyph proc font [layer 'public.default])
+  (let ([l (ufo:get-layer font layer)])
+    (if l
+        (for-each (lambda (g) (proc (cdr g)))
+             (ufo:layer-glyphs l))
+        #f)))
 
 
 (define (ufo:reader path [proc-data #f] [proc-images #f])

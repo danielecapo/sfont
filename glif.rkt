@@ -110,6 +110,31 @@
   (ufo:point (ensure-number x) (ensure-number y) (ensure-symbol type)
              (ensure-smooth smooth) name identifier))
 
+
+(define (ufo:map-contours proc glyph)
+  (map proc (ufo:glyph-contours glyph)))
+
+(define (ufo:for-each-contours proc glyph)
+  (for-each proc (ufo:glyph-contours glyph)))
+
+(define (ufo:map-components proc glyph)
+  (map proc (ufo:glyph-components glyph)))
+
+(define (ufo:for-each-components proc glyph)
+  (for-each proc (ufo:glyph-components glyph)))
+
+(define (ufo:map-guidelines proc glyph)
+  (map proc (ufo:glyph-guidelines glyph)))
+
+(define (ufo:for-each-guidelines proc glyph)
+  (for-each proc (ufo:glyph-guidelines glyph)))
+
+(define (ufo:map-anchors proc glyph)
+  (map proc (ufo:glyph-anchors glyph)))
+
+(define (ufo:for-each-anchors proc glyph)
+  (for-each proc (ufo:glyph-anchors glyph)))
+
 (define (glyph2->glyph1 g)
   (match g
     [(ufo:glyph format name advance (list codes ...) note image 
