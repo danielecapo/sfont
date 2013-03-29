@@ -126,20 +126,6 @@
                                      rest-layers
                                      (cons name names)))]))])                
       (reverse (aux '() (ufo:font-layers font) '()))))
-;  (define (get-layers-names)
-;    (letrec ([aux (lambda (acc layers names)
-;                    (if (null? layers)
-;                        acc
-;                        (let ([l (car layers)])
-;                          (if (equal? (car l) 'public.default)
-;                              (aux (cons (cons 'public.default "glyphs") acc)
-;                                   (cdr layers)
-;                                   (cons "glyphs" names))
-;                              (let ([name (namesymbol->filename (car l) "glyphs." "" names)])
-;                                (aux (cons (cons (car l) name) acc)
-;                                     (cdr layers)
-;                                     (cons name names)))))))])
-;      (reverse (aux '() (ufo:font-layers font) '()))))
   
   (define layers-names (get-layers-names))
   (define (write-glyphs glyphs glyphsdir)
@@ -154,16 +140,7 @@
                                  (cons (cons (ufo:glyph-name g) name) acc)
                                  (cons name names))))]))])
                       
-;                    (if (null? glyphs)
-;                        (make-hash (reverse acc))
-;                        (let ([name (namesymbol->filename (ufo:glyph-name (cdar glyphs))
-;                                                          "" ".glif" names)])
-;                          (begin
-;                            (write-glif-file (cdar glyphs) (build-path glyphsdir name))
-;                            (aux (cdr glyphs) 
-;                                 (cons (cons (ufo:glyph-name (cdar glyphs)) name) acc)
-;                                 (cons name names))))))])
-                            
+
       (write-on-plist (aux  glyphs '() '())
                       (build-path glyphsdir "contents.plist"))))
       
