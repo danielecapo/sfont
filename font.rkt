@@ -55,7 +55,7 @@
 
   
 
-(define (ufo:read-ufo path [proc-data #f] [proc-images #f])
+(define (ufo:read-ufo path #:proc-data [proc-data #f] #:proc-images [proc-images #f])
   (if (directory-exists? path)
       (let* ([reader (ufo:reader path proc-data proc-images)]
              [meta ((reader 'meta))]
