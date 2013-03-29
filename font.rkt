@@ -4,6 +4,22 @@
          "glif.rkt"
          "names.rkt")
 
+(provide (struct-out ufo:font)
+         ufo:layer-name
+         ufo:layer-glyphs
+         ufo:get-layer
+         ufo:map-layers
+         ufo:for-each-layer
+         ufo:filter-layer
+         ufo:get-glyph
+         ufo:get-layers-glyph
+         ufo:map-glyphs
+         ufo:for-each-glyph
+         ufo:read-ufo
+         ufo:write-ufo
+         ufo3->ufo2
+         ufo2->ufo3)
+
 
 (struct ufo:font 
   (format creator fontinfo groups kerning features layers lib data images)

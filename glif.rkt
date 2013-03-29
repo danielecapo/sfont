@@ -22,7 +22,17 @@
          ufo:make-component
          ufo:make-point
          glyph1->glyph2
-         glyph2->glyph1)
+         glyph2->glyph1
+         ufo:map-contours
+         ufo:for-each-contours
+         ufo:map-components
+         ufo:for-each-components
+         ufo:map-anchors
+         ufo:for-each-anchors
+         ufo:map-guidelines
+         ufo:for-each-guidelines
+         ufo:map-points
+         ufo:for-each-points)
          
          
          
@@ -134,6 +144,12 @@
 
 (define (ufo:for-each-anchors proc glyph)
   (for-each proc (ufo:glyph-anchors glyph)))
+
+(define (ufo:map-points proc contour)
+  (map proc (ufo:contour-points contour)))
+
+(define (ufo:for-each-points proc contour)
+  (for-each proc (ufo:contour-points contour)))
 
 (define (glyph2->glyph1 g)
   (match g
