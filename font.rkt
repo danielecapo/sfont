@@ -56,13 +56,15 @@
   
 
 (define (ufo:read-ufo path [proc-data #f] [proc-images #f])
-  (let* ([reader (ufo:reader path proc-data proc-images)]
-         [meta ((reader 'meta))]
-         [format (dict-ref meta 'formatVersion)]
-         [creator (dict-ref meta 'creator)])
-    (cond [(= format 2) (read-ufo2 creator reader)]
-          [(= format 3) (read-ufo3 creator reader)]
-          [#t (error "I can only read ufo 2 and ufo 3 fonts")])))
+  (if (directory-exists? path)
+      (let* ([reader (ufo:reader path proc-data proc-images)]
+             [meta ((reader 'meta))]
+             [format (dict-ref meta 'formatVersion)]
+             [creator (dict-ref meta 'creator)])
+        (cond [(= format 2) (read-ufo2 creator reader)]
+              [(= format 3) (read-ufo3 creator reader)]
+              [#t (error "I can only read ufo 2 and ufo 3 fonts")]))
+      (error "file do not exists")))
         
 (define (read-ufo2 creator reader)
   (ufo:font 2 creator
@@ -110,34 +112,57 @@
       (call-with-output-file path 
         (lambda (o)
           (write-string text o)))))
-  
   (define (get-layers-names)
     (letrec ([aux (lambda (acc layers names)
-                    (if (null? layers)
-                        acc
-                        (let ([l (car layers)])
-                          (if (equal? (car l) 'public.default)
-                              (aux (cons (cons 'public.default "glyphs") acc)
-                                   (cdr layers)
-                                   (cons "glyphs" names))
-                              (let ([name (namesymbol->filename (car l) "glyphs." "" names)])
-                                (aux (cons (cons (car l) name) acc)
-                                     (cdr layers)
-                                     (cons name names)))))))])
+                    (match layers
+                      [(list) acc]
+                      [(list-rest (list-rest 'public.default _) rest-layers)
+                       (aux (cons (cons 'public.default "glyphs") acc)
+                            rest-layers
+                            (cons "glyph" names))]
+                      [(list-rest (list-rest l _) rest-layers)
+                       (let ([name (namesymbol->filename l "glyphs." "" names)])
+                                (aux (cons (cons l name) acc)
+                                     rest-layers
+                                     (cons name names)))]))])                
       (reverse (aux '() (ufo:font-layers font) '()))))
+;  (define (get-layers-names)
+;    (letrec ([aux (lambda (acc layers names)
+;                    (if (null? layers)
+;                        acc
+;                        (let ([l (car layers)])
+;                          (if (equal? (car l) 'public.default)
+;                              (aux (cons (cons 'public.default "glyphs") acc)
+;                                   (cdr layers)
+;                                   (cons "glyphs" names))
+;                              (let ([name (namesymbol->filename (car l) "glyphs." "" names)])
+;                                (aux (cons (cons (car l) name) acc)
+;                                     (cdr layers)
+;                                     (cons name names)))))))])
+;      (reverse (aux '() (ufo:font-layers font) '()))))
   
   (define layers-names (get-layers-names))
   (define (write-glyphs glyphs glyphsdir)
     (letrec ([aux (lambda (glyphs acc names)
-                    (if (null? glyphs)
-                        (make-hash (reverse acc))
-                        (let ([name (namesymbol->filename (ufo:glyph-name (cdar glyphs))
-                                                          "" ".glif" names)])
+                    (match glyphs
+                      [(list) (make-hash (reverse acc))]
+                      [(list-rest (list-rest n g) rest-glyphs)
+                       (let ([name (namesymbol->filename n "" ".glif" names)])
                           (begin
-                            (write-glif-file (cdar glyphs) (build-path glyphsdir name))
-                            (aux (cdr glyphs) 
-                                 (cons (cons (ufo:glyph-name (cdar glyphs)) name) acc)
-                                 (cons name names))))))])
+                            (write-glif-file g (build-path glyphsdir name))
+                            (aux rest-glyphs 
+                                 (cons (cons (ufo:glyph-name g) name) acc)
+                                 (cons name names))))]))])
+                      
+;                    (if (null? glyphs)
+;                        (make-hash (reverse acc))
+;                        (let ([name (namesymbol->filename (ufo:glyph-name (cdar glyphs))
+;                                                          "" ".glif" names)])
+;                          (begin
+;                            (write-glif-file (cdar glyphs) (build-path glyphsdir name))
+;                            (aux (cdr glyphs) 
+;                                 (cons (cons (ufo:glyph-name (cdar glyphs)) name) acc)
+;                                 (cons name names))))))])
                             
       (write-on-plist (aux  glyphs '() '())
                       (build-path glyphsdir "contents.plist"))))
@@ -182,16 +207,18 @@
             (cons 'images (lambda () (write-directory (ufo:font-images font) (make-ufo-path "images") proc-images))))])
     (lambda (k) (dict-ref s k))))
 
-(define (ufo:write-ufo font path [proc-data #f] [proc-images #f])
+(define (ufo:write-ufo font path #:overwrite [overwrite #f] #:proc-data [proc-data #f] #:proc-images [proc-images #f])
   (let ([format (ufo:font-format font)]
         [writer (ufo:writer font path proc-data proc-images)])
-    (begin
-      (when (directory-exists? path)
-        (delete-directory/files path))
-      (make-directory path)
-      (cond [(= format 2) (write-ufo2 writer)]
-            [(= format 3) (write-ufo3 writer)]
-            [#t (error "I can only write Ufo 2 and Ufo 3 files")]))))
+    (if (and (directory-exists? path) (not overwrite))
+        #f
+        (begin
+          (when (directory-exists? path)
+            (delete-directory/files path))
+          (make-directory path)
+          (cond [(= format 2) (write-ufo2 writer)]
+                [(= format 3) (write-ufo3 writer)]
+                [#t (error "I can only write Ufo 2 and Ufo 3 files")])))))
 
 (define (write-ufo2 writer)
   (begin
@@ -218,63 +245,4 @@
 
 
                  
-(define (read-meta ufo-path)
-  (read-dict (build-path ufo-path "metainfo.plist")))
-    
-(define (read-info ufo-path)
-  (read-dict (build-path ufo-path "fontinfo.plist")))
 
-(define (read-groups ufo-path)
-  (read-dict (build-path ufo-path "groups.plist")))
-
-(define (read-kerning ufo-path)
-  (read-dict (build-path ufo-path "kerning.plist")))
-
-(define (read-lib ufo-path)
-  (read-dict (build-path ufo-path "lib.plist")))
-
-(define (read-layercontents ufo-path)
-  (read-dict (build-path ufo-path "layercontents.plist")))
-
-(define (read-features ufo-path)
-  (call-with-input-file (build-path ufo-path "features.fea")
-    port->string))
-
-
-(define (read-data ufo-path [proc #f])
-  (if proc
-      (proc (build-path ufo-path "data"))
-      (build-path ufo-path "data")))
-
-(define (read-images ufo-path [proc #f])
-  (if proc
-      (proc (build-path ufo-path "images"))
-      (build-path ufo-path "images")))
-
-
-
-;(struct ufo:group
-;  (name glyphs)
-;  #:transparent)
-;
-;(struct ufo:kerning
-;  (name adjustments)
-;  #:transparent)
-;
-;(define (ufo:adjust-name adj)
-;  (car adj))
-;
-;(define (ufo:adjust-amount adj)
-;  (cdr adj))
-;
-;(struct ufo:layer 
-;  (name glyphs)
-;  #:transparent)
-;
-;(define-syntax-rule 
-;  (ufo:make-kerning first [second value] ...)
-;  (ufo:kerning first 
-;               (list (cons second value) ...)))
-
-  
-  
