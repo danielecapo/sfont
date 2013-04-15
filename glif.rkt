@@ -215,7 +215,7 @@
   (let ([r (aux '(() . ()) os)])
     (values (car r) (cdr r))))
 
-(define (xexpr->glyph x)
+(define (xexpr->glyph x [name #f])
   (define (aux acc elts)
     (match elts
       [(list) acc]
@@ -260,7 +260,7 @@
          
          [_ acc])]))
   (aux (ufo:glyph (string->number (se-path* '(glyph #:format) x))
-                  (string->symbol (se-path* '(glyph #:name) x)) 
+                  (if name name (string->symbol (se-path* '(glyph #:name) x)))
                   null null #f #f null null null null #f)
        (se-path*/list '(glyph) x)))
 
@@ -335,7 +335,7 @@
     ))
              
      
-(define (read-glif-file path)
+(define (read-glif-file path [name #f])
   (xexpr->glyph
    (xml->xexpr 
    ((eliminate-whitespace 
@@ -343,7 +343,8 @@
              outline contour point component lib dict array)
      identity)
    (document-element
-    (call-with-input-file path read-xml))))))
+    (call-with-input-file path read-xml))))
+   name))
 
 (define (write-glif-file g path)
   (call-with-output-file

@@ -6,6 +6,7 @@
 
 (provide (struct-out ufo:font)
          ufo:layer-name
+         ufo:layer-info
          ufo:layer-glyphs
          ufo:get-layer
          ufo:map-layers
@@ -28,8 +29,11 @@
 (define (ufo:layer-name layer)
   (car layer))
 
+(define (ufo:layer-info layer)
+  (cadr layer))
+
 (define (ufo:layer-glyphs layer)
-  (cdr layer))
+  (cddr layer))
 
 (define (ufo:get-layer font [layer 'public.default])
   (assoc layer (ufo:font-layers font)))
@@ -83,20 +87,23 @@
   (define (read-from-text-file path)
     (if (file-exists? path)
          (call-with-input-file path port->string)
-         #f))
+         #f)) 
+  (define (read-layerinfo glyphsdir)
+    (read-from-plist 
+     (build-path (make-ufo-path glyphsdir) "layerinfo.plist")))
   (define (read-layers)
     (let ([layers (read-from-plist (make-ufo-path "layercontents.plist"))])
       (if layers
           (map (lambda (layer) 
-                 (cons (string->symbol (car layer)) (read-glyphs (cadr layer))))
+                 (cons (string->symbol (car layer)) (cons (read-layerinfo (cadr layer)) (read-glyphs (cadr layer)))))
                layers)
-          (list (cons 'public.default (read-glyphs "glyphs"))))))
+          (list (cons 'public.default (cons #f (read-glyphs "glyphs")))))))
   (define (read-glyphs glyphsdir)
     (let* ([glyphspath (make-ufo-path glyphsdir)]
            [contents (read-from-plist (build-path glyphspath "contents.plist"))])
       (hash-map contents
                 (lambda (k v) (cons k
-                             (read-glif-file (build-path glyphspath v)))))))
+                             (read-glif-file (build-path glyphspath v) k))))))
            
   (define (read-from-directory path [proc #f])
     (if proc
@@ -177,11 +184,11 @@
     (letrec ([aux (lambda (acc layers names)
                     (match layers
                       [(list) acc]
-                      [(list-rest (list-rest 'public.default _) rest-layers)
+                      [(list-rest (list-rest 'public.default _ _) rest-layers)
                        (aux (cons (cons 'public.default "glyphs") acc)
                             rest-layers
                             (cons "glyph" names))]
-                      [(list-rest (list-rest l _) rest-layers)
+                      [(list-rest (list-rest l _ _) rest-layers)
                        (let ([name (namesymbol->filename l "glyphs." "" names)])
                                 (aux (cons (cons l name) acc)
                                      rest-layers
@@ -208,12 +215,15 @@
   (define (write-layers)
     (for-each (lambda (layer)
                 (begin
-                  (let ([dir (make-ufo-path (cdr layer))])
+                  (let ([dir (make-ufo-path (cdr layer))]
+                        [l (dict-ref (ufo:font-layers font) (car layer))])
                     (make-directory dir)
-                    (write-glyphs (dict-ref (ufo:font-layers font)
-                                            (car layer))
-                                  dir))))
+                    (write-glyphs (cdr l) dir)
+                    (write-layerinfo (car l) dir))))
               layers-names))
+  
+  (define (write-layerinfo info dir)
+    (write-on-plist info (build-path (make-ufo-path dir) "layerinfo.plist")))
   (define (write-layercontents)
     (write-on-plist 
      (map (lambda (layer) (list (symbol->string (car layer)) (cdr layer)))

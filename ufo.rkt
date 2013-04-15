@@ -34,6 +34,7 @@
          ufo:for-each-points
          (struct-out ufo:font)
          ufo:layer-name
+         ufo:layer-info
          ufo:layer-glyphs
          ufo:get-layer
          ufo:map-layers
