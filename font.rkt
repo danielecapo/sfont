@@ -75,6 +75,15 @@
              (ufo:layer-glyphs l))
         #f)))
 
+(define (ufo:glyphs-in-font f)
+  (set->list
+    (foldl set-union
+           (set)
+           (ufo:map-layers (lambda (l) 
+                             (list->set (map car (ufo:layer-glyphs l))))
+                           f))))
+        
+
 
 (define (ufo:reader path [proc-data #f] [proc-images #f])
   (define (make-ufo-path file)
