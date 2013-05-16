@@ -228,7 +228,7 @@
                restelts)]
          [(list 'unicode (list (list 'hex hex)))
           (aux (struct-copy ufo:glyph acc 
-                            [unicodes (cons (string->unicode hex) (ufo:glyph-unicodes acc))])
+                            [unicodes (append (ufo:glyph-unicodes acc) (list (string->unicode hex)))])
                restelts)]
          [(list 'note null n)
           (aux (struct-copy ufo:glyph acc [note n])
@@ -261,7 +261,7 @@
          [_ acc])]))
   (aux (ufo:glyph (string->number (se-path* '(glyph #:format) x))
                   (if name name (string->symbol (se-path* '(glyph #:name) x)))
-                  null null #f #f null null null null #f)
+                  (ufo:make-advance) null #f #f null null null null #f)
        (se-path*/list '(glyph) x)))
 
 (define-syntax-rule (not-default val defaultvalue expr)

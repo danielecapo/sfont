@@ -30,7 +30,8 @@
 
 
 (define (ufo:get-layer font [layer 'public.default])
-  (assoc layer (ufo:font-layers font)))
+  (findf (lambda (l) (eq? (ufo:layer-name l) layer))
+         (ufo:font-layers font)))
 
 (define (ufo:map-layers proc font)
   (map proc (ufo:font-layers font)))
@@ -39,42 +40,82 @@
   (for-each proc (ufo:font-layers font)))
 
 (define (ufo:filter-layer proc layer)
-  (cons (ufo:layer-name layer) (filter proc (ufo:layer-glyphs layer))))
+  (filter proc (ufo:layer-glyphs layer)))
 
 (define (ufo:get-glyph font glyph [layer 'public.default])
   (let ([l (ufo:get-layer font layer)])
     (if l
-        (dict-ref (ufo:layer-glyphs l) glyph #f)
+        (findf (lambda (g) (eq? (ufo:glyph-name g) glyph))
+               (ufo:layer-glyphs l))
         #f)))
+
+(define (set-layer f new-layer)
+  (let ((layers (ufo:font-layers f))
+        (new-name (ufo:layer-name new-layer)))
+    (struct-copy ufo:font f
+                 [layers
+                  (dict-values
+                   (dict-set (ufo:map-layers 
+                              (lambda (l) (cons (ufo:layer-name l) l)) f)
+                             new-name new-layer))])))
+    
+    
+(define (glyphs->hash layer)
+  (make-immutable-hash (map (lambda (g) (cons (ufo:glyph-name g) g))
+                            (ufo:layer-glyphs layer))))
+
+(define (hash->glyphs gh)
+  (hash-values gh))
+
+
+
+(define (ufo:remove-glyph f glyph [layername 'public.default])
+  (let ((l (ufo:get-layer f layername)))
+    (set-layer f (struct-copy ufo:layer l 
+                              [glyphs (hash->glyphs 
+                                       (hash-remove (glyphs->hash l) 
+                                                    glyph))]))))
+    
+
+(define (ufo:insert-glyph f glyph [layername 'public.default])
+  (let ((l (ufo:get-layer f layername)))
+    (set-layer f (struct-copy ufo:layer l 
+                              [glyphs (hash->glyphs 
+                                       (hash-set (glyphs->hash l)
+                                                 (ufo:glyph-name glyph)                                                              
+                                                 glyph))]))))
+                     
+  
 
 (define (ufo:get-layers-glyph font glyph)
   (ufo:map-layers 
    (lambda (l) 
      (let ([name (ufo:layer-name l)])
-       (cons name (ufo:get-glyph font glyph name))))
+       (ufo:get-glyph font glyph name)))
    font))
   
   
 (define (ufo:map-glyphs proc font [layer 'public.default])
   (let ([l (ufo:get-layer font layer)])
     (if l
-        (map (lambda (g) (proc (cdr g)))
+        (map (lambda (g) (proc g))
              (ufo:layer-glyphs l))
-        #f)))
+        (error "Layer does not exist"))))
 
 (define (ufo:for-each-glyph proc font [layer 'public.default])
   (let ([l (ufo:get-layer font layer)])
     (if l
-        (for-each (lambda (g) (proc (cdr g)))
+        (for-each (lambda (g) (proc g))
              (ufo:layer-glyphs l))
-        #f)))
+        (error "Layer does not exist"))))
+
 
 (define (ufo:glyphs-in-font f)
   (set->list
     (foldl set-union
            (set)
            (ufo:map-layers (lambda (l) 
-                             (list->set (map car (ufo:layer-glyphs l))))
+                             (list->set (map ufo:glyph-name (ufo:layer-glyphs l))))
                            f))))
         
 
@@ -97,19 +138,16 @@
   (define (read-layers)
     (let ([layers (read-from-plist (make-ufo-path "layercontents.plist"))])
       (map (lambda (layer) 
-             (let ((layername (string->symbol (car layer))))
-               (cons layername 
-                     (ufo:layer layername 
-                                (read-layerinfo (cadr layer)) 
-                                (read-glyphs (cadr layer))))))
+             (ufo:layer (string->symbol (car layer))
+                        (read-layerinfo (cadr layer)) 
+                        (read-glyphs (cadr layer))))
            (if layers layers (list (list "public.default" "glyphs"))))))
           
   (define (read-glyphs glyphsdir)
     (let* ([glyphspath (make-ufo-path glyphsdir)]
            [contents (read-from-plist (build-path glyphspath "contents.plist"))])
       (hash-map contents
-                (lambda (k v) (cons k
-                             (read-glif-file (build-path glyphspath v) k))))))
+                (lambda (k v) (read-glif-file (build-path glyphspath v) k)))))
            
   (define (read-from-directory path [proc #f])
     (if proc
