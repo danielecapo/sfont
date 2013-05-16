@@ -26,14 +26,8 @@
   (format creator fontinfo groups kerning features layers lib data images)
   #:transparent)
 
-(define (ufo:layer-name layer)
-  (car layer))
+(struct ufo:layer (name info glyphs) #:transparent)
 
-(define (ufo:layer-info layer)
-  (cadr layer))
-
-(define (ufo:layer-glyphs layer)
-  (cddr layer))
 
 (define (ufo:get-layer font [layer 'public.default])
   (assoc layer (ufo:font-layers font)))
@@ -102,11 +96,14 @@
      (build-path (make-ufo-path glyphsdir) "layerinfo.plist")))
   (define (read-layers)
     (let ([layers (read-from-plist (make-ufo-path "layercontents.plist"))])
-      (if layers
-          (map (lambda (layer) 
-                 (cons (string->symbol (car layer)) (cons (read-layerinfo (cadr layer)) (read-glyphs (cadr layer)))))
-               layers)
-          (list (cons 'public.default (cons #f (read-glyphs "glyphs")))))))
+      (map (lambda (layer) 
+             (let ((layername (string->symbol (car layer))))
+               (cons layername 
+                     (ufo:layer layername 
+                                (read-layerinfo (cadr layer)) 
+                                (read-glyphs (cadr layer))))))
+           (if layers layers (list (list "public.default" "glyphs"))))))
+          
   (define (read-glyphs glyphsdir)
     (let* ([glyphspath (make-ufo-path glyphsdir)]
            [contents (read-from-plist (build-path glyphspath "contents.plist"))])
@@ -167,9 +164,10 @@
 
 (define (ufo3->ufo2 font)
   (struct-copy ufo:font font [format 2] [data #f] [images #f]
-               [layers (list (cons 'public.default) 
-                             (map glyph2->glyph1
-                                  (dict-ref (ufo:font-layers) 'public-default)))]))
+               [layers (list (cons 'public.default
+                                   (ufo:layer 'public-default #f 
+                                              (map glyph2->glyph1
+                                                   (dict-ref (ufo:font-layers) 'public-default)))))]))
             
 (define (ufo2->ufo3 font) (struct-copy ufo:font font [format 3]))
 
@@ -193,11 +191,11 @@
     (letrec ([aux (lambda (acc layers names)
                     (match layers
                       [(list) acc]
-                      [(list-rest (list-rest 'public.default _ _) rest-layers)
+                      [(list-rest (list-rest 'public.default _) rest-layers)
                        (aux (cons (cons 'public.default "glyphs") acc)
                             rest-layers
                             (cons "glyph" names))]
-                      [(list-rest (list-rest l _ _) rest-layers)
+                      [(list-rest (list-rest l _) rest-layers)
                        (let ([name (namesymbol->filename l "glyphs." "" names)])
                                 (aux (cons (cons l name) acc)
                                      rest-layers
@@ -227,8 +225,8 @@
                   (let ([dir (make-ufo-path (cdr layer))]
                         [l (dict-ref (ufo:font-layers font) (car layer))])
                     (make-directory dir)
-                    (write-glyphs (cdr l) dir)
-                    (write-layerinfo (car l) dir))))
+                    (write-glyphs (ufo:layer-glyphs l) dir)
+                    (write-layerinfo (ufo:layer-info l) dir))))
               layers-names))
   
   (define (write-layerinfo info dir)
