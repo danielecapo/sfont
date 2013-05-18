@@ -2,20 +2,26 @@
 
 (require "plists.rkt"
          "glif.rkt"
-         "names.rkt")
+         "names.rkt"
+         "fontpict.rkt"
+         slideshow/pict-convert)
 
 (provide (struct-out ufo:font)
          ufo:layer-name
          ufo:layer-info
          ufo:layer-glyphs
          ufo:get-layer
+         set-layer
          ufo:map-layers
          ufo:for-each-layer
          ufo:filter-layer
+         ufo:remove-glyph
+         ufo:insert-glyph
          ufo:get-glyph
          ufo:get-layers-glyph
          ufo:map-glyphs
          ufo:for-each-glyph
+         ufo:glyphs-in-font
          ufo:read-ufo
          ufo:write-ufo
          ufo3->ufo2
@@ -24,7 +30,13 @@
 
 (struct ufo:font 
   (format creator fontinfo groups kerning features layers lib data images)
-  #:transparent)
+  #:transparent
+  #:property prop:pict-convertible 
+  (lambda (f)
+    (let ([ascender (dict-ref (ufo:font-fontinfo f) 'ascender 750)]
+          [descender (dict-ref (ufo:font-fontinfo f) 'descender -250)]
+          [glyphs (ufo:map-glyphs draw-glyph  f)])
+      (apply pictf:font ascender descender glyphs))))
 
 (struct ufo:layer (name info glyphs) #:transparent)
 
@@ -338,4 +350,5 @@
 
 
                  
+
 

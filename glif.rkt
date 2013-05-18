@@ -32,7 +32,8 @@
          ufo:map-guidelines
          ufo:for-each-guidelines
          ufo:map-points
-         ufo:for-each-points)
+         ufo:for-each-points
+         draw-glyph)
          
          
          
@@ -150,6 +151,38 @@
 
 (define (ufo:for-each-points proc contour)
   (for-each proc (ufo:contour-points contour)))
+
+
+(define (draw-glyph g)
+  (append (list (ufo:glyph-name g)
+                (ufo:advance-width (ufo:glyph-advance g)))
+          (ufo:map-contours draw-contour g)))
+
+(define (draw-contour c)
+  (letrec ((aux (lambda (pts)
+                  (match pts
+                    [(list-rest (ufo:point _ _ 'offcurve _ _ _) rest-points)
+                     (aux (append rest-points (list (car pts))))]
+                     [_ pts]))))
+    (draw-points (aux (ufo:contour-points c)))))
+
+(define (draw-points pts)
+  (let* ((first-pt (car pts))
+         (rest-pts (cdr pts))
+         (start (list (ufo:point-x first-pt) 
+                      (ufo:point-y first-pt))))                      
+    (cons (cons 'move start)
+          (append (map (lambda (pt)
+                         (match pt 
+                           [(ufo:point x y 'offcurve _ _ _)
+                            `(off ,x ,y)]
+                           [(ufo:point x y _ _ _ _)
+                            `(,x ,y)]))
+                       rest-pts)
+                  (list start)))))
+                          
+   
+
 
 (define (glyph2->glyph1 g)
   (match g
@@ -363,6 +396,22 @@
     #:exists 'replace))
        
 
+;(define-syntax-rule (~ elts ...)
+;  (let ((first-elt (car elts)))
+;    (letrec (aux (lambda (elts acc)
+;                   (match elts
+;                     [(list-rest `(,x ,y) `(,x1 y1) rest-elts)
+;                      (aux rest-elts
+;                           (append acc
+;                                   (list (ufo:make-point #:x x #:y #:type 'curve)
+;                                         (ufo:make-point #:x x #:y #:type 'line))))]
+;                     [(list-rest `(,x ,y) `(,x1 y1 c) rest-elts)
+;                      (aux (cdr elts) (append acc (list (ufo:make-point #:x x #:y #:type 'curve))))]
+;                     [(list-rest `(,x y c) rest-elts)
+;                      (aux rest-elts (append acc (list (ufo:make-point #:x x #:y y))))]
+;                     [(list `(,x ,y) 'close) 
+;                      (append acc (
+;                                    
 
 ;(define g (read-glif-file "/Users/daniele/glif.glif"))
 
