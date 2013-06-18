@@ -9,7 +9,7 @@
   
 (define (plist->dict pl)
   (match pl
-    [(list 'dict entries ...) (make-hash (map plist->dict entries))]
+    [(list 'dict entries ...) (make-immutable-hash (map plist->dict entries))]
     [(list 'assoc-pair k v) (cons (string->symbol k) (plist->dict v))]
     [(list 'integer n) n]
     [(list 'real n) n]
@@ -53,7 +53,7 @@
 
 (define (xexpr->dict x)
   (match x
-    [(list 'dict null entries ...) (make-hash (xexpr->dict entries))]
+    [(list 'dict null entries ...) (make-immutable-hash (xexpr->dict entries))]
     [(list (list 'key null k) v entries ...) 
      (cons (cons (string->symbol k) (xexpr->dict v))
            (xexpr->dict entries))]

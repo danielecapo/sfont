@@ -57,7 +57,9 @@
   (if (or (not n) (number? n)) n (string->number n)))
 
 (define (ensure-symbol s)
-  (if (symbol? s) s (string->symbol s)))
+  (if s
+      (if (symbol? s) s (string->symbol s))
+      s))
 
 (define (ensure-smooth s)
   (match s
@@ -100,26 +102,26 @@
 (define (ufo:make-guideline #:x [x #f] #:y [y #f]  #:angle [angle #f] 
                             #:name [name #f] #:color [color #f] 
                             #:identifier [identifier #f])
-  (ufo:guideline (ensure-number x) (ensure-number y) (ensure-number angle) name (ensure-color color) identifier))
+  (ufo:guideline (ensure-number x) (ensure-number y) (ensure-number angle) name (ensure-color color) (ensure-symbol identifier)))
 
 (define (ufo:make-anchor #:x [x #f] #:y [y #f] #:name [name #f] 
                          #:color [color #f] #:identifier [identifier #f])
-  (ufo:anchor (ensure-number x) (ensure-number y) name (ensure-color color) identifier))
+  (ufo:anchor (ensure-number x) (ensure-number y) name (ensure-color color) (ensure-symbol identifier)))
 
 (define (ufo:make-contour #:identifier [identifier #f] #:points [points null])
-  (ufo:contour identifier points))
+  (ufo:contour (ensure-symbol identifier) points))
 
 (define (ufo:make-component #:base [base #f]  #:xScale [x-scale 1] #:xyScale [xy-scale 0] 
                         #:yxScale [yx-scale 0] #:yScale [y-scale 1] #:xOffset [x-offset 0]
                         #:yOffset [y-offset 0] #:identifier [identifier #f])
-  (ufo:component (string->symbol base) (ensure-number x-scale) (ensure-number xy-scale) 
+  (ufo:component (ensure-symbol base) (ensure-number x-scale) (ensure-number xy-scale) 
                  (ensure-number yx-scale) (ensure-number y-scale) 
-                 (ensure-number x-offset) (ensure-number y-offset) identifier))
+                 (ensure-number x-offset) (ensure-number y-offset) (ensure-symbol identifier)))
 
 (define (ufo:make-point #:x [x #f] #:y [y #f] #:type [type 'offcurve] 
                         #:smooth [smooth #f] #:name [name #f] #:identifier [identifier #f])
   (ufo:point (ensure-number x) (ensure-number y) (ensure-symbol type)
-             (ensure-smooth smooth) name identifier))
+             (ensure-smooth smooth) name (ensure-symbol identifier)))
 
 
 (define (ufo:map-contours proc glyph)
@@ -189,7 +191,8 @@
     [(ufo:glyph format name advance (list codes ...) note image 
                 guidelines anchors contours components lib)
      (ufo:glyph 1 name advance codes #f #f null null 
-                (map (lambda (c) 
+                (append 
+                 (map (lambda (c) 
                        (match c
                          [(ufo:contour _ points)
                           (ufo:contour 
@@ -197,13 +200,20 @@
                                      (struct-copy ufo:point p [identifier #f]))
                                    points))]))
                        contours)
+                 (map anchor->contour anchors))
                 (map (lambda (c) 
                        (struct-copy ufo:component c [identifier #f]))
                        components)
                 lib)]))
 
+(define (anchor->contour a)
+  (ufo:make-contour #:points (list (ufo:make-point #:x (ufo:anchor-x a)
+                                             #:y (ufo:anchor-y a)
+                                             #:name (ufo:anchor-name a)
+                                             #:type 'move))))
+
 (define (glyph1->glyph2 g)
-  (struct-copy ufo:glyph [format 2]))
+  (struct-copy ufo:glyph g [format 2]))
 
                 
                 
@@ -225,28 +235,34 @@
   (apply-with-kws ufo:make-point (cadr x)))
 
 (define (parse-outlines os)
-  (define (aux acc elts)
+  (define (aux contours components anchors elts)
     (match elts
-      [(list) acc]
+      [(list) (values contours components anchors)]
       [(list-rest e elts)
        (match e
+         [(list 'contour id (list point (list-no-order '(type "move") `(name ,name) `(x ,x) `(y ,y))))
+          (aux contours 
+               components 
+               (append anchors 
+                       (list (ufo:make-anchor #:x x #:y y #:name name)))
+               elts)]
          [(list-rest 'contour id points)
-          (aux (cons 
-                (append (car acc)
-                        (list (apply-with-kws 
-                               ufo:make-contour 
-                               (append id (list (list 'points (map parse-point points)))))))
-                (cdr acc))
+          (aux (append contours
+                       (list (apply-with-kws 
+                              ufo:make-contour 
+                              (append id (list (list 'points (map parse-point points)))))))
+               components
+               anchors
                elts)]
          [(list 'component args)
-          (aux (cons (car acc)
-                     (append (cdr acc) (list (apply-with-kws
-                                        ufo:make-component
-                                        args))))
+          (aux contours
+               (append components (list (apply-with-kws
+                                         ufo:make-component
+                                         args)))
+               anchors
                elts)])]))
          
-  (let ([r (aux '(() . ()) os)])
-    (values (car r) (cdr r))))
+  (aux null null null os))
 
 (define (xexpr->glyph x [name #f])
   (define (aux acc elts)
@@ -281,10 +297,11 @@
                                               (ufo:glyph-anchors acc))])
                restelts)]
          [(list-rest 'outline null outlines)
-          (let-values ([(contours components) (parse-outlines outlines)])
+          (let-values ([(contours components anchors) (parse-outlines outlines)])
             (aux (struct-copy ufo:glyph
                               (struct-copy ufo:glyph acc [contours contours])
-                              [components components])
+                              [components components]
+                              [anchors (append (ufo:glyph-anchors acc) anchors)])
                  restelts))]
          [(list 'lib null d)
           (aux (struct-copy ufo:glyph acc 
@@ -301,71 +318,76 @@
     (if (equal? val defaultvalue) '() (list expr)))
 
 (define (glyph->xexpr g)
-  (match g
-    [#f '()]
-    [(ufo:glyph format name advance codes note image 
-                guidelines anchors contours components lib)
-     `(glyph ((format ,(number->string format))
-              (name ,(symbol->string name)))
-             ,(glyph->xexpr advance)
-             ,@(map (lambda (c) `(unicode ((hex ,(unicode->string c))))) codes)
-             ,@(not-default note #f `(note () ,note))
-             ;(if note `((note () ,note)) '())
-             ,@(glyph->xexpr image)
-             ,@(map (lambda (guideline) (glyph->xexpr guideline)) guidelines)
-             ,@(map (lambda (anchor) (glyph->xexpr anchor)) anchors)
-             (outline ,@(map (lambda (contour) (glyph->xexpr contour)) contours)
-                      ,@(map (lambda (component) (glyph->xexpr component)) components))
-             ,@(not-default lib #f (dict->xexpr lib))
-             )]
-    [(ufo:advance width height)
-     `(advance (,@(not-default width 0 `(width ,(number->string width)))
-                ,@(not-default height 0 `(width ,(number->string height)))))]
-    [(ufo:image filename xs xys yxs ys xo yo color)
-     `((image ((fileName ,filename)
-              ,@(not-default xs 1 `(xScale ,(number->string xs)))
-              ,@(not-default xys 0 `(xyScale ,(number->string xys)))
-              ,@(not-default yxs 0 `(yxScale ,(number->string yxs)))
-              ,@(not-default ys 1 `(yScale ,(number->string ys)))
-              ,@(not-default xo 0 `(xOffset ,(number->string xo)))
-              ,@(not-default yo 0 `(yOffset ,(number->string yo)))
-              ,@(not-default color #f `(color ,(color->string color))))))]
-    
-    [(ufo:guideline x y angle name color identifier)
-     `(guideline (,@(not-default x #f `(x ,(number->string x)))
-                  ,@(not-default y #f `(y ,(number->string y)))
-                  ,@(not-default angle #f `(angle ,(number->string angle)))
-                  ,@(not-default name #f `(name ,name))
-                  ,@(not-default color #f `(color ,(color->string color)))
-                  ,@(not-default identifier #f `(identifier ,identifier))))]
-    [(ufo:anchor x y name color identifier)
-     `(anchor (,@(not-default x #f `(x ,(number->string x)))
-                  ,@(not-default y #f `(y ,(number->string y)))
-               ,@(not-default name #f `(name ,name))
-               ,@(not-default color #f `(color ,(color->string color)))
-               ,@(not-default identifier #f `(identifier ,identifier))))]
-    [(ufo:contour id points)
-     `(contour (,@(not-default id #f `(identifier ,id)))
-               ,@(map (lambda (p) (glyph->xexpr p)) points))]
-    [(ufo:point x y type smooth name id)
-     `(point ((x ,(number->string x)) 
-              (y ,(number->string y))
-              ,@(not-default type 'offcurve `(type ,(symbol->string type)))
-              ,@(not-default smooth #f `(smooth "yes"))
-              ,@(not-default name #f `(name ,name))
-              ,@(not-default id #f `(identifier ,id))))]
-    
-    [(ufo:component base xs xys yxs ys xo yo id)
-     `(component ((base ,(symbol->string base))
-                  ,@(not-default xs 1 `(xScale ,(number->string xs)))
-                  ,@(not-default xys 0 `(xyScale ,(number->string xys)))
-                  ,@(not-default yxs 0 `(yxScale ,(number->string yxs)))
-                  ,@(not-default ys 1 `(yScale ,(number->string ys)))
-                  ,@(not-default xo 0 `(xOffset ,(number->string xo)))
-                  ,@(not-default yo 0 `(yOffset ,(number->string yo)))
-                  ,@(not-default id #f `(identifier ,id))))]
-                                      
-    ))
+  (letrec [(aux 
+            (lambda (g)
+              (match g
+                [#f '()]
+                [(ufo:glyph format name advance codes note image 
+                            guidelines anchors contours components lib)
+                 `(glyph ((format ,(number->string format))
+                          (name ,(symbol->string name)))
+                         ,(aux advance)
+                         ,@(map (lambda (c) `(unicode ((hex ,(unicode->string c))))) codes)
+                         ,@(not-default note #f `(note () ,note))
+                         ;(if note `((note () ,note)) '())
+                         ,@(aux image)
+                         ,@(map (lambda (guideline) (aux guideline)) guidelines)
+                         ,@(map (lambda (anchor) (aux anchor)) anchors)
+                         (outline ,@(map (lambda (contour) (aux contour)) contours)
+                                  ,@(map (lambda (component) (aux component)) components))
+                         (lib ,@(not-default lib #f (dict->xexpr lib)))
+                         )]
+                [(ufo:advance width height)
+                 `(advance (,@(not-default width 0 `(width ,(number->string width)))
+                            ,@(not-default height 0 `(width ,(number->string height)))))]
+                [(ufo:image filename xs xys yxs ys xo yo color)
+                 `((image ((fileName ,filename)
+                           ,@(not-default xs 1 `(xScale ,(number->string xs)))
+                           ,@(not-default xys 0 `(xyScale ,(number->string xys)))
+                           ,@(not-default yxs 0 `(yxScale ,(number->string yxs)))
+                           ,@(not-default ys 1 `(yScale ,(number->string ys)))
+                           ,@(not-default xo 0 `(xOffset ,(number->string xo)))
+                           ,@(not-default yo 0 `(yOffset ,(number->string yo)))
+                           ,@(not-default color #f `(color ,(color->string color))))))]
+                
+                [(ufo:guideline x y angle name color identifier)
+                 `(guideline (,@(not-default x #f `(x ,(number->string x)))
+                              ,@(not-default y #f `(y ,(number->string y)))
+                              ,@(not-default angle #f `(angle ,(number->string angle)))
+                              ,@(not-default name #f `(name ,name))
+                              ,@(not-default color #f `(color ,(color->string color)))
+                              ,@(not-default identifier #f `(identifier ,(symbol->string identifier)))))]
+                [(ufo:anchor x y name color identifier)
+                 `(anchor (,@(not-default x #f `(x ,(number->string x)))
+                           ,@(not-default y #f `(y ,(number->string y)))
+                           ,@(not-default name #f `(name ,name))
+                           ,@(not-default color #f `(color ,(color->string color)))
+                           ,@(not-default identifier #f `(identifier ,(symbol->string identifier)))))]
+                [(ufo:contour id points)
+                 `(contour (,@(not-default id #f `(identifier ,(symbol->string id))))
+                           ,@(map (lambda (p) (aux p)) points))]
+                [(ufo:point x y type smooth name id)
+                 `(point ((x ,(number->string x)) 
+                          (y ,(number->string y))
+                          ,@(not-default type 'offcurve `(type ,(symbol->string type)))
+                          ,@(not-default smooth #f `(smooth "yes"))
+                          ,@(not-default name #f `(name ,name))
+                          ,@(not-default id #f `(identifier ,(symbol->string id)))))]
+                
+                [(ufo:component base xs xys yxs ys xo yo id)
+                 `(component ((base ,(symbol->string base))
+                              ,@(not-default xs 1 `(xScale ,(number->string xs)))
+                              ,@(not-default xys 0 `(xyScale ,(number->string xys)))
+                              ,@(not-default yxs 0 `(yxScale ,(number->string yxs)))
+                              ,@(not-default ys 1 `(yScale ,(number->string ys)))
+                              ,@(not-default xo 0 `(xOffset ,(number->string xo)))
+                              ,@(not-default yo 0 `(yOffset ,(number->string yo)))
+                              ,@(not-default id #f `(identifier ,(symbol->string id)))))]
+      
+      )))]
+    (aux (if (= (ufo:glyph-format g) 1)
+             (glyph2->glyph1 g)
+             g))))
              
      
 (define (read-glif-file path [name #f])

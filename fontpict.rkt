@@ -4,13 +4,25 @@
          *text*
          set-sample-size!
          set-sample-text!
+         with-sample-text
          pictf:font)
 
 (define *size* 100)
-(define *text* "/a/b/c/d/e/f/g/h/i/j/k/l/m/n/o/p/q/r/s/t/u/v/w/x/y/z")
+(define *text* '(a b c d e f g h j k l m n o p q r s t u v w x y z))
 
 (define (set-sample-size! s) (set! *size* s))
 (define (set-sample-text! t) (set! *text* t))
+
+(define-syntax-rule (with-sample-text (text size) body)
+  (let ([t *text*]
+        [s *size*])
+    (begin
+      (set-sample-text! text)
+      (set-sample-size! size)
+      body
+      (set-sample-text! t)
+      (set-sample-size! s))))
+    
 
 (define (name glyph) (car glyph))
 (define (advance glyph) (cadr glyph))
@@ -26,14 +38,14 @@
        (begin 
          (send path move-to x y)
          (aux rest))]
-    [(list-rest (list 'off x1 y1) (list 'off x2 y2) (list x3 y3) rest)
-     (begin
-       (send path curve-to x1 y1 x2 y2 x3 y3)
-       (aux rest))]
-    [(list-rest (list x y) rest)
-     (begin 
-       (send path line-to x y)
-       (aux rest))]))
+      [(list-rest (list 'off x1 y1) (list 'off x2 y2) (list x3 y3) rest)
+       (begin
+         (send path curve-to x1 y1 x2 y2 x3 y3)
+         (aux rest))]
+      [(list-rest (list x y) rest)
+       (begin 
+         (send path line-to x y)
+         (aux rest))]))
   (aux c))
 
 
@@ -51,9 +63,9 @@
   (foldr + 0 (map advance glyphs)))
       
 (define (pictf:font ascender descender . glyphs)
-   (let* ([letters (map string->symbol (string-split *text* "/"))]
-              [f (/  *size* (+ ascender (- descender)))]     
-              [glyphs-to-display (filter identity (map (lambda (g) (assoc g glyphs)) letters))])
+   (let* ([letters *text*];(map string->symbol (string-split *text* "/"))]
+          [f (/  *size* (+ ascender (- descender)))]     
+          [glyphs-to-display (filter identity (map (lambda (g) (assoc g glyphs)) letters))])
      (dc
       (lambda (dc dx dy)
          (begin
