@@ -1,7 +1,9 @@
 #lang racket
 (require xml
          xml/path
-         "plists.rkt")
+         "plists.rkt"
+         "bezier.rkt"
+         "vec.rkt")
 
 
 (provide read-glif-file
@@ -33,7 +35,9 @@
          ufo:for-each-guidelines
          ufo:map-points
          ufo:for-each-points
-         draw-glyph)
+         draw-glyph
+         contour->bezier
+         bezier->contour)
          
          
          
@@ -417,6 +421,74 @@
                     o)))
     #:exists 'replace))
        
+
+; contour->bezier
+; ufo:contour -> Bezier
+; Transform a ufo:contour in a bezier curve (i.e. all segments are made by 4 points)
+
+(define (contour->bezier c)
+  (letrec ((ensure-first-on-curve 
+            (lambda (pts)
+              (match pts
+                [(list-rest (ufo:point _ _ 'move _ _ _) pr) pts]
+                [(list-rest (ufo:point _ _ 'curve _ _ _) pr) pts]
+                [(list-rest (ufo:point _ _ 'line _ _ _) pr) pts]
+                [(list-rest (ufo:point _ _ 'qcurve _ _ _) pr) pts]
+                [(list-rest (ufo:point _ _ 'offcurve _ _ _) pr) 
+                 (ensure-first-on-curve (append pr (list (car pts))))])))
+           (flattener 
+            (lambda (pts acc)
+              (match pts
+                [(list-rest (or
+                             (ufo:point x y 'curve _ _ _)
+                             (ufo:point x y 'move _ _ _)
+                             (ufo:point x y 'line _ _ _))
+                            (ufo:point x1 y1 'line _ _ _)
+                            _)
+                 (flattener (cdr pts) (append acc (list (vec x y) (vec x y)(vec x1 y1))))]
+                [(list-rest (ufo:point x y 'offcurve _ _ _) pr)
+                 (flattener pr (append acc (list (vec x y))))]
+                [(list-rest (ufo:point x y 'curve _ _ _) pr)
+                 (flattener pr (append acc (list (vec x y))))]
+                [(list-rest (ufo:point x y 'move _ _ _) pr)
+                 (flattener pr (append acc (list (vec x y))))]
+                [(list-rest (ufo:point x y 'line _ _ _) pr)
+                 (flattener pr (append acc (list (vec x y))))]
+                [(list) acc]))))
+    (let* ((points (ensure-first-on-curve (ufo:contour-points c)))
+           (first-point (car points)))
+      (if (eq? (ufo:point-type first-point) 'move)
+          (flattener points '())
+          (flattener (append points (list first-point)) '())))))
+
+; bezier -> contour
+; Bezier -> ufo:contour
+; Transform a bezier curve in a ufo:contour 
+
+
+(define (bezier->contour b)
+  (letrec ((aux 
+            (lambda (prev pts acc)
+              (match (cons prev pts)
+                [(list-rest (vec x y) (vec x y) (vec x2 y2) (vec x2 y2) rest-pts)
+                   (aux (vec x2 y2) rest-pts (append acc (list (ufo:make-point #:x x2 #:y y2 #:type 'line))))]
+                [(list-rest (vec x y) (vec ox1 oy1) (vec ox2 oy2) (vec x2 y2) rest-pts)
+                 (aux (vec x2 y2) rest-pts (append acc
+                                                  (list (ufo:make-point #:x ox1 #:y oy1)
+                                                        (ufo:make-point #:x ox2 #:y oy2)
+                                                        (ufo:make-point #:x x2 #:y y2 #:type 'curve))))]
+                [(list _) acc]
+                [(list) null]))))
+    (let* ((first-pt (car b))
+           (ufo-pts (aux first-pt (cdr b) null)))
+      (ufo:make-contour #:points 
+                        (if (closed? b) ufo-pts
+                            (cons (ufo:make-point #:x (car first-pt)
+                                                  #:y (cadr first-pt)
+                                                  #:type 'move)
+                                  ufo-pts))))))
+         
+
 
 ;(define-syntax-rule (~ elts ...)
 ;  (let ((first-elt (car elts)))

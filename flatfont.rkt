@@ -155,6 +155,14 @@
              (ufo:map-components flat-component g)
              (ufo:map-anchors flat-anchor g)))
 
+; flat-contour
+; ufo:contour -> FlatContour
+; produce a flat contour from a ufo:contour
+
+(define (flat-contour c)
+  (map vec->list (contour->bezier c)))
+
+#;
 (define (flat-contour c)
   (letrec ((ensure-first-on-curve 
             (lambda (pts)
@@ -222,7 +230,14 @@
    [(list base x-scale xy-scale yx-scale y-scale x-offset y-offset) 
     (ufo:component base x-scale xy-scale yx-scale 
                         y-scale x-offset y-offset #f)]))
+; ufo-contour
+; FlatContour -> ufo:contour
+; produces a ufo:contour from a FlatContour
 
+(define (ufo-contour fc)
+  (bezier->contour (map list->vec fc)))
+
+#;
 (define (ufo-contour c)
   (letrec ((aux 
             (lambda (prev pts acc)
