@@ -4,6 +4,8 @@
          "glif.rkt"
          "names.rkt"
          "fontpict.rkt"
+         "bezier.rkt"
+         "vec.rkt"
          slideshow/pict-convert)
 
 (provide (struct-out ufo:font)
@@ -27,7 +29,16 @@
          ufo:read-ufo
          ufo:write-ufo
          ufo3->ufo2
-         ufo2->ufo3)
+         ufo2->ufo3
+         ufo:decompose-glyph
+         ufo:glyph-bounding-box
+         ufo:font-bounding-box
+         ufo:sidebearings
+         ufo:intersections-at
+         ufo:sidebearings-at
+         ufo:glyph-signed-area
+         ufo:set-sidebearings
+         ufo:adjust-sidebearings)
 
 
 (struct ufo:font 
@@ -382,6 +393,127 @@
     ((writer 'data))
     ((writer 'images))))
 
+; ufo:decompose-glyph
+; ufo:font, GlyphName -> ufo:glyph
+; decompose glyph components to outlines
+
+(define (ufo:decompose-glyph f gn)
+  (let* ([g (ufo:get-glyph f gn)]
+         [cs (ufo:glyph-components g)]
+         [bases (map (lambda (c) (ufo:get-glyph f (ufo:component-base c))) cs)]
+         [dcs (apply append (map ufo:component->outlines cs bases))])
+    (struct-copy ufo:glyph g
+                 [components null]
+                 [contours (append (ufo:glyph-contours g) dcs)])))
+                     
+; ufo:glyph-bounding-box
+; ufo:font, GlyphName -> BoundingBox
+; produces the Bounding Box for the given glyph
+
+(define (ufo:glyph-bounding-box f gn)
+  (let* ([g (ufo:decompose-glyph f gn)]
+         [cs (ufo:glyph-contours g)])
+    (if (null? cs)
+        #f
+        (apply combine-bounding-boxes 
+               (map (lambda (c) 
+                      (bezier-bounding-box (contour->bezier c)))
+                    cs)))))
+
+; ufo:font-bounding-box
+; ufo:font -> BoundingBox
+; produces the Bounding Box for the given font
+
+(define (ufo:font-bounding-box f)
+  (apply combine-bounding-boxes 
+         (filter identity
+                 (ufo:map-glyphs (lambda (g) 
+                                   (ufo:glyph-bounding-box f (ufo:glyph-name g)))
+                                 f))))
+
+; ufo:sidebearings 
+; ufo:font, GlyphName -> (Number . Number)
+; produces a pair representing the left and right sidebearings for the give glyph
+
+(define (ufo:sidebearings f gn)
+  (let* ([g (ufo:decompose-glyph f gn)]
+         [bb (ufo:glyph-bounding-box f gn)]
+         [a (ufo:advance-width (ufo:glyph-advance g))])
+    (if bb
+        (cons (vec-x (car bb))
+              (- a (vec-x (cdr bb))))
+        #f)))
+
+; ufo:intersections-at 
+; ufo:font, GlyphName, Number -> List of Vec
+; produces a list of the intersections of outlines with the line y = h
+
+(define (ufo:intersections-at f gn h)
+  (let* ([g (ufo:decompose-glyph f gn)]
+         [cs (ufo:glyph-contours g)])
+    (sort 
+     (remove-duplicates
+      (apply append 
+             (map (lambda (c) 
+                    (bezier-intersect-hor h (contour->bezier c)))
+                  cs))
+      vec=)
+     < #:key vec-x)))
+
+; ufo:sidebearings-at 
+; ufo:font, GlyphName, Number -> (Number . Number)
+; produces a pair representing sidebearings measured at y = h
+
+(define (ufo:sidebearings-at f gn h)
+  (let* ([g (ufo:decompose-glyph f gn)]
+         [is (ufo:intersections-at f gn h)]
+         [a (ufo:advance-width (ufo:glyph-advance g))])
+    (cons (vec-x (car is)) (- a (vec-x (last is))))))
+    
+  
+; ufo:glyph-signed-area
+; ufo:font, GlyphName -> Number
+; produces the area for the given glyph (negative if in the wrong direction)
+
+(define (ufo:glyph-signed-area f gn)
+  (let* ([g (ufo:decompose-glyph f gn)]
+         [cs (ufo:glyph-contours g)])
+    (foldl + 0 
+           (map (lambda (c) 
+                  (bezier-signed-area (contour->bezier c)))
+                cs))))
+
+; ufo:set-sidebearings
+; ufo:font, GlyphName, Number, Number -> ufo:glyph
+; set left and right sidebearings for the glyph named gn
+
+(define (ufo:set-sidebearings f gn left right)
+  (let* ([g (ufo:get-glyph f gn)]
+         [os (ufo:sidebearings f gn)]
+         [oa (ufo:advance-width (ufo:glyph-advance g))])     
+    (if os
+        (let* ([la (- left (car os))]
+               [ra (+ la (- right (cdr os)))])
+          (struct-copy ufo:glyph 
+                       (translate g (vec la 0))
+                       [advance (ufo:advance (+ oa ra)
+                                             (ufo:advance-height 
+                                              (ufo:glyph-advance g)))]))
+        #f)))
+                       
+         
+; ufo:adjust-sidebearings
+; ufo:font, GlyphName, Number, Number -> ufo:glyph
+; adjust left and right sidebearings for the glyph named gn
+
+(define (ufo:adjust-sidebearings f gn left right)
+  (let* ([g (ufo:get-glyph f gn)]
+         [os (ufo:sidebearings f gn)])     
+    (if os
+        (ufo:set-sidebearings f gn (+ (car os) left) 
+                              (+ (cdr os) right))
+        #f)))
+        
 
                  
 

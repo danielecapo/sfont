@@ -2,13 +2,16 @@
 
 (require (planet wmfarr/plt-linalg:1:13/vector)
          (planet wmfarr/plt-linalg:1:13/matrix)
-         "properties.rkt")
+         "properties.rkt"
+         "utilities.rkt")
 
 (provide approx
          *precision*
          set-precision!
          with-precision
          (struct-out vec)
+         vec=
+         vec-approx=
          vec->list
          list->vec
          vec-length
@@ -22,6 +25,7 @@
          rotation-matrix
          shear-matrix
          scale-matrix
+         composed-transformation-matrix
          transform
          translate
          rotate
@@ -30,7 +34,13 @@
          skew-y
          reflect-x
          reflect-y
-         vec-quick-scale)
+         vec-quick-scale
+         signed-area
+         signed-polygonal-area
+         intersect-hor
+         intersect-vert
+         pass-through-hor?
+         pass-through-vert?)
 
 ;(struct vec (x y) #:transparent)
 ;
@@ -41,7 +51,7 @@
 ;(define (add v1 . vs)
 ;  (complex->vec (apply + (map vec->complex (cons v1 vs)))))
 
-(define *precision* 0.0000001)
+(define *precision* 0.0001)
 
 (define (set-precision! p) (set! *precision* p))
 
@@ -71,6 +81,16 @@
   #:transparent
   #:property prop:transform 
   (lambda (v m) (vec-transform v m)))
+
+(define (vec= v1 v2)
+  (and (= (vec-x v1) (vec-x v2))
+       (= (vec-y v1) (vec-y v2))))
+
+(define (vec-approx= v1 v2)
+  (and (= (approx (vec-x v1))
+          (approx (vec-x v2)))
+       (= (approx (vec-y v1))
+          (approx (vec-y v2)))))
 
 (define (list->vec l)
   (vec (car l) (cadr l)))
@@ -108,15 +128,15 @@
 
 
 (define (vec+ v1 v2)
-  (vec (+ (vec-x v1) (vec-x v2))
-       (+ (vec-y v1) (vec-y v2))))
+  (vec (approx (+ (vec-x v1) (vec-x v2)))
+       (approx (+ (vec-y v1) (vec-y v2)))))
 
 (define (vec- v1 v2)
   (vec+ v1 (vec* v2 -1)))
 
 (define (vec* v n)
-  (vec (* (vec-x v) n)
-       (* (vec-y v) n)))
+  (vec (approx (* (vec-x v) n))
+       (approx (* (vec-y v) n))))
 
 (define (aligned? v1 v2 v3)
   (let* ([va (vec- v2 v1)]
@@ -142,6 +162,14 @@
 
 (define (shear-matrix sx sy)
   (matrix 3 3 1 sy 0 sx 1 0 0 0 1))
+
+; composed-transformation-matrix
+; TransformationMatrix, TransformationMatrix -> TransformationMatrix
+; produce a new transformation matrix that represent the transformation from m1 followed
+; by the transformation from m2
+
+(define (composed-transformation-matrix m1 m2)
+  (matrix-mul m2 m1))
 
 
 (define (transform v mat)
@@ -173,4 +201,61 @@
   (vec (* (vec-x v) sx) 
        (* (vec-y v) sy)))
 
+; signed-area
+; Vec, Vec -> Number
+; produces the area of the triangle formed by two vectors using the cross product
+; the area as a sign: when positive it means the triangle is 'counter-clockwise'
 
+(define (signed-area v1 v2)
+  (*
+   (- (* (vec-x v1) (vec-y v2))
+      (* (vec-x v2) (vec-y v1)))
+  0.5))
+
+; signed-polygonal-area
+; List of Vec -> Number
+; produce the signed area (see above) of the polygon whose points are defined by the position vectors
+; passed to the function
+
+(define (signed-polygonal-area lv)
+  (foldl + 0 (map (lambda (p) (apply signed-area p)) (n-groups lv 2))))
+
+; intersect-hor
+; Number, Vec, Vec -> Vec
+; produce the intersection of the line defined by v1 and v2 with the horizontal line y=n
+
+(define (intersect-hor n v1 v2)
+  (cond [(= (vec-y v1) (vec-y v2)) v1]
+        [(= (vec-x v1) (vec-x v2)) (vec (vec-x v1) n)]
+        [else (let* ([v12 (vec- v1 v2)]
+                     [nn (- n (vec-y v1))]
+                     [pr (vec (approx (* nn (/ (vec-x v12) (vec-y v12)))) nn)])
+                (vec+ pr v1))]))
+
+; intersect-vert
+; Number, Vec, Vec -> Vec
+; produce the intersection of the line defined by v1 and v2 with the vertical line x=n
+
+(define (intersect-vert n v1 v2)
+  (cond  [(= (vec-x v1) (vec-x v2)) v1]
+         [(= (vec-y v1) (vec-y v2)) (vec n (vec-y v1))]
+         [else (let* ([v12 (vec- v1 v2)]
+                      [nn (- n (vec-x v1))]
+                      [pr (vec nn (approx (* nn (/ (vec-y v12) (vec-x v12)))))])
+                 (vec+ pr v1))]))
+
+; pass-through-hor?
+; Number, Vec, Vec -> Vec
+; check if the horizontal line y=n pass through the segment v1-v2
+
+(define (pass-through-hor? n v1 v2)
+  (or (<= (vec-y v1) n (vec-y v2))
+      (>= (vec-y v1) n (vec-y v2))))
+
+; pass-through-vert?
+; Number, Vec, Vec -> Vec
+; check if the vertical line x=n pass through the segment v1-v2
+
+(define (pass-through-vert? n v1 v2)
+  (or (<= (vec-x v1) n (vec-x v2))
+      (>= (vec-x v1) n (vec-x v2))))

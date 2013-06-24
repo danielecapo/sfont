@@ -3,7 +3,9 @@
          xml/path
          "plists.rkt"
          "bezier.rkt"
-         "vec.rkt")
+         "vec.rkt"
+         "properties.rkt"
+          (planet wmfarr/plt-linalg:1:13/matrix))
 
 
 (provide read-glif-file
@@ -37,25 +39,136 @@
          ufo:for-each-points
          draw-glyph
          contour->bezier
-         bezier->contour)
+         bezier->contour
+         ufo:component->outlines)
+         
          
          
          
 (struct ufo:glyph (format name advance unicodes note image
                          guidelines anchors contours components lib) 
-  #:transparent)
+  #:transparent
+  #:property prop:transform 
+  (lambda (v m) (glyph-transform v m)))
+
+; glyph-transform
+; ufo:glyph, TransformationMatrix -> ufo:glyph
+; produces a new glyph by applying the transformation matrix to contours, component and anchors 
+
+(define (glyph-transform g m)
+  (let ([tfn (lambda (o) (transform o m))])
+    (struct-copy ufo:glyph g
+                 [anchors    (map tfn (ufo:glyph-anchors g))]
+                 [components (map tfn (ufo:glyph-components g))]
+                 [contours   (map tfn (ufo:glyph-contours g))])))
 
 (struct ufo:advance (width height) #:transparent)
+
 (struct ufo:image (filename x-scale xy-scale yx-scale 
                             y-scale x-offset y-offset color) 
+  #:transparent
+  #:property prop:transform 
+  (lambda (v m) (image-transform v m)))
+
+; image-transform
+; ufo:image, TransformationMatrix -> ufo:image
+; produces a new image applying the transformation matrix to image
+
+(define (image-transform i m)
+  (apply ufo:image
+         (append 
+          (cons (ufo:image-filename i)
+                (matrix->ufo-matrix 
+                 (composed-transformation-matrix (image->matrix i) m)))
+          (list (ufo:image-color i)))))
+
+; image->matrix 
+; ufo:image -> TransformationMatrix
+; produces a transformation matrix from the image
+
+(define (image->matrix i)
+  (match i 
+    [(ufo:image _ x-scale xy-scale yx-scale y-scale x-offset y-offset _)
+     (list->matrix '((,x-scale ,xy-scale ,x-offset)
+                     (,yx-scale ,y-scale ,y-offset)
+                     (0 0 1)))]))
+         
+
+(struct ufo:guideline (x y angle name color identifier) 
   #:transparent)
-(struct ufo:guideline (x y angle name color identifier) #:transparent)
-(struct ufo:anchor (x y name color identifier) #:transparent)
-(struct ufo:contour (identifier points) #:transparent)
+
+
+(struct ufo:anchor (x y name color identifier) 
+  #:transparent
+  #:property prop:transform 
+  (lambda (v m) (anchor-transform v m)))
+
+; anchor-transform
+; ufo:anchor, TransformationMatrix -> ufo:anchor
+; produces a new anchor applying the transformation matrix to anchor
+
+(define (anchor-transform a m)
+  (let ([v (transform (vec (ufo:anchor-x a) (ufo:anchor-y a)) m)])
+    (struct-copy ufo:anchor a
+                 [x (vec-x v)] [y (vec-y v)])))
+
+(struct ufo:contour (identifier points) 
+  #:transparent
+  #:property prop:transform 
+  (lambda (v m) (contour-transform v m)))
+
+; contour-transform
+; ufo:contour, TransformationMatrix -> ufo:contour
+; produces a new contour applying the transformation matrix to contour
+
+(define (contour-transform c m)
+  (struct-copy ufo:contour c
+               [points (map (lambda (p) (transform p m))
+                            (ufo:contour-points c))]))
+
+
 (struct ufo:component (base x-scale xy-scale yx-scale y-scale 
                             x-offset y-offset identifier) 
-  #:transparent)
-(struct ufo:point (x y type smooth name identifier) #:transparent)
+  #:transparent
+  #:property prop:transform 
+  (lambda (v m) (component-transform v m)))
+
+; component-transform
+; ufo:component, TransformationMatrix -> ufo:component
+; produces a new component applying the transformation matrix to component
+
+(define (component-transform c m)
+  (apply ufo:component
+         (append 
+          (cons (ufo:component-base c)
+                (matrix->ufo-matrix 
+                 (composed-transformation-matrix (component->matrix c) m)))
+          (list (ufo:component-identifier c)))))
+
+; component->matrix 
+; ufo:component -> TransformationMatrix
+; produces a transformation matrix from the component
+
+(define (component->matrix i)
+  (match i 
+    [(ufo:component _ x-scale xy-scale yx-scale y-scale x-offset y-offset _)
+     (list->matrix `((,x-scale ,xy-scale ,x-offset)
+                     (,yx-scale ,y-scale ,y-offset)
+                     (0 0 1)))]))
+
+(struct ufo:point (x y type smooth name identifier) 
+  #:transparent
+  #:property prop:transform 
+  (lambda (v m) (point-transform v m)))
+
+; point-transform
+; ufo:point, TransformationMatrix -> ufo:point
+; produces a new point applying the transformation matrix to point
+
+(define (point-transform p m)
+  (let ([v (transform (vec (ufo:point-x p) (ufo:point-y p)) m)])
+    (struct-copy ufo:point p
+                 [x (vec-x v)] [y (vec-y v)])))
 
 (define (ensure-number n)
   (if (or (not n) (number? n)) n (string->number n)))
@@ -487,9 +600,29 @@
                                                   #:y (cadr first-pt)
                                                   #:type 'move)
                                   ufo-pts))))))
-         
+   
+
+; ufo:component->outlines
+; ufo:component, glyph -> List of ufo:contour
+; produce a list of contours from a component applying the trasformation matrix to the contours in the base
+
+(define (ufo:component->outlines c b)
+  (let ([m (component->matrix c)]
+        [base-contours (ufo:glyph-contours b)])
+    (map (lambda (c) (transform c m))
+         base-contours)))
+     
 
 
+; matrix->ufo-matrix
+; TransformationMatrix -> List of Numbers
+; Produces a represetantion of the transf. mat. useful for ufo objects
+(define (matrix->ufo-matrix m)
+  (map approx
+       (list (matrix-ref m 0 0) (matrix-ref m 0 1) (matrix-ref m 1 0) 
+             (matrix-ref m 1 1) (matrix-ref m 0 2) (matrix-ref m 1 2))))
+
+; 
 ;(define-syntax-rule (~ elts ...)
 ;  (let ((first-elt (car elts)))
 ;    (letrec (aux (lambda (elts acc)

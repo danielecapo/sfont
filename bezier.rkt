@@ -1,6 +1,7 @@
 #lang racket
 
-(require "vec.rkt")
+(require "vec.rkt"
+         "utilities.rkt")
 
 (provide (all-defined-out))
 
@@ -19,18 +20,6 @@
 ; the second one is the upper right point
 ; Example
 ; (cons (vec 0 0) (vec 40 20))
-
-; n-groups
-; List [Any], Natural -> List of List [Any]
-; (n-groups '(a b c d e f) 2) -> '((a b) (b c) (c d) (d e) (e f))
-; (n-groups '(a b c d e f g) 3) -> '((a b c) (c d e) (e f g))
-
-(define (n-groups lst n)
-  (if (null? (cdr lst)) 
-      null
-      (let-values ([(f rest) (split-at lst (- n 1))])
-        (cons (append f (list (car rest)))
-              (n-groups rest n)))))
 
 
 ; closed? 
@@ -139,8 +128,105 @@
 ; Bezier, Natural -> BoundingBox
 ; produce the BoundingBox for the Bezier of order n
 
-(define (bezier-bounding-box b n)
+(define (bezier-bounding-box b [n 3])
   (let ([ss (segments b n)])
     (apply combine-bounding-boxes (map bounding-box ss))))
+
+; bezier-signed-area
+; Bezier, Natural, Natural -> Number
+; produce the 'signed' area of a bezier (positive if counter-clockwise) of nth order
+; every segment of a bezier is reduced to a polygon of s sides
+
+(define (bezier-signed-area b [n 3] [s 200])
+  (foldl + 0
+         (map (lambda (se) (signed-polygonal-area (polygonize-segment se s)))
+              (segments b n))))
+
+; bezier-area
+; Bezier,  Natural, Natural -> Number
+; produce the area of a bezier (positive if counter-clockwise) of nth order
+; every segment of a bezier is reduced to a polygon of s sides
+
+(define (bezier-area b [n 3] [s 200])
+  (abs (bezier-signed-area b n s)))
+
+; clockwise
+; Bezier,  Natural, Natural -> Number
+; check if the orientation of a bezier of nth order is clockwise
+; every segment of a bezier is reduced to a polygon of s sides
+
+(define (clockwise? b [n 3] [s 200])
+  (< (bezier-signed-area b n s) 0))
+
+; segment-intersect-hor
+; Number, Segment -> List of Vec
+; produce the list of intesection between the Bezier segment and the horizontal line y=h
+
+(define (segment-intersect-hor h s)
+  (foldl (lambda (ls acc)
+           (if (apply pass-through-hor? h ls)
+               (cons (apply intersect-hor h ls) acc)
+               (reverse acc)))
+         '()
+         (n-groups (polygonize-segment s 200) 2)))
+
+; segment-intersect-vert
+; Number, Segment -> List of Vec
+; produce the list of intesection between the Bezier segment and the vertical line x=v
+
+(define (segment-intersect-vert v s)
+  (foldl (lambda (ls acc)
+           (if (apply pass-through-vert? v ls)
+               (cons (apply intersect-vert v ls) acc)
+               (reverse acc)))
+         '()
+         (n-groups (polygonize-segment s 200) 2)))
+
+
+
+; bezier-intersect-hor
+; Number, Bezier, Natural -> List of Vec
+; produce the list of intesection between the Bezier curve (of nth order) and the horizontal line y=h
+
+(define (bezier-intersect-hor h b [n 3])
+  (remove-duplicates
+          (foldl (lambda (s acc)
+                   (append acc (segment-intersect-hor h s)))
+                 '()
+                 (segments b n))
+          vec=))
+
+; bezier-intersect-vert
+; Number, Bezier, Natural -> List of Vec
+; produce the list of intesection between the Bezier curve (of nth order) and the vertical line x=v
+
+(define (bezier-intersect-vert v b [n 3])
+  (remove-duplicates
+          (foldl (lambda (s acc)
+                   (append acc (segment-intersect-vert v s)))
+                 '()
+                 (segments b n))
+          vec=))
+
+
+; bezier-boundaries-hor
+; Number, Bezier, Natural -> BoundingBox
+; produce the BoundingBox (of zero height) define by the min and max intersection of the bezier curve 
+; with horizontal line y = h
+
+
+(define (bezier-boundaries-hor h b [n 3])
+  (let ([sorted-intersections 
+         (sort (bezier-intersect-hor h b n)
+               <
+               #:key vec-x)])
+    (cons (car sorted-intersections)
+          (last sorted-intersections))))
+
+
+    
+
+
+
 
                  
