@@ -38,7 +38,8 @@
          ufo:sidebearings-at
          ufo:glyph-signed-area
          ufo:set-sidebearings
-         ufo:adjust-sidebearings)
+         ufo:adjust-sidebearings
+         ufo:correct-directions)
 
 
 (struct ufo:font 
@@ -169,10 +170,12 @@
          (call-with-input-file path port->string)
          #f)) 
   (define (read-groups)
-    (make-immutable-hash
-     (hash-map (read-from-plist (make-ufo-path "groups.plist"))
-               (lambda (name content)
-                 (cons name (map string->symbol content))))))
+    (let ([g (read-from-plist (make-ufo-path "groups.plist"))])
+      (if g
+          (make-immutable-hash
+           (hash-map g (lambda (name content)
+                         (cons name (map string->symbol content)))))
+          #f)))
   (define (read-layerinfo glyphsdir)
     (read-from-plist 
      (build-path (make-ufo-path glyphsdir) "layerinfo.plist")))
@@ -468,7 +471,9 @@
   (let* ([g (ufo:decompose-glyph f gn)]
          [is (ufo:intersections-at f gn h)]
          [a (ufo:advance-width (ufo:glyph-advance g))])
-    (cons (vec-x (car is)) (- a (vec-x (last is))))))
+    (if (null? is)
+        #f
+        (cons (vec-x (car is)) (- a (vec-x (last is)))))))
     
   
 ; ufo:glyph-signed-area
@@ -501,7 +506,25 @@
                                               (ufo:glyph-advance g)))]))
         #f)))
                        
-         
+     
+; ufo:set-sidebearings-at
+; ufo:font, GlyphName, Number, Number, Number -> ufo:glyph
+; set left and right sidebearings (measured at y = h) for the glyph named gn 
+
+(define (ufo:set-sidebearings-at f gn left right h)
+  (let* ([g (ufo:get-glyph f gn)]
+         [os (ufo:sidebearings-at f gn h)]
+         [oa (ufo:advance-width (ufo:glyph-advance g))])     
+    (if os
+        (let* ([la (- left (car os))]
+               [ra (+ la (- right (cdr os)))])
+          (struct-copy ufo:glyph 
+                       (translate g (vec la 0))
+                       [advance (ufo:advance (+ oa ra)
+                                             (ufo:advance-height 
+                                              (ufo:glyph-advance g)))]))
+        #f)))
+
 ; ufo:adjust-sidebearings
 ; ufo:font, GlyphName, Number, Number -> ufo:glyph
 ; adjust left and right sidebearings for the glyph named gn
@@ -513,6 +536,23 @@
         (ufo:set-sidebearings f gn (+ (car os) left) 
                               (+ (cdr os) right))
         #f)))
+
+; ufo:correct-directions
+; ufo:font -> ufo:font
+; produces a new font with contour in the correct direction
+
+(define (ufo:correct-directions f)
+  (struct-copy ufo:font f
+               [layers 
+                (ufo:map-layers 
+                 (lambda (l)
+                   (struct-copy ufo:layer l
+                                [glyphs 
+                                 (ufo:map-glyphs 
+                                  ufo:glyph-correct-directions
+                                  f (ufo:layer-name l))]))
+                 f)]))
+
         
 
                  

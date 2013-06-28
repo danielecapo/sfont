@@ -309,6 +309,16 @@
           (aux c)))
       c))
 
+(define (correct-directions g)
+  (define (area cs)
+    (foldl (lambda (c acc) (+ acc (signed-polygonal-area (map list->vec c))))
+           0 cs))
+  (let ([cs (flatglyph-contours g)])
+    (struct-copy flatglyph g
+                 [contours (if (< (area cs) 0)
+                               (map reverse cs)
+                               cs)])))
+
 (define (sort-components g)
   (struct-copy flatglyph g
                [components (sort (flatglyph-components g)
@@ -325,14 +335,14 @@
 
                                                                                       
 (define (prepare-for-interpolation f [weak #t])
-  (let ((prep (lambda (g) (prepare-glyph g weak))))
     (struct-copy flatfont f
-                 [glyphs (map prep (flatfont-glyphs f))])))
+                 [glyphs (map (lambda (g) (prepare-glyph g weak)) 
+                              (flatfont-glyphs f))]))
 
 (define (prepare-glyph g [weak #t])
   (sort-components 
    (sort-anchors
-    (sort-contours g (if weak identity canonical-start-point)))))
+    (sort-contours (if weak g (correct-directions g)) (if weak identity canonical-start-point)))))
 
   
        
@@ -394,11 +404,16 @@
        (filter-left k1 (map car pairs))))
 
 (define (compatible-infos i1 i2)
-  (let [(common (set->list
-                 (set-intersect (list->set (map car i1))
-                                (list->set (map car i2)))))]
-    (cons (sort-by-keyword (filter-common common i1 car))
-          (sort-by-keyword (filter-common common i2 car)))))
+  (let* ([common (set->list
+                  (set-intersect (list->set (map car i1))
+                                 (list->set (map car i2))))]
+         [commonf (filter (lambda (i)
+                            (if (list? (dict-ref i1 i))
+                                (= (length (dict-ref i1 i)) (length (dict-ref i2 i)))
+                                #t))
+                          common)])
+    (cons (sort-by-keyword (filter-common commonf i1 car))
+          (sort-by-keyword (filter-common commonf i2 car)))))
 
                 
 

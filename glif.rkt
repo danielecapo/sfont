@@ -40,7 +40,11 @@
          draw-glyph
          contour->bezier
          bezier->contour
-         ufo:component->outlines)
+         ufo:component->outlines
+         ufo:contour-open?
+         ufo:reverse-contour
+         ufo:glyph-reverse-directions
+         ufo:glyph-correct-directions)
          
          
          
@@ -621,6 +625,52 @@
   (map approx
        (list (matrix-ref m 0 0) (matrix-ref m 0 1) (matrix-ref m 1 0) 
              (matrix-ref m 1 1) (matrix-ref m 0 2) (matrix-ref m 1 2))))
+
+
+; ufo:contour-open?
+; ufo:contour -> Boolean
+; True if the contour starts with a point of type 'move
+
+(define (ufo:contour-open? c)
+  (eq? 'move (ufo:point-type (car (ufo:contour-points c)))))
+
+; ufo:reverse-contour
+; ufo:contour -> ufo:contour
+; returns the contour with reversed point list
+
+(define (ufo:reverse-contour c)
+  (if (ufo:contour-open? c)
+      c
+      (struct-copy ufo:contour c
+                   [points (ufo:contour-points 
+                            (bezier->contour 
+                             (reverse (contour->bezier c))))])))
+
+; ufo:glyph-reverse-directions
+; ufo:glyph -> ufo:glyph
+; reverse the direction of all contours in the glyph
+
+(define (ufo:glyph-reverse-directions g)
+  (struct-copy ufo:glyph g 
+               [contours (map ufo:reverse-contour 
+                              (ufo:glyph-contours g))]))
+
+; ufo:glyph-correct-directions
+; ufo:glyph -> ufo:glyph
+; reverse the direction of all contours in the glyph if the area is negative
+
+(define (ufo:glyph-correct-directions g)
+  (let* ([cs (map contour->bezier (ufo:glyph-contours g))]
+         [a (foldl (lambda (b acc) 
+                     (+ acc (bezier-signed-area b)))
+                   0 cs)])
+    (if (< a 0)
+        (struct-copy ufo:glyph g 
+                     [contours (map (lambda (c b)
+                                      (struct-copy ufo:contour c
+                                                   [points (ufo:contour-points (bezier->contour (reverse b)))]))
+                                    (ufo:glyph-contours g) cs)])
+        g)))
 
 ; 
 ;(define-syntax-rule (~ elts ...)
