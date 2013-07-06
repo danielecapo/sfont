@@ -1,30 +1,32 @@
 #lang racket
 
-(require "font.rkt"
-         "glif.rkt"
+(require (prefix-in ufo: "font.rkt")
+         (prefix-in ufo: "glif.rkt")
          "vec.rkt"
          "fontpict.rkt"
          slideshow/pict-convert)
 
 (provide (all-defined-out))
 
-(struct flatfont (ufo info kerning glyphs) 
+(struct font (ufo info kerning glyphs) 
   #:transparent
   #:property prop:pict-convertible 
   (lambda (f)
-    (let ([ascender (dict-ref (flatfont-info f) 'ascender 750)]
-          [descender (dict-ref (flatfont-info f) 'descender -250)]
-          [glyphs (map glyph->pict  (flatfont-glyphs f))])
+    (let ([ascender (dict-ref (font-info f) 'ascender 750)]
+          [descender (dict-ref (font-info f) 'descender -250)]
+          [glyphs (map glyph->pict  (font-glyphs f))])
       (apply pictf:font ascender descender glyphs))))
 
-(define (ufo->flatfont f)
+(define (flatfont:ufo->font f)
   (let ((f (ufo:sort-glyphs f)))
-    (flatfont f
+    (font f
               (interpolable-infos (sort-by-keyword (hash->list (ufo:font-fontinfo f))))
-              (sort-by-keyword 
-               (hash-map (ufo:font-kerning f)
-                         (lambda (left right)
-                           (cons left (sort-by-keyword (hash->list right))))))
+              (if (ufo:font-kerning f)
+                  (sort-by-keyword 
+                   (hash-map (ufo:font-kerning f)
+                             (lambda (left right)
+                               (cons left (sort-by-keyword (hash->list right))))))
+                  '())
               (flat-glyphs f))))
 
 (define (sort-by-keyword alist)
@@ -32,15 +34,17 @@
         #:key (lambda (p) 
                 (symbol->string (car p)))))
 
-(define (flatfont->ufo f)
-  (struct-copy ufo:font (flatfont-ufo f)
+(define (flatfont:font->ufo f)
+  (struct-copy ufo:font (font-ufo f)
                [fontinfo (ufo-infos f)]
-               [kerning (make-immutable-hash
-                         (map (lambda (p) (cons (car p) (make-immutable-hash (cdr p))))
-                              (flatfont-kerning f)))]
-               [layers (list (struct-copy ufo:layer (ufo:get-layer (flatfont-ufo f))
-                                          [glyphs (map (lambda (g) (flatglyph->ufo g (flatfont-ufo f)))  
-                                                       (flatfont-glyphs f))]))]))
+               [kerning (if (null? (font-kerning f))
+                            #f
+                            (make-immutable-hash
+                             (map (lambda (p) (cons (car p) (make-immutable-hash (cdr p))))
+                                  (font-kerning f))))]
+               [layers (list (struct-copy ufo:layer (ufo:get-layer (font-ufo f))
+                                          [glyphs (map (lambda (g) (glyph->ufo g (font-ufo f)))  
+                                                       (font-glyphs f))]))]))
 
 
 (define (->int n) (inexact->exact (round n)))
@@ -116,11 +120,11 @@
 (define (ufo-infos f)
   (let ((infos (make-immutable-hash 
                 (dict-map
-                 (flatfont-info f)
+                 (font-info f)
                  (lambda (key value)
                    (cons key ((car (dict-ref *infos* key)) value))))))
-        (psname (dict-ref (ufo:font-fontinfo (flatfont-ufo f)) 'postscriptFontName "untitled"))
-        (famname (dict-ref (ufo:font-fontinfo (flatfont-ufo f)) 'familyName "untitled")))
+        (psname (dict-ref (ufo:font-fontinfo (font-ufo f)) 'postscriptFontName "untitled"))
+        (famname (dict-ref (ufo:font-fontinfo (font-ufo f)) 'familyName "untitled")))
     (dict-set* infos 'postscriptFontName psname 'familyName famname)))
 
      
@@ -128,13 +132,13 @@
      
 (define (pt x y) (list x y))
 
-(struct flatglyph (name advance contours components anchors)
+(struct glyph (name advance contours components anchors)
   #:transparent)
 
 (define (glyph->pict g)
   
-   (append (list (flatglyph-name g)
-                 (car (flatglyph-advance g)))
+   (append (list (glyph-name g)
+                 (car (glyph-advance g)))
            (map (lambda (c)
                   (letrec ((aux (lambda (pts acc)
                                  
@@ -144,11 +148,11 @@
                                     [(list) acc]))))
                     (cons (cons 'move (car c))
                           (aux (cdr c) '()))))
-                (flatglyph-contours g))))
+                (glyph-contours g))))
   
 
-(define (make-flatglyph g)
-  (flatglyph (ufo:glyph-name g)
+(define (flatfont:glif->glyph g)
+  (glyph (ufo:glyph-name g)
              (let ((a (ufo:glyph-advance g)))
                (pt (ufo:advance-width a) (ufo:advance-height a)))
              (ufo:map-contours flat-contour g)
@@ -160,7 +164,7 @@
 ; produce a flat contour from a ufo:contour
 
 (define (flat-contour c)
-  (map vec->list (contour->bezier c)))
+  (map vec->list (ufo:contour->bezier c)))
 
 #;
 (define (flat-contour c)
@@ -209,11 +213,11 @@
      (list base x-scale xy-scale yx-scale y-scale x-offset y-offset)]))
 
 (define (flat-glyphs f)
-  (ufo:map-glyphs make-flatglyph f))
+  (ufo:map-glyphs flatfont:glif->glyph f))
 
-(define (flatglyph->ufo g ufo) 
+(define (glyph->ufo g ufo) 
   (match g
-    [(flatglyph name (list aw ah) contours components anchors)
+    [(glyph name (list aw ah) contours components anchors)
      (let ((ufo-glyph (ufo:get-glyph ufo name)))
        (struct-copy ufo:glyph ufo-glyph
                     [advance (ufo:advance aw ah)]
@@ -235,7 +239,7 @@
 ; produces a ufo:contour from a FlatContour
 
 (define (ufo-contour fc)
-  (bezier->contour (map list->vec fc)))
+  (ufo:bezier->contour (map list->vec fc)))
 
 #;
 (define (ufo-contour c)
@@ -263,16 +267,16 @@
 
 
 (define (keep-glyphs f glyphs)
-  (struct-copy flatfont f
+  (struct-copy font f
                [glyphs (filter (lambda (g)
-                                 (member (flatglyph-name g) glyphs))
-                                 (flatfont-glyphs f))]))
+                                 (member (glyph-name g) glyphs))
+                                 (font-glyphs f))]))
 
 
 (define (sort-contours g [sort-points-fn identity])
-  (struct-copy flatglyph g
+  (struct-copy glyph g
                [contours 
-                (sort (map sort-points-fn (flatglyph-contours g))
+                (sort (map sort-points-fn (glyph-contours g))
                       contour<?)]))
                                
 (define (contour<? c1 c2)
@@ -313,31 +317,31 @@
   (define (area cs)
     (foldl (lambda (c acc) (+ acc (signed-polygonal-area (map list->vec c))))
            0 cs))
-  (let ([cs (flatglyph-contours g)])
-    (struct-copy flatglyph g
+  (let ([cs (glyph-contours g)])
+    (struct-copy glyph g
                  [contours (if (< (area cs) 0)
                                (map reverse cs)
                                cs)])))
 
 (define (sort-components g)
-  (struct-copy flatglyph g
-               [components (sort (flatglyph-components g)
+  (struct-copy glyph g
+               [components (sort (glyph-components g)
                                  (lambda (c1 c2)
                                    (or (string<? (symbol->string (car c1))
                                                  (symbol->string (car c2)))
                                        (point<? (take-right c1 2) (take-right c2 2)))))]))
 
 (define (sort-anchors g)
-  (struct-copy flatglyph g
-               [anchors (sort (flatglyph-anchors g)
+  (struct-copy glyph g
+               [anchors (sort (glyph-anchors g)
                               #:key car
                               string<?)]))
 
                                                                                       
 (define (prepare-for-interpolation f [weak #t])
-    (struct-copy flatfont f
+    (struct-copy font f
                  [glyphs (map (lambda (g) (prepare-glyph g weak)) 
-                              (flatfont-glyphs f))]))
+                              (font-glyphs f))]))
 
 (define (prepare-glyph g [weak #t])
   (sort-components 
@@ -349,26 +353,26 @@
 (define (compatible-fonts f1 f2)
   (let* ((common (set->list 
                   (set-intersect
-                   (list->set (map flatglyph-name (flatfont-glyphs f1)))
-                   (list->set (map flatglyph-name (flatfont-glyphs f2))))))
+                   (list->set (map glyph-name (font-glyphs f1)))
+                   (list->set (map glyph-name (font-glyphs f2))))))
          (fc1 (keep-glyphs f1 common))
          (fc2 (keep-glyphs f2 common))
          (compatible-glyphs (filter
                              identity
                              (map compatible-glyphs 
-                                 (flatfont-glyphs fc1)
-                                 (flatfont-glyphs fc2))))
+                                 (font-glyphs fc1)
+                                 (font-glyphs fc2))))
          (kerning (compatible-kerning
-                   (flatfont-kerning f1) 
-                   (flatfont-kerning f2)))
+                   (font-kerning f1) 
+                   (font-kerning f2)))
          (infos (compatible-infos
-                 (flatfont-info f1) 
-                 (flatfont-info f2))))
-    (values (struct-copy flatfont fc1
+                 (font-info f1) 
+                 (font-info f2))))
+    (values (struct-copy font fc1
                          [glyphs (map car compatible-glyphs)]
                          [kerning (car kerning)]
                          [info (car infos)])
-            (struct-copy flatfont fc2
+            (struct-copy font fc2
                          [glyphs (map cdr compatible-glyphs)]
                          [kerning (cdr kerning)]
                          [info (cdr infos)]))))
@@ -418,18 +422,64 @@
                 
 
 (define (compatible-glyphs g1 g2)
-  (let ((c1 (flatglyph-contours g1))
-        (c2 (flatglyph-contours g2)))
+  (let ((c1 (glyph-contours g1))
+        (c2 (glyph-contours g2)))
     (if (and (= (length c1) (length c2))
              (andmap (lambda (a b) (= (length a) (length b)))
                      c1 c2))
-        (let-values (((c1 c2) (compatible-components (flatglyph-components g1)
-                                                     (flatglyph-components g2)))
-                     ((a1 a2) (compatible-anchors (flatglyph-anchors g1)
-                                                  (flatglyph-anchors g2))))
-          (cons (struct-copy flatglyph g1 [components c1] [anchors a1])
-                (struct-copy flatglyph g2 [components c2] [anchors a2])))
+        (let-values (((c1 c2) (compatible-components (glyph-components g1)
+                                                     (glyph-components g2)))
+                     ((a1 a2) (compatible-anchors (glyph-anchors g1)
+                                                  (glyph-anchors g2))))
+          (cons (struct-copy glyph g1 [components c1] [anchors a1])
+                (struct-copy glyph g2 [components c2] [anchors a2])))
         #f)))
+
+; match-contour-order
+; List of contours, List of contours -> List of contours
+; match the second list of contours against the first list.
+
+(define (match-contour-order cs1 cs2)
+  (define (contour-distance c1 c2)
+    (foldl (lambda (p1 p2 d)
+             (+ d (vec-length (vec- (list->vec p2) (list->vec p1)))))
+           0 c1 c2))
+  (reverse
+   (cdr 
+    (foldl (lambda (cm acc)
+             (let* ([r (cdr acc)]
+                    [cs (car acc)]
+                    [m (car (argmin cdr (filter (lambda (i) (identity (cdr i)))
+                                                (map (lambda (c)
+                                                       (cons c
+                                                             (if (= (length c) (length cm))
+                                                                    (contour-distance cm c)
+                                                                    #f)))
+                                                     cs))))])
+               (cons (remq m cs) (cons m r)))) 
+           (cons cs2 '())
+           cs1))))
+
+; match-glyphs-contours
+; glyph, glyph -> glyph
+; match the contours of the second glyph against the first
+
+(define (match-glyphs-contours g1 g2)
+  (let ([cs1 (glyph-contours g1)]
+        [cs2 (glyph-contours g2)])
+    (struct-copy glyph g2 [contours (match-contour-order cs1 cs2)])))
+
+             
+; match-fonts-contours
+; font, font -> font
+; match the contours of the second font against the first
+
+(define (match-fonts-contours f1 f2)
+  (let ([gs1 (font-glyphs f1)]
+        [gs2 (font-glyphs f2)])
+    (struct-copy font f2 [glyphs (map match-glyphs-contours gs1 gs2)])))
+                  
+             
 
 (define (compatible-components c1 c2)
   (let ((common-comp (set->list 

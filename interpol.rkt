@@ -6,19 +6,19 @@
 (provide (all-defined-out))
 
                       
-(define (flatfont:transform o m)
+(define (font:transform o m)
   ((match o
-     [(flatfont _ _ _ _) font-transform]
-     [(flatglyph _ _ _ _ _) glyph-transform]
+     [(font _ _ _ _) font-transform]
+     [(glyph _ _ _ _ _) glyph-transform]
      [(list (list a b) ...) contour-transform]
      [(list _ _ _) anchor-transform]
      [(list _ _ _ _ _ _ _) component-transform])
    o m))
 
-(define (flatfont:scale o sx [sy sx])
+(define (font:scale o sx [sy sx])
   ((match o
-     [(flatfont _ _ _ _) font-scale]
-     [(flatglyph _ _ _ _ _) glyph-scale]
+     [(font _ _ _ _) font-scale]
+     [(glyph _ _ _ _ _) glyph-scale]
      [(list (list a b) ...) contour-scale]
      [(list _ _ _) anchor-scale]
      [(list _ _ _ _ _ _ _) component-scale])
@@ -27,24 +27,24 @@
 
 (define-syntax-rule (define-transform (id args ...) matrix-form)
   (define (id o args ...)
-    (flatfont:transform o matrix-form)))
+    (font:transform o matrix-form)))
 
-(define-transform (flatfont:translate v)
+(define-transform (font:translate v)
   (translation-matrix (vec-x v) (vec-y v)))
 
-(define-transform (flatfont:rotate angle)
+(define-transform (font:rotate angle)
   (rotation-matrix angle))
 
-(define-transform (flatfont:skew-x angle)
+(define-transform (font:skew-x angle)
   (shear-matrix (- (approx (tan angle))) 0))
 
-(define-transform (flatfont:skew-y angle)
+(define-transform (font:skew-y angle)
   (shear-matrix 0 (approx (tan angle))))
 
-(define-transform (flatfont:reflect-x)
+(define-transform (font:reflect-x)
   (scale-matrix -1 1))
 
-(define-transform (flatfont:reflect-y)
+(define-transform (font:reflect-y)
   (scale-matrix 1 -1))
 
 
@@ -52,20 +52,20 @@
 ;[advance 
 ;                (vec->list 
 ;                 (transform 
-;                  (list->vec (flatglyph-advance g))
+;                  (list->vec (glyph-advance g))
 ;                  m))]
   
 (define (font-transform f m)
-  (struct-copy flatfont f
+  (struct-copy font f
                [glyphs (map (lambda (g) (glyph-transform g m))
-                            (flatfont-glyphs f))]))
+                            (font-glyphs f))]))
 
 (define (font-scale f sx [sy sx])
-  (struct-copy flatfont f
-               [info (info-scale (flatfont-info f) sx sy)]
-               [kerning (kerning-scale (flatfont-kerning f) sx)]
+  (struct-copy font f
+               [info (info-scale (font-info f) sx sy)]
+               [kerning (kerning-scale (font-kerning f) sx)]
                [glyphs (map (lambda (g) (glyph-scale g sx sy))
-                            (flatfont-glyphs f))]))
+                            (font-glyphs f))]))
 
 (define (kerning-scale kern s)
   (map (lambda (k)
@@ -123,7 +123,7 @@
     (openTypeHheaCaretOffset ,->y)
     (openTypeOS2WidthClass ,->x)
     (openTypeOS2WeightClass ,->amb)
-    (openTypeOS2Panose ,->amb)
+    (openTypeOS2Panose ,->list-amb)
     (openTypeOS2FamilyClass ,->list-amb)
     (openTypeOS2TypoAscender ,->y)
     (openTypeOS2TypoDescender ,->y)
@@ -162,30 +162,30 @@
     (postscriptNominalWidthX ,->x)))
                
 (define (glyph-transform g m)
-  (struct-copy flatglyph g
+  (struct-copy glyph g
                [contours 
                 (map (lambda (c) (contour-transform c m))
-                     (flatglyph-contours g))]
+                     (glyph-contours g))]
                [components 
                 (map (lambda (c) (component-transform c m))
-                     (flatglyph-components g))]
+                     (glyph-components g))]
                [anchors 
                 (map (lambda (a) (anchor-transform a m))
-                     (flatglyph-anchors g))]))
+                     (glyph-anchors g))]))
 
 (define (glyph-scale g sx [sy sx])
-  (struct-copy flatglyph g
+  (struct-copy glyph g
                [contours 
                 (map (lambda (c) (contour-scale c sx sy))
-                     (flatglyph-contours g))]
+                     (glyph-contours g))]
                [components 
                 (map (lambda (c) (component-scale c sx sy))
-                     (flatglyph-components g))]
+                     (glyph-components g))]
                [anchors 
                 (map (lambda (a) (anchor-scale a sx sy))
-                     (flatglyph-anchors g))]
+                     (glyph-anchors g))]
                [advance (vec->list 
-                         (vec-quick-scale (list->vec (flatglyph-advance g))
+                         (vec-quick-scale (list->vec (glyph-advance g))
                                           sx sy))]))
 
 (define (contour-transform c m)
@@ -248,28 +248,28 @@
 
 (define (glyph+ g1 . gs)
   (let [(gss (cons g1 gs))]
-    (struct-copy flatglyph g1
+    (struct-copy glyph g1
                  [advance 
                   (vec->list 
                    (foldl vec+ (vec 0 0)
                           (map (lambda (g) 
                                  (list->vec 
-                                  (flatglyph-advance g)))
+                                  (glyph-advance g)))
                                gss)))]
                  [contours
-                  (apply map contour+ (map flatglyph-contours gss))]
+                  (apply map contour+ (map glyph-contours gss))]
                  [components
-                  (apply map component+ (map flatglyph-components gss))]
+                  (apply map component+ (map glyph-components gss))]
                  [anchors
-                  (apply map anchor+ (map flatglyph-anchors gss))])))
+                  (apply map anchor+ (map glyph-anchors gss))])))
 
 
 (define (font+ f1 . fs)
   (let [(fonts (cons f1 fs))]
-  (struct-copy flatfont f1
-               [info (apply info+ (map flatfont-info fonts))]
-               [kerning (apply kerning+ (map flatfont-kerning fonts))]
-               [glyphs (apply map glyph+ (map flatfont-glyphs fonts))])))
+  (struct-copy font f1
+               [info (apply info+ (map font-info fonts))]
+               [kerning (apply kerning+ (map font-kerning fonts))]
+               [glyphs (apply map glyph+ (map font-glyphs fonts))])))
 
 (define (info+ i1 . is)
   (letrec [(aux (lambda (i1 i2)
@@ -294,30 +294,30 @@
                        k1 k2)))]
     (foldl aux k1 ks)))
 
-(define (flatfont:* o s1 . ss)
-  (flatfont:scale o (apply * (cons s1 ss))))
+(define (font:* o s1 . ss)
+  (font:scale o (apply * (cons s1 ss))))
 
-(define (flatfont:+ o1 . os)
+(define (font:+ o1 . os)
   (apply (match o1
-           [(flatfont _ _ _ _) font+]
-           [(flatglyph _ _ _ _ _) glyph+]
+           [(font _ _ _ _) font+]
+           [(glyph _ _ _ _ _) glyph+]
            [(list (list a b) ...) contour+]
            [(list _ _ _) anchor+]
            [(list _ _ _ _ _ _ _) component+])
          (cons o1 os)))
 
-(define (flatfont:- o1 . os)
-  (apply flatfont:+ (cons o1 (map (lambda (o) (flatfont:* o -1))
+(define (font:- o1 . os)
+  (apply font:+ (cons o1 (map (lambda (o) (font:* o -1))
                                   os))))
 
-(define (flatfont:/ o s1 . ss)
-  (flatfont:* o (apply * (map (lambda (s) 
+(define (font:/ o s1 . ss)
+  (font:* o (apply * (map (lambda (s) 
                                 (/ 1 s)) 
                               (cons s1 ss)))))
 
 
 (define (x-> o)
-  (flatfont:scale o 1 0))
+  (font:scale o 1 0))
 
 (define (y-> o)
-  (flatfont:scale o 0 1))  
+  (font:scale o 0 1))  

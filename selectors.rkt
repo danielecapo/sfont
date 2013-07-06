@@ -8,8 +8,8 @@
 ;    
 ;        (map (lambda (g)
 ;               (cons g
-;                     (ufo:map-layers
-;                      (lambda (l) (cons (ufo:layer-name l) (ufo:get-glyph f g (ufo:layer-name l))))
+;                     (map-layers
+;                      (lambda (l) (cons () (get-glyph f g (layer-name l))))
 ;                      f)))
 ;             glyphs)))
 
@@ -18,10 +18,10 @@
     (letrec 
         ([gl (lambda (g)
                (let ([ret (filter identity
-                                  (ufo:map-layers 
+                                  (map-layers 
                                    (lambda (l)
-                                     (let* ([layer-name (ufo:layer-name l)]
-                                            [glyph (ufo:get-glyph f g layer-name)])
+                                     (let* ([layer-name (layer-name l)]
+                                            [glyph (get-glyph f g layer-name)])
                                        (if glyph
                                            (cons layer-name glyph)
                                            #f)))

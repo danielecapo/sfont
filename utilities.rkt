@@ -1,6 +1,7 @@
 #lang racket
 
-(provide n-groups)
+(provide n-groups
+         num->int)
 ; n-groups
 ; List [Any], Natural -> List of List [Any]
 ; (n-groups '(a b c d e f) 2) -> '((a b) (b c) (c d) (d e) (e f))
@@ -12,3 +13,7 @@
       (let-values ([(f rest) (split-at lst (- n 1))])
         (cons (append f (list (car rest)))
               (n-groups rest n)))))
+
+
+(define (num->int n)
+  (inexact->exact (floor n)))

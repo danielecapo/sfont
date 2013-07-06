@@ -8,156 +8,157 @@
          "vec.rkt"
          slideshow/pict-convert)
 
-(provide (struct-out ufo:font)
-         (struct-out ufo:layer)
-         ufo:layer-name
-         ufo:layer-info
-         ufo:layer-glyphs
-         ufo:get-layer
+(provide (struct-out font)
+         (struct-out layer)
+         layer-name
+         layer-info
+         layer-glyphs
+         get-layer
          set-layer
-         ufo:map-layers
-         ufo:for-each-layer
-         ufo:filter-layer
-         ufo:remove-glyph
-         ufo:insert-glyph
-         ufo:get-glyph
-         ufo:get-layers-glyph
-         ufo:map-glyphs
-         ufo:for-each-glyph
-         ufo:glyphs-in-font
-         ufo:sort-glyphs
-         ufo:read-ufo
-         ufo:write-ufo
+         map-layers
+         for-each-layer
+         filter-layer
+         remove-glyph
+         insert-glyph
+         get-glyph
+         get-layers-glyph
+         map-glyphs
+         for-each-glyph
+         glyphs-in-font
+         sort-glyphs
+         read-ufo
+         write-ufo
          ufo3->ufo2
          ufo2->ufo3
-         ufo:decompose-glyph
-         ufo:glyph-bounding-box
-         ufo:font-bounding-box
-         ufo:sidebearings
-         ufo:intersections-at
-         ufo:sidebearings-at
-         ufo:glyph-signed-area
-         ufo:set-sidebearings
-         ufo:adjust-sidebearings
-         ufo:correct-directions)
+         decompose-glyph
+         decompose-layer
+         glyph-bounding-box
+         font-bounding-box
+         sidebearings
+         intersections-at
+         sidebearings-at
+         glyph-signed-area
+         set-sidebearings
+         adjust-sidebearings
+         correct-directions)
 
 
-(struct ufo:font 
+(struct font 
   (format creator fontinfo groups kerning features layers lib data images)
   #:transparent
   #:property prop:pict-convertible 
   (lambda (f)
-    (let ([ascender (dict-ref (ufo:font-fontinfo f) 'ascender 750)]
-          [descender (dict-ref (ufo:font-fontinfo f) 'descender -250)]
-          [glyphs (ufo:map-glyphs draw-glyph  f)])
+    (let ([ascender (dict-ref (font-fontinfo f) 'ascender 750)]
+          [descender (dict-ref (font-fontinfo f) 'descender -250)]
+          [glyphs (map-glyphs draw-glyph  f)])
       (apply pictf:font ascender descender glyphs))))
 
-(struct ufo:layer (name info glyphs) #:transparent)
+(struct layer (name info glyphs) #:transparent)
 
 
-(define (ufo:get-layer font [layer 'public.default])
-  (findf (lambda (l) (eq? (ufo:layer-name l) layer))
-         (ufo:font-layers font)))
+(define (get-layer font [layer 'public.default])
+  (findf (lambda (l) (eq? (layer-name l) layer))
+         (font-layers font)))
 
-(define (ufo:map-layers proc font)
-  (map proc (ufo:font-layers font)))
+(define (map-layers proc font)
+  (map proc (font-layers font)))
 
-(define (ufo:for-each-layer proc font)
-  (for-each proc (ufo:font-layers font)))
+(define (for-each-layer proc font)
+  (for-each proc (font-layers font)))
 
-(define (ufo:filter-layer proc layer)
-  (filter proc (ufo:layer-glyphs layer)))
+(define (filter-layer proc layer)
+  (filter proc (layer-glyphs layer)))
 
-(define (ufo:get-glyph font glyph [layer 'public.default])
-  (let ([l (ufo:get-layer font layer)])
+(define (get-glyph font glyph [layer 'public.default])
+  (let ([l (get-layer font layer)])
     (if l
-        (findf (lambda (g) (eq? (ufo:glyph-name g) glyph))
-               (ufo:layer-glyphs l))
+        (findf (lambda (g) (eq? (glyph-name g) glyph))
+               (layer-glyphs l))
         #f)))
 
 (define (set-layer f new-layer)
-  (let ((layers (ufo:font-layers f))
-        (new-name (ufo:layer-name new-layer)))
-    (struct-copy ufo:font f
+  (let ((layers (font-layers f))
+        (new-name (layer-name new-layer)))
+    (struct-copy font f
                  [layers
                   (dict-values
-                   (dict-set (ufo:map-layers 
-                              (lambda (l) (cons (ufo:layer-name l) l)) f)
+                   (dict-set (map-layers 
+                              (lambda (l) (cons (layer-name l) l)) f)
                              new-name new-layer))])))
     
     
 (define (glyphs->hash layer)
-  (make-immutable-hash (map (lambda (g) (cons (ufo:glyph-name g) g))
-                            (ufo:layer-glyphs layer))))
+  (make-immutable-hash (map (lambda (g) (cons (glyph-name g) g))
+                            (layer-glyphs layer))))
 
 (define (hash->glyphs gh)
   (hash-values gh))
 
 
 
-(define (ufo:remove-glyph f glyph [layername 'public.default])
-  (let ((l (ufo:get-layer f layername)))
-    (set-layer f (struct-copy ufo:layer l 
+(define (remove-glyph f glyph [layername 'public.default])
+  (let ((l (get-layer f layername)))
+    (set-layer f (struct-copy layer l 
                               [glyphs (hash->glyphs 
                                        (hash-remove (glyphs->hash l) 
                                                     glyph))]))))
     
 
-(define (ufo:insert-glyph f glyph [layername 'public.default])
-  (let ((l (ufo:get-layer f layername)))
-    (set-layer f (struct-copy ufo:layer l 
+(define (insert-glyph f glyph [layername 'public.default])
+  (let ((l (get-layer f layername)))
+    (set-layer f (struct-copy layer l 
                               [glyphs (hash->glyphs 
                                        (hash-set (glyphs->hash l)
-                                                 (ufo:glyph-name glyph)                                                              
+                                                 (glyph-name glyph)                                                              
                                                  glyph))]))))
                      
   
 
-(define (ufo:get-layers-glyph font glyph)
-  (ufo:map-layers 
+(define (get-layers-glyph font glyph)
+  (map-layers 
    (lambda (l) 
-     (let ([name (ufo:layer-name l)])
-       (ufo:get-glyph font glyph name)))
+     (let ([name (layer-name l)])
+       (get-glyph font glyph name)))
    font))
   
   
-(define (ufo:map-glyphs proc font [layer 'public.default])
-  (let ([l (ufo:get-layer font layer)])
+(define (map-glyphs proc font [layer 'public.default])
+  (let ([l (get-layer font layer)])
     (if l
         (map (lambda (g) (proc g))
-             (ufo:layer-glyphs l))
+             (layer-glyphs l))
         (error "Layer does not exist"))))
 
-(define (ufo:for-each-glyph proc font [layer 'public.default])
-  (let ([l (ufo:get-layer font layer)])
+(define (for-each-glyph proc font [layer 'public.default])
+  (let ([l (get-layer font layer)])
     (if l
         (for-each (lambda (g) (proc g))
-             (ufo:layer-glyphs l))
+             (layer-glyphs l))
         (error "Layer does not exist"))))
 
 
-(define (ufo:glyphs-in-font f)
+(define (glyphs-in-font f)
   (set->list
     (foldl set-union
            (set)
-           (ufo:map-layers (lambda (l) 
-                             (list->set (map ufo:glyph-name (ufo:layer-glyphs l))))
+           (map-layers (lambda (l) 
+                             (list->set (map glyph-name (layer-glyphs l))))
                            f))))
 
-(define (ufo:sort-glyphs f)
-  (struct-copy ufo:font f 
-               [layers (ufo:map-layers 
+(define (sort-glyphs f)
+  (struct-copy font f 
+               [layers (map-layers 
                         (lambda (l) 
-                          (struct-copy ufo:layer l
-                                       [glyphs (sort (ufo:layer-glyphs l)
-                                                     #:key ufo:glyph-name
+                          (struct-copy layer l
+                                       [glyphs (sort (layer-glyphs l)
+                                                     #:key glyph-name
                                                      (lambda (a b) (string<? (symbol->string a)
                                                                              (symbol->string b))))]))
                         f)]))
         
 
 
-(define (ufo:reader path [proc-data #f] [proc-images #f])
+(define (reader path [proc-data #f] [proc-images #f])
   (define (make-ufo-path file)
     (build-path path file))
   (define (read-from-plist path)
@@ -181,10 +182,10 @@
      (build-path (make-ufo-path glyphsdir) "layerinfo.plist")))
   (define (read-layers)
     (let ([layers (read-from-plist (make-ufo-path "layercontents.plist"))])
-      (map (lambda (layer) 
-             (ufo:layer (string->symbol (car layer))
-                        (read-layerinfo (cadr layer)) 
-                        (read-glyphs (cadr layer))))
+      (map (lambda (l) 
+             (layer (string->symbol (car l))
+                        (read-layerinfo (cadr l)) 
+                        (read-glyphs (cadr l))))
            (if layers layers (list (list "public.default" "glyphs"))))))
           
   (define (read-glyphs glyphsdir)
@@ -211,9 +212,9 @@
 
   
 
-(define (ufo:read-ufo path #:proc-data [proc-data #f] #:proc-images [proc-images #f])
+(define (read-ufo path #:proc-data [proc-data #f] #:proc-images [proc-images #f])
   (if (directory-exists? path)
-      (let* ([reader (ufo:reader path proc-data proc-images)]
+      (let* ([reader (reader path proc-data proc-images)]
              [meta ((reader 'meta))]
              [format (dict-ref meta 'formatVersion)]
              [creator (dict-ref meta 'creator)])
@@ -223,7 +224,7 @@
       (error "file do not exists")))
         
 (define (read-ufo2 creator reader)
-  (ufo:font 2 creator
+  (font 2 creator
             ((reader 'info))
             ((reader 'groups))
             ((reader 'kerning))
@@ -234,7 +235,7 @@
             #f))
 
 (define (read-ufo3 creator reader)
-  (ufo:font 3 creator
+  (font 3 creator
             ((reader 'info))
             ((reader 'groups))
             ((reader 'kerning))
@@ -244,24 +245,24 @@
             ((reader 'data))
             ((reader 'images))))
 
-(define (ufo3->ufo2 font)
-  (struct-copy ufo:font font [format 2] [data #f] [images #f]
-               [layers (list (ufo:layer 'public.default #f 
+(define (ufo3->ufo2 f)
+  (struct-copy font f [format 2] [data #f] [images #f]
+               [layers (list (layer 'public.default #f 
                                         (map glyph2->glyph1
-                                             (ufo:layer-glyphs (ufo:get-layer font 'public.default)))))]))
+                                             (layer-glyphs (get-layer f 'public.default)))))]))
             
-(define (ufo2->ufo3 font) 
-  (struct-copy ufo:font font [format 3]
-               [layers (ufo:map-layers
+(define (ufo2->ufo3 f) 
+  (struct-copy font f [format 3]
+               [layers (map-layers
                         (lambda (l)
-                          (struct-copy ufo:layer l
+                          (struct-copy layer l
                                        [glyphs (map glyph1->glyph2 
-                                                    (ufo:layer-glyphs l))]))
-                        font)]))
+                                                    (layer-glyphs l))]))
+                        f)]))
                                
                
 
-(define (ufo:writer font path [proc-data #f] [proc-images #f])
+(define (writer font path [proc-data #f] [proc-images #f])
   (define (make-ufo-path file)
     (build-path path file))
   (define (write-on-plist dict path)
@@ -279,7 +280,7 @@
           (write-string text o)))))
   (define (write-groups)
     (write-on-plist (make-immutable-hash
-                     (hash-map (ufo:font-groups font)
+                     (hash-map (font-groups font)
                                (lambda (name content)
                                  (cons name (map symbol->string content)))))
                     (make-ufo-path "groups.plist")))
@@ -287,16 +288,16 @@
     (letrec ([aux (lambda (acc layers names)
                     (match layers
                       [(list) acc]
-                      [(list-rest (ufo:layer 'public.default _ _) rest-layers)
+                      [(list-rest (layer 'public.default _ _) rest-layers)
                        (aux (cons (cons 'public.default "glyphs") acc)
                             rest-layers
                             (cons "glyphs" names))]
-                      [(list-rest (ufo:layer l _ _) rest-layers)
+                      [(list-rest (layer l _ _) rest-layers)
                        (let ([name (namesymbol->filename l "glyphs." "" names)])
                                 (aux (cons (cons l name) acc)
                                      rest-layers
                                      (cons name names)))]))])                
-      (reverse (aux '() (ufo:font-layers font) '()))))
+      (reverse (aux '() (font-layers font) '()))))
   
   (define layers-names (get-layers-names))
   (define (write-glyphs glyphs glyphsdir)
@@ -304,11 +305,11 @@
                     (match glyphs
                       [(list) (make-hash (reverse acc))]
                       [(list-rest g rest-glyphs)
-                       (let ([name (namesymbol->filename (ufo:glyph-name g) "" ".glif" names)])
+                       (let ([name (namesymbol->filename (glyph-name g) "" ".glif" names)])
                           (begin
                             (write-glif-file g (build-path glyphsdir name))
                             (aux rest-glyphs 
-                                 (cons (cons (ufo:glyph-name g) name) acc)
+                                 (cons (cons (glyph-name g) name) acc)
                                  (cons name names))))]))])
                       
 
@@ -317,15 +318,15 @@
       
   (define (write-layers)
     (let ((layers-hash (make-immutable-hash 
-                        (map (lambda (l) (cons (ufo:layer-name l) l))
-                            (ufo:font-layers font)))))
-      (for-each (lambda (layer)
+                        (map (lambda (l) (cons (layer-name l) l))
+                            (font-layers font)))))
+      (for-each (lambda (l)
                   (begin
-                    (let ([dir (make-ufo-path (cdr layer))]
-                          [l (dict-ref layers-hash (car layer))])
+                    (let ([dir (make-ufo-path (cdr l))]
+                          [la (dict-ref layers-hash (car l))])
                       (make-directory dir)
-                      (write-glyphs (ufo:layer-glyphs l) dir)
-                      (write-layerinfo (ufo:layer-info l) dir))))
+                      (write-glyphs (layer-glyphs la) dir)
+                      (write-layerinfo (layer-info la) dir))))
                 layers-names)))
   
   (define (write-layerinfo info dir)
@@ -341,28 +342,28 @@
       
   (let ([s (list 
             (cons 'meta (lambda () 
-                          (write-on-plist (hash 'creator (ufo:font-creator font)
-                                                'formatVersion (ufo:font-format font))
+                          (write-on-plist (hash 'creator (font-creator font)
+                                                'formatVersion (font-format font))
                                           (make-ufo-path "metainfo.plist"))))
             (cons 'info (lambda () 
-                          (write-on-plist (ufo:font-fontinfo font) 
+                          (write-on-plist (font-fontinfo font) 
                                           (make-ufo-path "fontinfo.plist"))))
             (cons 'groups write-groups)
-            (cons 'kerning (lambda () (write-on-plist (ufo:font-kerning font) 
+            (cons 'kerning (lambda () (write-on-plist (font-kerning font) 
                                                       (make-ufo-path "kerning.plist"))))
-            (cons 'features (lambda () (write-on-text-file (ufo:font-features font)
+            (cons 'features (lambda () (write-on-text-file (font-features font)
                                                            (make-ufo-path "features.fea"))))
-            (cons 'lib (lambda () (write-on-plist (ufo:font-lib font) 
+            (cons 'lib (lambda () (write-on-plist (font-lib font) 
                                                   (make-ufo-path "lib.plist"))))
             (cons 'layers write-layers)
             (cons 'layercontents write-layercontents)
-            (cons 'data (lambda () (write-directory (ufo:font-data font) (make-ufo-path "data") proc-data)))
-            (cons 'images (lambda () (write-directory (ufo:font-images font) (make-ufo-path "images") proc-images))))])
+            (cons 'data (lambda () (write-directory (font-data font) (make-ufo-path "data") proc-data)))
+            (cons 'images (lambda () (write-directory (font-images font) (make-ufo-path "images") proc-images))))])
     (lambda (k) (dict-ref s k))))
 
-(define (ufo:write-ufo font path #:overwrite [overwrite #f] #:proc-data [proc-data #f] #:proc-images [proc-images #f])
-  (let ([format (ufo:font-format font)]
-        [writer (ufo:writer font path proc-data proc-images)])
+(define (write-ufo font path #:overwrite [overwrite #f] #:proc-data [proc-data #f] #:proc-images [proc-images #f])
+  (let ([format (font-format font)]
+        [writer (writer font path proc-data proc-images)])
     (if (and (directory-exists? path) (not overwrite))
         #f
         (begin
@@ -396,26 +397,46 @@
     ((writer 'data))
     ((writer 'images))))
 
-; ufo:decompose-glyph
-; ufo:font, GlyphName -> ufo:glyph
+; decompose-glyph
+; font, GlyphName, LayerName -> glyph
 ; decompose glyph components to outlines
 
-(define (ufo:decompose-glyph f gn)
-  (let* ([g (ufo:get-glyph f gn)]
-         [cs (ufo:glyph-components g)]
-         [bases (map (lambda (c) (ufo:get-glyph f (ufo:component-base c))) cs)]
-         [dcs (apply append (map ufo:component->outlines cs bases))])
-    (struct-copy ufo:glyph g
+(define (decompose-glyph f gn [ln 'public.default])
+  (let* ([g (get-glyph f gn ln)]
+         [cs (glyph-components g)]
+         [bases (map (lambda (c) (get-glyph f (component-base c) ln)) cs)]
+         [dcs (apply append (map component->outlines cs bases))])
+    (struct-copy glyph g
                  [components null]
-                 [contours (append (ufo:glyph-contours g) dcs)])))
+                 [contours (append (glyph-contours g) dcs)])))
+
+; decompose-layer
+; font, LayerName -> layer
+; produces a new layer with glyphs decomposed
+
+(define (decompose-layer f [ln 'public.default])
+  (let* ([l (get-layer f ln)]
+         [gh (glyphs->hash l)]
+         [dec (lambda (g)
+                (let ([d (apply 
+                              append
+                              (map (lambda (c) 
+                                     (component->outlines
+                                      c (hash-ref gh (component-base c))))
+                                   (glyph-components g)))])
+                  (struct-copy glyph g [components null]
+                               [contours (append (glyph-contours g) d)])))])
+    (struct-copy layer l [glyphs (hash-map gh (lambda (k v) (dec v)))])))
+
+
                      
-; ufo:glyph-bounding-box
-; ufo:font, GlyphName -> BoundingBox
+; glyph-bounding-box
+; font, GlyphName -> BoundingBox
 ; produces the Bounding Box for the given glyph
 
-(define (ufo:glyph-bounding-box f gn)
-  (let* ([g (ufo:decompose-glyph f gn)]
-         [cs (ufo:glyph-contours g)])
+(define (glyph-bounding-box f gn)
+  (let* ([g (decompose-glyph f gn)]
+         [cs (glyph-contours g)])
     (if (null? cs)
         #f
         (apply combine-bounding-boxes 
@@ -423,37 +444,44 @@
                       (bezier-bounding-box (contour->bezier c)))
                     cs)))))
 
-; ufo:font-bounding-box
-; ufo:font -> BoundingBox
+; font-bounding-box
+; font, Boolean -> BoundingBox
 ; produces the Bounding Box for the given font
 
-(define (ufo:font-bounding-box f)
-  (apply combine-bounding-boxes 
-         (filter identity
-                 (ufo:map-glyphs (lambda (g) 
-                                   (ufo:glyph-bounding-box f (ufo:glyph-name g)))
-                                 f))))
+(define (font-bounding-box f [components #t])
+  (let ([gs (filter
+             (lambda (g) (> (length (glyph-contours g)) 0))
+             (if components (layer-glyphs (decompose-layer f))
+                (layer-glyphs (get-layer f))))])
+    (apply combine-bounding-boxes 
+           (filter identity
+                   (map (lambda (g) 
+                          (apply combine-bounding-boxes
+                                 (map (lambda (c)
+                                        (bezier-bounding-box (contour->bezier c)))
+                                      (glyph-contours g))))
+                        gs)))))
 
-; ufo:sidebearings 
-; ufo:font, GlyphName -> (Number . Number)
+; sidebearings 
+; font, GlyphName -> (Number . Number)
 ; produces a pair representing the left and right sidebearings for the give glyph
 
-(define (ufo:sidebearings f gn)
-  (let* ([g (ufo:decompose-glyph f gn)]
-         [bb (ufo:glyph-bounding-box f gn)]
-         [a (ufo:advance-width (ufo:glyph-advance g))])
+(define (sidebearings f gn)
+  (let* ([g (decompose-glyph f gn)]
+         [bb (glyph-bounding-box f gn)]
+         [a (advance-width (glyph-advance g))])
     (if bb
         (cons (vec-x (car bb))
               (- a (vec-x (cdr bb))))
         #f)))
 
-; ufo:intersections-at 
-; ufo:font, GlyphName, Number -> List of Vec
+; intersections-at 
+; font, GlyphName, Number -> List of Vec
 ; produces a list of the intersections of outlines with the line y = h
 
-(define (ufo:intersections-at f gn h)
-  (let* ([g (ufo:decompose-glyph f gn)]
-         [cs (ufo:glyph-contours g)])
+(define (intersections-at f gn h)
+  (let* ([g (decompose-glyph f gn)]
+         [cs (glyph-contours g)])
     (sort 
      (remove-duplicates
       (apply append 
@@ -463,94 +491,94 @@
       vec=)
      < #:key vec-x)))
 
-; ufo:sidebearings-at 
-; ufo:font, GlyphName, Number -> (Number . Number)
+; sidebearings-at 
+; font, GlyphName, Number -> (Number . Number)
 ; produces a pair representing sidebearings measured at y = h
 
-(define (ufo:sidebearings-at f gn h)
-  (let* ([g (ufo:decompose-glyph f gn)]
-         [is (ufo:intersections-at f gn h)]
-         [a (ufo:advance-width (ufo:glyph-advance g))])
+(define (sidebearings-at f gn h)
+  (let* ([g (decompose-glyph f gn)]
+         [is (intersections-at f gn h)]
+         [a (advance-width (glyph-advance g))])
     (if (null? is)
         #f
         (cons (vec-x (car is)) (- a (vec-x (last is)))))))
     
   
-; ufo:glyph-signed-area
-; ufo:font, GlyphName -> Number
+; glyph-signed-area
+; font, GlyphName -> Number
 ; produces the area for the given glyph (negative if in the wrong direction)
 
-(define (ufo:glyph-signed-area f gn)
-  (let* ([g (ufo:decompose-glyph f gn)]
-         [cs (ufo:glyph-contours g)])
+(define (glyph-signed-area f gn)
+  (let* ([g (decompose-glyph f gn)]
+         [cs (glyph-contours g)])
     (foldl + 0 
            (map (lambda (c) 
                   (bezier-signed-area (contour->bezier c)))
                 cs))))
 
-; ufo:set-sidebearings
-; ufo:font, GlyphName, Number, Number -> ufo:glyph
+; set-sidebearings
+; font, GlyphName, Number, Number -> glyph
 ; set left and right sidebearings for the glyph named gn
 
-(define (ufo:set-sidebearings f gn left right)
-  (let* ([g (ufo:get-glyph f gn)]
-         [os (ufo:sidebearings f gn)]
-         [oa (ufo:advance-width (ufo:glyph-advance g))])     
+(define (set-sidebearings f gn left right)
+  (let* ([g (get-glyph f gn)]
+         [os (sidebearings f gn)]
+         [oa (advance-width (glyph-advance g))])     
     (if os
         (let* ([la (- left (car os))]
                [ra (+ la (- right (cdr os)))])
-          (struct-copy ufo:glyph 
+          (struct-copy glyph 
                        (translate g (vec la 0))
-                       [advance (ufo:advance (+ oa ra)
-                                             (ufo:advance-height 
-                                              (ufo:glyph-advance g)))]))
+                       [advance (advance (+ oa ra)
+                                             (advance-height 
+                                              (glyph-advance g)))]))
         #f)))
                        
      
-; ufo:set-sidebearings-at
-; ufo:font, GlyphName, Number, Number, Number -> ufo:glyph
+; set-sidebearings-at
+; font, GlyphName, Number, Number, Number -> glyph
 ; set left and right sidebearings (measured at y = h) for the glyph named gn 
 
-(define (ufo:set-sidebearings-at f gn left right h)
-  (let* ([g (ufo:get-glyph f gn)]
-         [os (ufo:sidebearings-at f gn h)]
-         [oa (ufo:advance-width (ufo:glyph-advance g))])     
+(define (set-sidebearings-at f gn left right h)
+  (let* ([g (get-glyph f gn)]
+         [os (sidebearings-at f gn h)]
+         [oa (advance-width (glyph-advance g))])     
     (if os
         (let* ([la (- left (car os))]
                [ra (+ la (- right (cdr os)))])
-          (struct-copy ufo:glyph 
+          (struct-copy glyph 
                        (translate g (vec la 0))
-                       [advance (ufo:advance (+ oa ra)
-                                             (ufo:advance-height 
-                                              (ufo:glyph-advance g)))]))
+                       [advance (advance (+ oa ra)
+                                             (advance-height 
+                                              (glyph-advance g)))]))
         #f)))
 
-; ufo:adjust-sidebearings
-; ufo:font, GlyphName, Number, Number -> ufo:glyph
+; adjust-sidebearings
+; font, GlyphName, Number, Number -> glyph
 ; adjust left and right sidebearings for the glyph named gn
 
-(define (ufo:adjust-sidebearings f gn left right)
-  (let* ([g (ufo:get-glyph f gn)]
-         [os (ufo:sidebearings f gn)])     
+(define (adjust-sidebearings f gn left right)
+  (let* ([g (get-glyph f gn)]
+         [os (sidebearings f gn)])     
     (if os
-        (ufo:set-sidebearings f gn (+ (car os) left) 
+        (set-sidebearings f gn (+ (car os) left) 
                               (+ (cdr os) right))
         #f)))
 
-; ufo:correct-directions
-; ufo:font -> ufo:font
+; correct-directions
+; font -> font
 ; produces a new font with contour in the correct direction
 
-(define (ufo:correct-directions f)
-  (struct-copy ufo:font f
+(define (correct-directions f)
+  (struct-copy font f
                [layers 
-                (ufo:map-layers 
+                (map-layers 
                  (lambda (l)
-                   (struct-copy ufo:layer l
+                   (struct-copy layer l
                                 [glyphs 
-                                 (ufo:map-glyphs 
-                                  ufo:glyph-correct-directions
-                                  f (ufo:layer-name l))]))
+                                 (map-glyphs 
+                                  glyph-correct-directions
+                                  f (layer-name l))]))
                  f)]))
 
         

@@ -1,7 +1,7 @@
 #lang racket
 (require "interpol.rkt"
          "flatfont.rkt"
-         "font.rkt"
+         (prefix-in ufo: "font.rkt")
          "vec.rkt"
          "fontpict.rkt"
          (planet wmfarr/plt-linalg:1:13/matrix))
@@ -31,8 +31,8 @@
 
 (define (add a . as)
   (match (cons a as)
-    [(list (? flatfont? _) ...)
-     (apply flatfont:+ a as)]
+    [(list (? font? _) ...)
+     (apply font:+ a as)]
     [(list (? number? _) ...)
      (apply + a as)]
     [(list (? vec? _) ...)
@@ -41,8 +41,8 @@
 
 (define (sub a . as)
   (match (cons a as)
-    [(list (? flatfont? _) ...)
-     (apply flatfont:+ a (map (lambda (i) (prod i -1)) as))]
+    [(list (? font? _) ...)
+     (apply font:+ a (map (lambda (i) (prod i -1)) as))]
     [(list (? number? _) ...)
      (apply - a as)]
     [(list (? vec? _) ...)
@@ -52,8 +52,8 @@
 
 (define (prod a . as)
   (match (cons a as)
-    [(list-no-order (? flatfont? f) (? number? s) ...)
-     (apply flatfont:* f s)]
+    [(list-no-order (? font? f) (? number? s) ...)
+     (apply font:* f s)]
     [(list-no-order (? vec? v) (? number? s) ...)
      (vec* v (apply * s))]
     [(list (? number? x) ...)
@@ -62,8 +62,8 @@
 
 (define (div a . as)
   (match (cons a as)
-    [(list-no-order (? flatfont? f) (? number? s) ...)
-     (apply flatfont:* f (map (lambda (n) (/ 1.0 n)) s))]
+    [(list-no-order (? font? f) (? number? s) ...)
+     (apply font:* f (map (lambda (n) (/ 1.0 n)) s))]
     [(list-no-order (? vec? v) (? number? s) ...)
      (vec* v (apply * (map (lambda (n) (/ 1.0 n)) s)))]
     [(list (? number? x) ...)
@@ -78,7 +78,7 @@
                    f fs)])
     (cons f0 (map (lambda (f)
                     (let-values ([(a b) (compatible-fonts f f0)])
-                      a))
+                      (match-fonts-contours f0 a)))
                   fs))))
 
 (define-syntax-rule (define-fonts (id ...) (path ...))
@@ -87,7 +87,7 @@
            (apply interpolables
                   (map (lambda (p)
                          (prepare-for-interpolation
-                          (ufo->flatfont (ufo:read-ufo p))
+                          (flatfont:ufo->font (ufo:read-ufo p))
                           #f))
                        (list path ...))))))
 
@@ -118,8 +118,8 @@
 
 (define (write-font f path format)
   (ufo:write-ufo ((if (= format 2)
-                     ufo3->ufo2
-                     ufo2->ufo3)
-                  (flatfont->ufo f))
+                     ufo:ufo3->ufo2
+                     ufo:ufo2->ufo3)
+                  (flatfont:font->ufo f))
                  path))
   

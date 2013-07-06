@@ -4,7 +4,7 @@
          "fontpict.rkt")
 
 ; get-spacing
-; ufo:font, list of spacers -> ufo:font
+; font, list of spacers -> font
 ; produces a list of sidebearings for given glyphs
 
 (define (get-spacing f s)
@@ -14,18 +14,18 @@
                 [sright (caddr s)])
            (cons name
                  (cons (if sleft
-                           (car (ufo:sidebearings-at f name sleft))
-                           (car (ufo:sidebearings f name)))
+                           (car (sidebearings-at f name sleft))
+                           (car (sidebearings f name)))
                        (if sright
-                           (cdr (ufo:sidebearings-at f name sright))
-                           (cdr (ufo:sidebearings f name)))))))
+                           (cdr (sidebearings-at f name sright))
+                           (cdr (sidebearings f name)))))))
        s))
                        
                        
 
 
 ; spacing
-; ufo:font, list of spacer -> ufo:font
+; font, list of spacer -> font
 
 (define (spacing f s)
   (define (set-space s f)
@@ -33,24 +33,24 @@
            [sleft (cadr s)]
            [sright (caddr s)]
            [nleft (if (number? sleft)
-                      (- sleft (car (ufo:sidebearings f name)))
-                      (- (car sleft) (car (ufo:sidebearings-at f name (cadr sleft)))))]
+                      (- sleft (car (sidebearings f name)))
+                      (- (car sleft) (car (sidebearings-at f name (cadr sleft)))))]
            [nright (if (number? sright)
-                       (- sright (cdr (ufo:sidebearings f name)))
-                       (- (car sright) (cdr (ufo:sidebearings-at f name (cadr sright)))))])
-      (ufo:insert-glyph f (ufo:adjust-sidebearings f name nleft nright))))
+                       (- sright (cdr (sidebearings f name)))
+                       (- (car sright) (cdr (sidebearings-at f name (cadr sright)))))])
+      (insert-glyph f (adjust-sidebearings f name nleft nright))))
   (foldl set-space f s))
 
 ; adjust-spacing
-; ufo:font, list of adjustment -> ufo:font
+; font, list of adjustment -> font
 
 (define (adjust-spacing f s)
   (define (set-space s f) 
-      (ufo:insert-glyph f (apply ufo:adjust-sidebearings f s)))
+      (insert-glyph f (apply adjust-sidebearings f s)))
   (foldl set-space f s))
 
 ; set-spacing-sides
-; ufo:font, list of sidebearings, list of GlyphNames, list of GlyphNames, Number -> ufo:font
+; font, list of sidebearings, list of GlyphNames, list of GlyphNames, Number -> font
 ; apply the spacing to the selected sides
 
 (define (set-spacing-sides f sp left right v)
@@ -58,7 +58,7 @@
                             (map (lambda (g) (list g 0 (- v (cdr (dict-ref sp g))))) right))))
 
 ; samples
-; ufo:font, list of sidebearings, list of GlyphNames, list of GlyphNames, Number, Number, Number -> List of ufo:fonts
+; font, list of sidebearings, list of GlyphNames, list of GlyphNames, Number, Number, Number -> List of fonts
 ; produce a list of fonts with different spacing
 
 (define (samples f sp left right min max n)
@@ -128,7 +128,7 @@
              (spacing font (list (cons (quote letter) sides) ...)))))]))
 
 ; lowercase-tracy
-; ufo:font, Number, Number, Number, Number -> ufo:font
+; font, Number, Number, Number, Number -> font
 ; produces a font by applying te method described in W. Tracy's Letters of Credit
 
 (define-spacing-rule
@@ -243,7 +243,7 @@
       
 
 
-(define fo (ufo:read-ufo "/Users/daniele/Downloads/source-sans-pro-master/RomanMM/SourceSansPro_1.ufo"))
+(define fo (read-ufo "/Users/daniele/Downloads/source-sans-pro-master/RomanMM/SourceSansPro_1.ufo"))
       
 
 (define sp
