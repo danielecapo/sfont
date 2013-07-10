@@ -600,9 +600,9 @@
            (ufo-pts (aux first-pt (cdr b) null)))
       (make-contour #:points 
                         (if (closed? b) ufo-pts
-                            (cons (make-point #:x (car first-pt)
-                                                  #:y (cadr first-pt)
-                                                  #:type 'move)
+                            (cons (make-point #:x (vec-x first-pt)
+                                              #:y (vec-y first-pt)
+                                              #:type 'move)
                                   ufo-pts))))))
    
 
