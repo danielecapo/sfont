@@ -36,7 +36,10 @@
 
 (define insert 'insert)
 
-(define rel 'rel)
+
+; process-path
+; path -> bezier curve
+; produce a bezier vurve from instruction in 'path'
 
 (define (process-path pth)
   (letrec ([aux (lambda (pth acc)
@@ -67,11 +70,17 @@
     (aux pth (list (vec (caar pth) (cadar pth))))))
 
 
-
+; rect
+; Number, Number, Number, Number -> bezier
+; produce a rectangle (as a bezier curve) with lower left corner in (x, y) with width w and height h
 (define (rect x y w h)
   (let ([x2 (+ x w)]
         [y2 (+ y h)])
     (~ (x y) (-- x2 y) (-- x2 y2) (-- x y2) (-- x y))))
+
+; rect
+; Number, Number, Number, Number -> bezier
+; produce an ellipse (as a bezier curve) with lower left corner (of the bounding box) in (x, y) with width w and height h
 
 (define (ellipse x y w h)
   (let* ([x2 (+ x w)]
@@ -101,14 +110,20 @@
 ;        (circle a b c c)])
 ;
 
-(provide glyph
-         /--/)
+; /--/
+; Number -> procedure
+; produce a procedure that calculate the advance width and transform beziers in ufo contours
 
 (define (/--/ n)
   (lambda (cnts)
     (values
      (ufo:advance n 0)
      (map ufo:bezier->contour cnts))))
+
+; unicode
+; Symbol -> Number
+; produce the unicode code of the glyph
+; note: this has to be changed to deal with common names
 
 (define (unicode name)
   (let ([ns (symbol->string name)])
@@ -141,12 +156,26 @@
 ;         [(ellipse a b c c)])
 ;      ...)
        
-       
+; Alignemnt is a pair, the first element is the position, the second represents the height of overshoot
+
+; alg 
+; Alignment -> Number
+; return the position of alignment
+
 (define (alg al)
   (car al))
 
+
+; ovs
+; Alignment -> Number
+; return the position of overshoot for Alignment
+
 (define (ovs al)
   (+ (alg al) (ovs-height al)))
+
+; ovs-height
+; Alignment -> Number
+; return the height of overshoot for Alignment
 
 (define (ovs-height al)
   (cadr al))
@@ -172,6 +201,8 @@
                  (ufo:layer 'public.default #f
                             (list glyph ...)))
                 #f #f #f))))
+
+; just a silly example
 
 (font (squarefont 1000 750 [x-height 500] [width 0.5] [weight 0.5]) 
         (alignments

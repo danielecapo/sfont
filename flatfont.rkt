@@ -241,6 +241,17 @@
 (define (ufo-contour fc)
   (ufo:bezier->contour (map list->vec fc)))
 
+; import-component-scale
+; Component, Component -> Component
+; produce a new component with scale fields imported from another component
+
+(define (import-component-scale c1 c2)
+  (match c1 
+    [(list base _ _ _ _ x-offset y-offset)
+     (match c2
+       [(list _ x-scale xy-scale yx-scale y-scale _ _)
+        (list base x-scale xy-scale yx-scale y-scale x-offset y-offset)])]))
+
 #;
 (define (ufo-contour c)
   (letrec ((aux 

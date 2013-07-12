@@ -459,7 +459,7 @@
                          (lib ,@(not-default lib #f (dict->xexpr lib)))
                          )]
                 [(advance width height)
-                 `(advance (,@(not-default width 0 `(width ,(number->string width)))
+                 `(advance (,@(list `(width ,(number->string width)))
                             ,@(not-default height 0 `(width ,(number->string height)))))]
                 [(image filename xs xys yxs ys xo yo color)
                  `((image ((fileName ,filename)
