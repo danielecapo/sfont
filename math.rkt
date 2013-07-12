@@ -4,6 +4,7 @@
          (prefix-in ufo: "font.rkt")
          "vec.rkt"
          "fontpict.rkt"
+         "utilities.rkt"
          (planet wmfarr/plt-linalg:1:13/matrix))
 
 (provide (except-out (all-from-out racket) + - * /)
@@ -29,8 +30,10 @@
                      reflect-y)
          x->
          y->
+         glyphs-scale
          define-fonts
          define-space
+         code+expr
          write-font
          degree->rad
          fix-components
@@ -201,7 +204,9 @@
                                                             (glyph-components g2))]))
                             (font-glyphs f1)
                             (font-glyphs f2))]))
-                                                            
+                                                      
+
+
 (define (write-font f path [format 2])
   (ufo:write-ufo ((if (= format 2)
                      ufo:ufo3->ufo2

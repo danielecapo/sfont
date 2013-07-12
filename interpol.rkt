@@ -61,11 +61,20 @@
                             (font-glyphs f))]))
 
 (define (font-scale f sx [sy sx])
+  (struct-copy font (glyphs-scale f sx sy)
+               [info (info-scale (font-info f) sx sy)]))
+
+;; glyphs-scale
+;; Font, Number, Number -> Font
+;; produce a new font with glyphs and kerning scaled (do not affect info)
+(define (glyphs-scale f sx [sy sx])
   (struct-copy font f
-               [info (info-scale (font-info f) sx sy)]
+               [info (font-info f)]
                [kerning (kerning-scale (font-kerning f) sx)]
                [glyphs (map (lambda (g) (glyph-scale g sx sy))
                             (font-glyphs f))]))
+
+
 
 (define (kerning-scale kern s)
   (map (lambda (k)
