@@ -53,8 +53,32 @@
           [glyphs (map-glyphs draw-glyph  f)])
       (apply pictf:font ascender descender glyphs))))
 
-(struct layer (name info glyphs) #:transparent)
+(struct layer (name info glyphs) 
+  #:transparent
+  #:guard (lambda (name info glyphs tn)
+            (values name
+                    info
+                    (if (hash? glyphs)
+                        (if (immutable? glyphs)
+                            glyphs
+                            (make-immutable-hash (hash->list glyphs)))
+                    (glyphlist->hashglyphs glyphs)))))
 
+; glyphlist->hashglyphs
+; ListOfGlyphs -> HashTableOfGlyphs
+; produce an immutable hashtable where keys are the names of glyphs and values are the glyphs
+
+(define (glyphlist->hashglyphs gs)
+  (make-immutable-hash 
+   (map (lambda (g) (cons (glyph-name g) g))
+        gs)))
+
+; hashglyphs->glyphlist
+; HashTableOfGlyphs -> ListOfGlyphs
+; produce a list of glyphs from hashtables of glyphs
+
+(define (hashglyphs->glyphlist gh)
+  (hash-values gh))
 
 (define (get-layer font [layer 'public.default])
   (findf (lambda (l) (eq? (layer-name l) layer))
@@ -69,11 +93,14 @@
 (define (filter-layer proc layer)
   (filter proc (layer-glyphs layer)))
 
+; get-glyph
+; Font, Symbol, Symbol -> Glyph
+; Return the given Glyph in the given Layer, Layer defaults to 'public.default
+
 (define (get-glyph font glyph [layer 'public.default])
   (let ([l (get-layer font layer)])
     (if l
-        (findf (lambda (g) (eq? (glyph-name g) glyph))
-               (layer-glyphs l))
+        (hash-ref (layer-glyphs l) glyph)
         #f)))
 
 (define (set-layer f new-layer)
@@ -85,32 +112,23 @@
                    (dict-set (map-layers 
                               (lambda (l) (cons (layer-name l) l)) f)
                              new-name new-layer))])))
-    
-    
-(define (glyphs->hash layer)
-  (make-immutable-hash (map (lambda (g) (cons (glyph-name g) g))
-                            (layer-glyphs layer))))
+   
 
-(define (hash->glyphs gh)
-  (hash-values gh))
 
 
 
 (define (remove-glyph f glyph [layername 'public.default])
   (let ((l (get-layer f layername)))
     (set-layer f (struct-copy layer l 
-                              [glyphs (hash->glyphs 
-                                       (hash-remove (glyphs->hash l) 
-                                                    glyph))]))))
+                              [glyphs (hash-remove (layer-glyphs l) glyph)]))))
     
 
 (define (insert-glyph f glyph [layername 'public.default])
   (let ((l (get-layer f layername)))
     (set-layer f (struct-copy layer l 
-                              [glyphs (hash->glyphs 
-                                       (hash-set (glyphs->hash l)
-                                                 (glyph-name glyph)                                                              
-                                                 glyph))]))))
+                              [glyphs (hash-set (layer-glyphs l)
+                                                (glyph-name glyph)                                                              
+                                                glyph)]))))
                      
   
 
