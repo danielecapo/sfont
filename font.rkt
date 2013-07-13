@@ -25,7 +25,6 @@
          map-glyphs
          for-each-glyph
          glyphs-in-font
-         sort-glyphs
          read-ufo
          write-ufo
          ufo3->ufo2
@@ -39,9 +38,17 @@
          sidebearings-at
          glyph-signed-area
          set-sidebearings
+         set-sidebearings-at
          adjust-sidebearings
          correct-directions)
 
+;;; DATA DEFINITIONS
+;;; Font
+;;; (font Number Symbol HashTable HashTable String ListOfLayers HashTables Any ListOfStrings)
+;;; 
+;;; Layer
+;;; (layer Symbol HashTable HashTable)
+;;; Layer can be build from a list of Glyphs or from an HashTable (Name . Glyph)
 
 (struct font 
   (format creator fontinfo groups kerning features layers lib data images)
@@ -80,6 +87,7 @@
 (define (hashglyphs->glyphlist gh)
   (hash-values gh))
 
+
 (define (get-layer font [layer 'public.default])
   (findf (lambda (l) (eq? (layer-name l) layer))
          (font-layers font)))
@@ -93,15 +101,6 @@
 (define (filter-layer proc layer)
   (filter proc (layer-glyphs layer)))
 
-; get-glyph
-; Font, Symbol, Symbol -> Glyph
-; Return the given Glyph in the given Layer, Layer defaults to 'public.default
-
-(define (get-glyph font glyph [layer 'public.default])
-  (let ([l (get-layer font layer)])
-    (if l
-        (hash-ref (layer-glyphs l) glyph)
-        #f)))
 
 (define (set-layer f new-layer)
   (let ((layers (font-layers f))
@@ -113,9 +112,15 @@
                               (lambda (l) (cons (layer-name l) l)) f)
                              new-name new-layer))])))
    
+; get-glyph
+; Font, Symbol, Symbol -> Glyph
+; Return the given Glyph in the given Layer, Layer defaults to 'public.default
 
-
-
+(define (get-glyph font glyph [layer 'public.default])
+  (let ([l (get-layer font layer)])
+    (if l
+        (hash-ref (layer-glyphs l) glyph #f)
+        (error "get-glyph: layer does not exist"))))
 
 (define (remove-glyph f glyph [layername 'public.default])
   (let ((l (get-layer f layername)))
@@ -140,29 +145,39 @@
    font))
   
   
-(define (map-glyphs proc font [layer 'public.default])
+(define (map-glyphs proc font [layer 'public.default] #:sorted [sorted #f])
   (let ([l (get-layer font layer)])
     (if l
-        (map (lambda (g) (proc g))
-             (layer-glyphs l))
-        (error "Layer does not exist"))))
+        (map proc (if sorted
+                      (sort-glyph-list (hash-values (layer-glyphs l)))
+                      (hash-values (layer-glyphs l))))
+        (error "map-glyphs: layer does not exist"))))
 
-(define (for-each-glyph proc font [layer 'public.default])
+(define (for-each-glyph proc font [layer 'public.default] #:sorted [sorted #f])
   (let ([l (get-layer font layer)])
     (if l
-        (for-each (lambda (g) (proc g))
-             (layer-glyphs l))
-        (error "Layer does not exist"))))
+        (for-each proc (if sorted
+                           (sort-glyph-list (hash-values (layer-glyphs l)))
+                           (hash-values (layer-glyphs ))))
+        (error "for-each-glyph: layer does not exist"))))
 
 
 (define (glyphs-in-font f)
   (set->list
     (foldl set-union
            (set)
-           (map-layers (lambda (l) 
-                             (list->set (map glyph-name (layer-glyphs l))))
-                           f))))
+           (map-layers 
+            (lambda (l) 
+              (list->set (map-glyphs glyph-name f (layer-name l))))
+            f))))
 
+(define (sort-glyph-list gl)
+  (sort gl 
+        #:key (lambda (g) (symbol->string (glyph-name g)))
+        string<?))
+
+; delete
+#;
 (define (sort-glyphs f)
   (struct-copy font f 
                [layers (map-layers 
@@ -265,17 +280,16 @@
 
 (define (ufo3->ufo2 f)
   (struct-copy font f [format 2] [data #f] [images #f]
-               [layers (list (layer 'public.default #f 
-                                        (map glyph2->glyph1
-                                             (layer-glyphs (get-layer f 'public.default)))))]))
+               [layers (list 
+                        (layer 'public.default #f 
+                               (map-glyphs glyph2->glyph1 f)))]))
             
 (define (ufo2->ufo3 f) 
   (struct-copy font f [format 3]
                [layers (map-layers
                         (lambda (l)
                           (struct-copy layer l
-                                       [glyphs (map glyph1->glyph2 
-                                                    (layer-glyphs l))]))
+                                       [glyphs (map-glyphs glyph1->glyph2 f (layer-name l))]))
                         f)]))
                                
                
@@ -321,7 +335,7 @@
   (define (write-glyphs glyphs glyphsdir)
     (letrec ([aux (lambda (glyphs acc names)
                     (match glyphs
-                      [(list) (make-hash (reverse acc))]
+                      [(list) (make-immutable-hash (reverse acc))]
                       [(list-rest g rest-glyphs)
                        (let ([name (namesymbol->filename (glyph-name g) "" ".glif" names)])
                           (begin
@@ -343,7 +357,7 @@
                     (let ([dir (make-ufo-path (cdr l))]
                           [la (dict-ref layers-hash (car l))])
                       (make-directory dir)
-                      (write-glyphs (layer-glyphs la) dir)
+                      (write-glyphs (hash-values (layer-glyphs la)) dir)
                       (write-layerinfo (layer-info la) dir))))
                 layers-names)))
   
@@ -416,35 +430,47 @@
     ((writer 'images))))
 
 ; decompose-glyph
-; font, GlyphName, LayerName -> glyph
+; Font, Symbol, Symbol -> Glyph
 ; decompose glyph components to outlines
 
 (define (decompose-glyph f gn [ln 'public.default])
+  (define (decompose-base c)
+    (decompose-glyph f (component-base c) ln))
   (let* ([g (get-glyph f gn ln)]
-         [cs (glyph-components g)]
-         [bases (map (lambda (c) (get-glyph f (component-base c) ln)) cs)]
-         [dcs (apply append (map component->outlines cs bases))])
-    (struct-copy glyph g
-                 [components null]
-                 [contours (append (glyph-contours g) dcs)])))
+         [cs (glyph-components g)])
+    (if (null? cs)
+        g
+        (let* ([bases (map decompose-base cs)]
+               [dcs (apply append (map component->outlines cs bases))])
+          (struct-copy glyph g
+                       [components null]
+                       [contours (append (glyph-contours g) dcs)])))))
 
 ; decompose-layer
-; font, LayerName -> layer
+; Font, Symbol -> Layer
 ; produces a new layer with glyphs decomposed
 
 (define (decompose-layer f [ln 'public.default])
-  (let* ([l (get-layer f ln)]
-         [gh (glyphs->hash l)]
-         [dec (lambda (g)
-                (let ([d (apply 
-                              append
-                              (map (lambda (c) 
-                                     (component->outlines
-                                      c (hash-ref gh (component-base c))))
-                                   (glyph-components g)))])
-                  (struct-copy glyph g [components null]
-                               [contours (append (glyph-contours g) d)])))])
-    (struct-copy layer l [glyphs (hash-map gh (lambda (k v) (dec v)))])))
+  (struct-copy layer (get-layer f ln)
+               [glyphs (map-glyphs (lambda (g) 
+                                     (decompose-glyph f (glyph-name g) ln))
+                        f ln)]))
+
+                       
+
+;(define (decompose-layer f [ln 'public.default])
+;  (let* ([l (get-layer f ln)]
+;         [gh (layer-glyphs l)]
+;         [dec (lambda (g)
+;                (let ([d (apply 
+;                              append
+;                              (map (lambda (c) 
+;                                     (component->outlines
+;                                      c (hash-ref gh (component-base c))))
+;                                   (glyph-components g)))])
+;                  (struct-copy glyph g [components null]
+;                               [contours (append (glyph-contours g) d)])))])
+;    (struct-copy layer l [glyphs (hash-map gh (lambda (k v) (dec v)))])))
 
 
                      
@@ -452,11 +478,13 @@
 ; font, GlyphName -> BoundingBox
 ; produces the Bounding Box for the given glyph
 
-(define (glyph-bounding-box f gn)
-  (let* ([g (decompose-glyph f gn)]
+(define (glyph-bounding-box f gn [components #t])
+  (let* ([g (if components 
+                (decompose-glyph f gn)
+                (get-glyph f gn))]
          [cs (glyph-contours g)])
     (if (null? cs)
-        #f
+        (cons (vec 0 0) (vec 0 0))
         (apply combine-bounding-boxes 
                (map (lambda (c) 
                       (bezier-bounding-box (contour->bezier c)))
@@ -467,18 +495,24 @@
 ; produces the Bounding Box for the given font
 
 (define (font-bounding-box f [components #t])
-  (let ([gs (filter
-             (lambda (g) (> (length (glyph-contours g)) 0))
-             (if components (layer-glyphs (decompose-layer f))
-                (layer-glyphs (get-layer f))))])
-    (apply combine-bounding-boxes 
-           (filter identity
-                   (map (lambda (g) 
-                          (apply combine-bounding-boxes
-                                 (map (lambda (c)
-                                        (bezier-bounding-box (contour->bezier c)))
-                                      (glyph-contours g))))
-                        gs)))))
+  (apply combine-bounding-boxes
+         (map-glyphs (lambda (g) (glyph-bounding-box f (glyph-name g) components))
+                     f)))
+
+
+;(define (font-bounding-box f [components #t])
+;  (let ([gs (filter
+;             (lambda (g) (> (length (glyph-contours g)) 0))
+;             (if components (layer-glyphs (decompose-layer f))
+;                (layer-glyphs (get-layer f))))])
+;    (apply combine-bounding-boxes 
+;           (filter identity
+;                   (map (lambda (g) 
+;                          (apply combine-bounding-boxes
+;                                 (map (lambda (c)
+;                                        (bezier-bounding-box (contour->bezier c)))
+;                                      (glyph-contours g))))
+;                        gs)))))
 
 ; sidebearings 
 ; font, GlyphName -> (Number . Number)
@@ -488,10 +522,10 @@
   (let* ([g (decompose-glyph f gn)]
          [bb (glyph-bounding-box f gn)]
          [a (advance-width (glyph-advance g))])
-    (if bb
+    (if (equal? bb (cons (vec 0 0) (vec 0 0)))
+        #f
         (cons (vec-x (car bb))
-              (- a (vec-x (cdr bb))))
-        #f)))
+              (- a (vec-x (cdr bb)))))))
 
 ; intersections-at 
 ; font, GlyphName, Number -> List of Vec

@@ -27,18 +27,39 @@
 ; spacing
 ; font, list of spacer -> font
 
+;(define (spacing f s)
+;  (define (set-space s f)
+;    (let* ([name (car s)]
+;           [sleft (cadr s)]
+;           [sright (caddr s)]
+;           [fl (insert-glyph f
+;                             (if (number? sleft)
+;                                 (set-sidebearings f name sleft 0)
+;                                 (set-sidebearings-at f name (car sleft) 0 (cadr sleft))))])
+;      (insert-glyph fl
+;                    (if (number? sright)
+;                        (set-sidebearings fl name 0 sright)
+;                        (set-sidebearings-at fl name 0 (car sright) (cadr sright))))))
+;  (foldl set-space f s))
+
 (define (spacing f s)
   (define (set-space s f)
     (let* ([name (car s)]
            [sleft (cadr s)]
            [sright (caddr s)]
+           [sb (if (or (list? sleft)
+                       (list? sright))
+                   (sidebearings f name)
+                   #f)]
            [nleft (if (number? sleft)
-                      (- sleft (car (sidebearings f name)))
-                      (- (car sleft) (car (sidebearings-at f name (cadr sleft)))))]
+                      sleft;(- sleft (car (sidebearings f name)))
+                      (+ (car sb) 
+                         (- (car sleft) (car (sidebearings-at f name (cadr sleft))))))]
            [nright (if (number? sright)
-                       (- sright (cdr (sidebearings f name)))
-                       (- (car sright) (cdr (sidebearings-at f name (cadr sright)))))])
-      (insert-glyph f (adjust-sidebearings f name nleft nright))))
+                       sright ;(- sright (cdr (sidebearings f name)))
+                       (+ (cdr sb)
+                          (- (car sright) (cdr (sidebearings-at f name (cadr sright))))))])
+      (insert-glyph f (set-sidebearings f name nleft nright))))
   (foldl set-space f s))
 
 ; adjust-spacing
@@ -129,7 +150,7 @@
 
 ; lowercase-tracy
 ; font, Number, Number, Number, Number -> font
-; produces a font by applying te method described in W. Tracy's Letters of Credit
+; produce a font by applying the method described in W. Tracy's Letters of Credit
 
 (define-spacing-rule
   lowercase-tracy 

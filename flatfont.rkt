@@ -18,16 +18,15 @@
       (apply pictf:font ascender descender glyphs))))
 
 (define (flatfont:ufo->font f)
-  (let ((f (ufo:sort-glyphs f)))
-    (font f
-              (interpolable-infos (sort-by-keyword (hash->list (ufo:font-fontinfo f))))
-              (if (ufo:font-kerning f)
-                  (sort-by-keyword 
-                   (hash-map (ufo:font-kerning f)
-                             (lambda (left right)
-                               (cons left (sort-by-keyword (hash->list right))))))
-                  '())
-              (flat-glyphs f))))
+  (font f
+        (interpolable-infos (sort-by-keyword (hash->list (ufo:font-fontinfo f))))
+        (if (ufo:font-kerning f)
+            (sort-by-keyword 
+             (hash-map (ufo:font-kerning f)
+                       (lambda (left right)
+                         (cons left (sort-by-keyword (hash->list right))))))
+            '())
+        (flat-glyphs f)))
 
 (define (sort-by-keyword alist)
   (sort alist string<? 
@@ -213,7 +212,7 @@
      (list base x-scale xy-scale yx-scale y-scale x-offset y-offset)]))
 
 (define (flat-glyphs f)
-  (ufo:map-glyphs flatfont:glif->glyph f))
+  (ufo:map-glyphs flatfont:glif->glyph f #:sorted #t))
 
 (define (glyph->ufo g ufo) 
   (match g
