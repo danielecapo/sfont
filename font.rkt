@@ -57,7 +57,7 @@
   (lambda (f)
     (let ([ascender (dict-ref (font-fontinfo f) 'ascender 750)]
           [descender (dict-ref (font-fontinfo f) 'descender -250)]
-          [glyphs (map-glyphs draw-glyph  f)])
+          [glyphs (map-glyphs draw-glyph f)])
       (apply pictf:font ascender descender glyphs))))
 
 (struct layer (name info glyphs) 
@@ -88,15 +88,15 @@
   (hash-values gh))
 
 
-(define (get-layer font [layer 'public.default])
+(define (get-layer f [layer 'public.default])
   (findf (lambda (l) (eq? (layer-name l) layer))
-         (font-layers font)))
+         (font-layers f)))
 
-(define (map-layers proc font)
-  (map proc (font-layers font)))
+(define (map-layers proc f)
+  (map proc (font-layers f)))
 
-(define (for-each-layer proc font)
-  (for-each proc (font-layers font)))
+(define (for-each-layer proc f)
+  (for-each proc (font-layers f)))
 
 (define (filter-layer proc layer)
   (filter proc (layer-glyphs layer)))
@@ -145,16 +145,20 @@
    font))
   
   
-(define (map-glyphs proc font [layer 'public.default] #:sorted [sorted #f])
-  (let ([l (get-layer font layer)])
+(define (map-glyphs proc o [layer 'public.default] #:sorted [sorted #f])
+  (let ([l (cond [(font? o) (get-layer o layer)]
+                 [(layer? o ) o]
+                 [else (error "map-glyphs: first argument should be a layer or a font")])])
     (if l
         (map proc (if sorted
                       (sort-glyph-list (hash-values (layer-glyphs l)))
                       (hash-values (layer-glyphs l))))
         (error "map-glyphs: layer does not exist"))))
 
-(define (for-each-glyph proc font [layer 'public.default] #:sorted [sorted #f])
-  (let ([l (get-layer font layer)])
+(define (for-each-glyph proc o [layer 'public.default] #:sorted [sorted #f])
+  (let ([l (cond [(font? o) (get-layer o layer)]
+                 [(layer? o ) o]
+                 [else (error "for-each-glyphs: first argument should be a layer or a font")])])
     (if l
         (for-each proc (if sorted
                            (sort-glyph-list (hash-values (layer-glyphs l)))
@@ -430,9 +434,22 @@
     ((writer 'images))))
 
 ; decompose-glyph
-; Font, Symbol, Symbol -> Glyph
+; Font, Glyph, Symbol -> Glyph
 ; decompose glyph components to outlines
 
+(define (decompose-glyph f g [ln 'public.default])
+  (define (decompose-base c)
+    (decompose-glyph f (get-glyph f (component-base c) ln) ln))
+  (let* ([cs (glyph-components g)])
+    (if (null? cs)
+        g
+        (let* ([bases (map decompose-base cs)]
+               [dcs (apply append (map component->outlines cs bases))])
+          (struct-copy glyph g
+                       [components null]
+                       [contours (append (glyph-contours g) dcs)])))))
+
+#;
 (define (decompose-glyph f gn [ln 'public.default])
   (define (decompose-base c)
     (decompose-glyph f (component-base c) ln))
@@ -453,7 +470,7 @@
 (define (decompose-layer f [ln 'public.default])
   (struct-copy layer (get-layer f ln)
                [glyphs (map-glyphs (lambda (g) 
-                                     (decompose-glyph f (glyph-name g) ln))
+                                     (decompose-glyph f g ln))
                         f ln)]))
 
                        
@@ -475,13 +492,13 @@
 
                      
 ; glyph-bounding-box
-; font, GlyphName -> BoundingBox
+; Font, Glyph, Symbol, Boolean -> BoundingBox
 ; produces the Bounding Box for the given glyph
 
-(define (glyph-bounding-box f gn [components #t])
+(define (glyph-bounding-box f g [ln 'public.default] [components #t])
   (let* ([g (if components 
-                (decompose-glyph f gn)
-                (get-glyph f gn))]
+                (decompose-glyph f g ln)
+                g)]
          [cs (glyph-contours g)])
     (if (null? cs)
         (cons (vec 0 0) (vec 0 0))
@@ -491,12 +508,12 @@
                     cs)))))
 
 ; font-bounding-box
-; font, Boolean -> BoundingBox
+; font, Symbol, Boolean -> BoundingBox
 ; produces the Bounding Box for the given font
 
-(define (font-bounding-box f [components #t])
+(define (font-bounding-box f [ln 'public.default] [components #t])
   (apply combine-bounding-boxes
-         (map-glyphs (lambda (g) (glyph-bounding-box f (glyph-name g) components))
+         (map-glyphs (lambda (g) (glyph-bounding-box f g ln components))
                      f)))
 
 
@@ -515,12 +532,11 @@
 ;                        gs)))))
 
 ; sidebearings 
-; font, GlyphName -> (Number . Number)
-; produces a pair representing the left and right sidebearings for the give glyph
+; Font, Glyph, Symbol -> (Number . Number)
+; produce a pair representing the left and right sidebearings for the given glyph
 
-(define (sidebearings f gn)
-  (let* ([g (decompose-glyph f gn)]
-         [bb (glyph-bounding-box f gn)]
+(define (sidebearings f g [ln 'public.default])
+  (let* ([bb (glyph-bounding-box f g ln)]
          [a (advance-width (glyph-advance g))])
     (if (equal? bb (cons (vec 0 0) (vec 0 0)))
         #f
@@ -528,11 +544,11 @@
               (- a (vec-x (cdr bb)))))))
 
 ; intersections-at 
-; font, GlyphName, Number -> List of Vec
+; font, Glyph, Number, Symbol -> List of Vec
 ; produces a list of the intersections of outlines with the line y = h
 
-(define (intersections-at f gn h)
-  (let* ([g (decompose-glyph f gn)]
+(define (intersections-at f g h [ln 'public.default])
+  (let* ([g (decompose-glyph f g ln)]
          [cs (glyph-contours g)])
     (sort 
      (remove-duplicates
@@ -544,12 +560,11 @@
      < #:key vec-x)))
 
 ; sidebearings-at 
-; font, GlyphName, Number -> (Number . Number)
+; font, Glyph, Number, Symbol -> (Number . Number)
 ; produces a pair representing sidebearings measured at y = h
 
-(define (sidebearings-at f gn h)
-  (let* ([g (decompose-glyph f gn)]
-         [is (intersections-at f gn h)]
+(define (sidebearings-at f g h [ln 'public.default])
+  (let* ([is (intersections-at f g h)]
          [a (advance-width (glyph-advance g))])
     (if (null? is)
         #f
@@ -557,11 +572,11 @@
     
   
 ; glyph-signed-area
-; font, GlyphName -> Number
+; font, Glyph, Symbol -> Number
 ; produces the area for the given glyph (negative if in the wrong direction)
 
-(define (glyph-signed-area f gn)
-  (let* ([g (decompose-glyph f gn)]
+(define (glyph-signed-area f g [ln 'public.default])
+  (let* ([g (decompose-glyph f g ln)]
          [cs (glyph-contours g)])
     (foldl + 0 
            (map (lambda (c) 
@@ -569,12 +584,11 @@
                 cs))))
 
 ; set-sidebearings
-; font, GlyphName, Number, Number -> glyph
-; set left and right sidebearings for the glyph named gn
+; Font, Glyph, Number, Number, Symbol -> Glyph
+; set left and right sidebearings for the glyph 
 
-(define (set-sidebearings f gn left right)
-  (let* ([g (get-glyph f gn)]
-         [os (sidebearings f gn)]
+(define (set-sidebearings f g left right [ln 'public.default])
+  (let* ([os (sidebearings f g ln)]
          [oa (advance-width (glyph-advance g))])     
     (if os
         (let* ([la (- left (car os))]
@@ -588,12 +602,11 @@
                        
      
 ; set-sidebearings-at
-; font, GlyphName, Number, Number, Number -> glyph
-; set left and right sidebearings (measured at y = h) for the glyph named gn 
+; Font, Glyph, Number, Number, Number, Symbol -> Glyph
+; set left and right sidebearings (measured at y = h) for the glyph 
 
-(define (set-sidebearings-at f gn left right h)
-  (let* ([g (get-glyph f gn)]
-         [os (sidebearings-at f gn h)]
+(define (set-sidebearings-at f g left right h [ln 'public.default])
+  (let* ([os (sidebearings-at f g h ln)]
          [oa (advance-width (glyph-advance g))])     
     (if os
         (let* ([la (- left (car os))]
@@ -606,16 +619,18 @@
         #f)))
 
 ; adjust-sidebearings
-; font, GlyphName, Number, Number -> glyph
-; adjust left and right sidebearings for the glyph named gn
+; font, Glyph, Number, Number, Symbol -> Glyph
+; adjust left and right sidebearings for the glyph
 
-(define (adjust-sidebearings f gn left right)
-  (let* ([g (get-glyph f gn)]
-         [os (sidebearings f gn)])     
+(define (adjust-sidebearings f g left right [ln 'public.default])
+  (let* ([os (sidebearings f g ln)])     
     (if os
-        (set-sidebearings f gn (+ (car os) left) 
-                              (+ (cdr os) right))
-        #f)))
+        (set-sidebearings f 
+                          g 
+                          (+ (car os) left) 
+                          (+ (cdr os) right)
+                          ln)
+        g)))
 
 ; correct-directions
 ; font -> font

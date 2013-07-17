@@ -44,22 +44,22 @@
 
 (define (spacing f s)
   (define (set-space s f)
-    (let* ([name (car s)]
+    (let* ([g (get-glyph f (car s))]
            [sleft (cadr s)]
            [sright (caddr s)]
            [sb (if (or (list? sleft)
                        (list? sright))
-                   (sidebearings f name)
+                   (sidebearings f g)
                    #f)]
            [nleft (if (number? sleft)
                       sleft;(- sleft (car (sidebearings f name)))
                       (+ (car sb) 
-                         (- (car sleft) (car (sidebearings-at f name (cadr sleft))))))]
+                         (- (car sleft) (car (sidebearings-at f g (cadr sleft))))))]
            [nright (if (number? sright)
                        sright ;(- sright (cdr (sidebearings f name)))
                        (+ (cdr sb)
-                          (- (car sright) (cdr (sidebearings-at f name (cadr sright))))))])
-      (insert-glyph f (set-sidebearings f name nleft nright))))
+                          (- (car sright) (cdr (sidebearings-at f g (cadr sright))))))])
+      (insert-glyph f (set-sidebearings f g nleft nright))))
   (foldl set-space f s))
 
 ; adjust-spacing
@@ -67,7 +67,7 @@
 
 (define (adjust-spacing f s)
   (define (set-space s f) 
-      (insert-glyph f (apply adjust-sidebearings f s)))
+      (insert-glyph f (adjust-sidebearings f (get-glyph f (car s)) (cadr s) (caddr s))))
   (foldl set-space f s))
 
 ; set-spacing-sides

@@ -75,7 +75,7 @@
 
 (define (ufo->pfa f [fbbox #f])
   (let* ([l (decompose-layer f)]
-         [charstrings (map ufoglyph->pfa (hash-values (layer-glyphs l)))]
+         [charstrings (map-glyphs l ufoglyph->pfa)]
          [gbs (filter (lambda (b) (not (null? b))) (map cddr charstrings))]
          [info (font-fontinfo f)]
          [fname (string->symbol ((get-or-default 'postscriptFontName "Untitled") info))]
