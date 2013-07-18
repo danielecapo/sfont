@@ -156,7 +156,7 @@
 (define 2pi (* 2 pi))
 
 
-; change
+
 (define (arc cx cy r a)
   (let* ([x1 (+ cx r)]
          [y2 (+ cy r)]
@@ -173,9 +173,14 @@
                                                     pi/2)))])))
 
 (define-syntax-rule (define-transform name fn)
-  (define (name o . args)
-    (cond [(list? o) (map (lambda (i) (apply fn (cons i args))) o)]
-          [else (apply fn (cons o args))])))
+  (define-syntax name
+    (syntax-rules (from)
+      [(name o from (x y) . args)
+       (from (x y) (name o . args))]
+      [(name o . args)
+       (cond [(list? o) (map (lambda (i) (fn i . args)) o)]
+             [else (fn o . args)])]
+      )))
 
 
 (define (translate- o x y) (translate o (vec x y)))
@@ -191,6 +196,9 @@
 (define-syntax-rule (from (x y) (fn o . args))
   (translate* (fn (translate* o (- x) (- y)) . args)
               x y))
+
+
+
 
 ;(glyph 'a 
 ;       ([a 0]
@@ -222,16 +230,30 @@
         '()
         (list (char->integer (string-ref ns 0))))))
 
-(define-syntax-rule (glyph name ([s v] ...)
-                           (advance-op advance-v ...)
-                           (contour ...))
-  (let* ([s v] ...)
-    (let-values ([(adv cnts)
-                  ((advance-op advance-v ...) (list contour ...))])
-      (ufo:glyph 1 name adv (unicode name) #f #f '() '() cnts '() #f))))
-             
+(define-syntax glyph
+  (syntax-rules (contours)
+    [(glyph name ([s v] ...)
+            (advance-op advance-v ...)
+            [contours contour ...])
+     (let* ([s v] ...)
+       (let-values ([(adv cnts)
+                     ((advance-op advance-v ...) (build-contour-list contour ...))])
+         (ufo:glyph 1 name adv (unicode name) #f #f '() '() cnts '() #f)))]
+    
+    ))
+ 
+(define (build-contour-list . cnts)
+  (foldl (lambda (c r)
+           (append r (if (andmap vec? c)
+                         (list c)
+                         c)))
+         '()
+         cnts))
 
 
+
+;    [(with-transformation [(tfn . args) (rtfn . rargs) ...] cnt ...)
+;     (with-transformation [(rtfn . rargs) ...] . (with-transformation [(tfn . args)] cnt ...))]))
 
 ;(font (augusto 1000 720 [weight 0.5] [width 0.5])
 ;      (alignments
@@ -436,66 +458,6 @@
 
 
 
-; just a silly example
-
-(define sq 
-  (font (squarefont  [x-height 500] [width 0.5] [weight 0.5] [arcf 0.5]) 
-      (alignments
-         [base 0 -10]
-         [xh x-height 10]
-         [desc* (/ (- x-height 1000) 2) 0 :use-as-descender]
-         [asc* (- x-height (alg desc*)) 0 :use-as-ascender]
-         [dsc (+ (alg desc*) 10) -10]
-         [ascender (- (alg asc*) 10) 10])
-      (variables
-         [gw (* 1000 width)]
-         [v-stem (* x-height weight 0.333)]
-         [h-stem (* v-stem 0.9)]
-         [space (/ (- gw (* 2 v-stem)) 2)]
-         [x1 space]
-         [y1 (alg base)]
-         [ym (/ x-height 2)]
-         [x2 (+ space gw (- v-stem))])
-        (glyph 'a
-               ()
-               (/--/ (+ gw space space))
-               [(rect x1 y1 gw h-stem)
-                (rect x1 y1 v-stem ym)
-                (rect x1 (- ym (/ h-stem 2)) gw h-stem)
-                (rect x2 y1 v-stem x-height)
-                (rect x1 (- x-height h-stem) gw h-stem)])
-        (glyph 'b
-               ()
-               (/--/ (+ gw space space))
-               [(rect x1 y1 v-stem (alg ascender))
-                (rect x1 y1 gw x-height)
-                (reverse (rect (+ x1 v-stem) (+ y1 h-stem) 
-                               (- gw (* 2 v-stem)) (- x-height (* 2 h-stem))))])
-        (glyph 'c
-               ([term ym])
-               (/--/ (+ gw space space))
-               [(rect x1 y1 v-stem x-height)
-                (rect x1 (- x-height h-stem) gw h-stem)
-                (rect x1 y1 gw h-stem)
-                (rect (+ x1 gw (- v-stem)) (- x-height term) v-stem term)])
-        (glyph 'd
-               ()
-               (/--/ (+ gw space space))
-               [(rect x1 y1 gw x-height)
-                (reverse (rect (+ x1 v-stem) (+ y1 h-stem) 
-                               (- gw (* 2 v-stem)) (- x-height (* 2 h-stem))))
-                (rect (+ x1 gw (- v-stem)) y1 v-stem (alg ascender))])
-        (glyph 'o
-               ()
-               (/--/ (+ gw space space))
-               [(rect x1 y1 gw x-height)
-                (reverse (rect (+ x1 v-stem) (+ y1 h-stem) 
-                               (- gw (* 2 v-stem)) (- x-height (* 2 h-stem))))])
-        (glyph 'e
-               ()
-               (/--/ 1000)
-               [(~ (insert (arc 500 0 500 (* pi arcf))) (500 0) (-- 1000 0))])))
-
 #;
 (define-font (squarefont 1000  asc* [x-height 500] [width 0.5] [weight 0.5]) 
         (alignments
@@ -575,5 +537,3 @@
       [(find-descender ([n a o . r] . as))
        #'(find-descender as)]))
       
-      
-
