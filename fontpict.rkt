@@ -1,5 +1,9 @@
 #lang slideshow
 (require racket/draw)
+
+(require "vec.rkt"
+         "bezier.rkt")
+
 (provide *size*
          *text*
          set-sample-size!
@@ -71,7 +75,7 @@
          (begin
            (send dc set-brush "black" 'solid)
            (send dc scale f (- f))
-           (send dc translate 0 (- (/ (* *size* -0.1) f) ascender))                      
+           (send dc translate 0 (- (/ (* *size* -0.5) f) ascender))                      
            (for-each (lambda (g) (pictf:draw-glyph dc g)) glyphs-to-display )))
-      (calculate-length glyphs-to-display) (* *size* 1.2))))
+      1300 (* *size* 2))))
       

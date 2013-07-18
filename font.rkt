@@ -57,7 +57,8 @@
   (lambda (f)
     (let ([ascender (dict-ref (font-fontinfo f) 'ascender 750)]
           [descender (dict-ref (font-fontinfo f) 'descender -250)]
-          [glyphs (map-glyphs draw-glyph f)])
+          [glyphs (map (lambda (g) (draw-glyph (decompose-glyph f g)))
+                       (get-glyphs f *text*))])
       (apply pictf:font ascender descender glyphs))))
 
 (struct layer (name info glyphs) 
@@ -116,11 +117,21 @@
 ; Font, Symbol, Symbol -> Glyph
 ; Return the given Glyph in the given Layer, Layer defaults to 'public.default
 
-(define (get-glyph font glyph [layer 'public.default])
-  (let ([l (get-layer font layer)])
-    (if l
-        (hash-ref (layer-glyphs l) glyph #f)
+(define (get-glyph f g [l 'public.default])
+  (let ([la (get-layer f l)])
+    (if la
+        (hash-ref (layer-glyphs la) g #f)
         (error "get-glyph: layer does not exist"))))
+
+
+; get-glyphs
+; Font, ListOfSymbol, Symbol -> ListOfGlyph
+; Return the given Glyphs in the given Layer, Layer defaults to 'public.default
+
+(define (get-glyphs f gs [l 'public.default])
+  (filter identity
+          (map (lambda (g) (get-glyph f g l)) gs)))
+        
 
 (define (remove-glyph f glyph [layername 'public.default])
   (let ((l (get-layer f layername)))
@@ -397,7 +408,7 @@
             (cons 'images (lambda () (write-directory (font-images font) (make-ufo-path "images") proc-images))))])
     (lambda (k) (dict-ref s k))))
 
-(define (write-ufo font path #:overwrite [overwrite #f] #:proc-data [proc-data #f] #:proc-images [proc-images #f])
+(define (write-ufo font path #:overwrite [overwrite #t] #:proc-data [proc-data #f] #:proc-images [proc-images #f])
   (let ([format (font-format font)]
         [writer (writer font path proc-data proc-images)])
     (if (and (directory-exists? path) (not overwrite))

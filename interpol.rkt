@@ -216,16 +216,7 @@
     [(list name x y) (cons name (vec->list (vec-quick-scale (vec x y) sx sy)))]))
 
 
-(define (component->matrix c)
-  (match c
-    [(list base x-scale xy-scale yx-scale y-scale x-offset y-offset) 
-     (matrix 3 3 x-scale yx-scale 0 
-             xy-scale y-scale 0
-             x-offset y-offset 1)]))
 
-(define (matrix->component m)
-  (list (matrix-ref m 0 0) (matrix-ref m 0 1) (matrix-ref m 1 0) 
-         (matrix-ref m 1 1) (matrix-ref m 0 2) (matrix-ref m 1 2)))
 
 (define (component-transform c m)
   (match c

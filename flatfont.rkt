@@ -4,7 +4,9 @@
          (prefix-in ufo: "glif.rkt")
          "vec.rkt"
          "fontpict.rkt"
-         slideshow/pict-convert)
+         (prefix-in bz: "bezier.rkt")
+         slideshow/pict-convert
+         (planet wmfarr/plt-linalg:1:13/matrix))
 
 (provide (all-defined-out))
 
@@ -14,9 +16,19 @@
   (lambda (f)
     (let ([ascender (dict-ref (font-info f) 'ascender 750)]
           [descender (dict-ref (font-info f) 'descender -250)]
-          [glyphs (map glyph->pict  (font-glyphs f))])
+          [glyphs (map (lambda (g) (glyph->pict (decompose-glyph f g)))
+                       (get-glyphs f *text*))])
       (apply pictf:font ascender descender glyphs))))
 
+
+(define (get-glyphs f gs)
+  (let ([g-hash (make-hash (map (lambda (g) 
+                                  (cons (glyph-name g) g)) 
+                                (font-glyphs f)))])
+    (filter identity
+            (map (lambda (g) (hash-ref g-hash g #f))
+                 gs))))
+    
 (define (flatfont:ufo->font f)
   (font f
         (interpolable-infos (sort-by-keyword (hash->list (ufo:font-fontinfo f))))
@@ -516,7 +528,42 @@
                      
         
                                  
+
+(define (component->matrix c)
+  (match c
+    [(list base x-scale xy-scale yx-scale y-scale x-offset y-offset) 
+     (matrix 3 3 x-scale yx-scale 0 
+             xy-scale y-scale 0
+             x-offset y-offset 1)]))
+
+(define (matrix->component m)
+  (list (matrix-ref m 0 0) (matrix-ref m 0 1) (matrix-ref m 1 0) 
+         (matrix-ref m 1 1) (matrix-ref m 0 2) (matrix-ref m 1 2)))
    
     
               
      
+; decompose-glyph
+; Font, Glyph, Symbol -> Glyph
+; decompose glyph components to outlines
+
+(define (decompose-glyph f g)
+  (let* ([cs (glyph-components g)])
+    (if (null? cs)
+        g
+        (let* ([bases (map (lambda (g) (decompose-glyph f g))
+                           (get-glyphs f (map car cs)))]
+               [dcs (apply append (map component->outlines cs bases))])
+          (struct-copy glyph g
+                       [components null]
+                       [contours (append (glyph-contours g) dcs)])))))
+
+(define (component->outlines c b)
+  (define (transform-contour c m)
+    (map (lambda (p)
+           (vec->list (transform (list->vec p) m)))
+         c))
+  (let ([m (component->matrix c)]
+        [base-contours (glyph-contours b)])
+    (map (lambda (c) (transform-contour c m))
+         base-contours)))
