@@ -40,7 +40,8 @@
          set-sidebearings
          set-sidebearings-at
          adjust-sidebearings
-         correct-directions)
+         correct-directions
+         print-glyph)
 
 ;;; DATA DEFINITIONS
 ;;; Font
@@ -660,7 +661,20 @@
                  f)]))
 
         
-
+; print-glyph
+; Font, Symbol -> side effects
+; Print the glyph 
                  
+(define (print-glyph f gn)
+  (let* ([g (decompose-glyph f (get-glyph f gn))]
+         [ascender (hash-ref (font-fontinfo f) 'ascender 750)]
+         [upm (hash-ref (font-fontinfo f) 'unitsPerEm 1000)]
+         [cs (map-contours contour->bezier g)]
+         [bb (if (null? cs)
+                 (cons (vec 0 0) (vec 0 0))
+                 (apply combine-bounding-boxes
+                        (map bezier-bounding-box cs)))])
+      (pictf:glyph (draw-glyph g) bb ascender upm)))
+                     
 
 

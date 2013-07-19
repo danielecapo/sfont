@@ -1,9 +1,12 @@
 #lang racket
 
 (require "../fontwriter.rkt")
+(require "../fontpict.rkt")
 
 (define (slice cx cy radius angle)
-  (~ (insert (arc cx cy radius angle)) (cx cy) (-- (+ cx radius) cy)))
+  (if (= angle 0)
+      '#f
+      (~ (insert (arc cx cy radius angle)) (cx cy) -- ((+ cx radius) cy))))
 
 (define (chart-slicer cx cy radius un)
   (lambda (pos ampl)
@@ -24,11 +27,11 @@
          [mid-h (/ width 2)]
          [radius (+ mid-v (ovs-height xh) (abs (ovs-height base)))]
          [slicer (chart-slicer mid-h mid-v radius (/ pi 5))])
-        (glyph 'a
-               ()
-               (/--/ width)
-               [contours
-                (slicer pos angle)])))
+        (glyphs
+         (glyph 'a
+                (/--/ width)
+                [contours
+                 (slicer pos angle)]))))
 
 
 (define-syntax chart-font
@@ -46,15 +49,19 @@
             [mid-h (/ width 2)]
             [radius (+ mid-v (ovs-height xh) (abs (ovs-height base)))]
             [slicer (chart-slicer mid-h mid-v radius (/ (* 2 pi) divider))])
-           (glyph g
-                  ()
-                  (/--/ width)
-                  [contours
-                   (slicer 0 ampl)]) ...
-           )]))
+           (glyphs
+            (glyph 'space
+                   (/--/ width)
+                   [contours #f])
+            (glyph g
+                   (/--/ 0)
+                   [contours
+                    (slicer (foldl + 0 (range ampl)) ampl)]) ...
+           ))]))
  
 
-(chart-font
+(define c
+  (chart-font
  10
  ('one -> 1)
  ('two -> 2)
@@ -65,8 +72,8 @@
  ('seven -> 7)
  ('eight -> 8)
  ('nine -> 9)
- ('zero -> 0))
-
+ ('zero -> 10))
+)
 ;(chartme)
 ;(chartme #:pos 1)
 ;(chartme #:pos 2)
@@ -90,3 +97,5 @@
 ;(chartme #:angle 8)
 ;(chartme #:angle 9)
 ;(chartme #:angle 10)
+
+(print-beziers (list (~ (0 0) -- (100 0) -- (100 100)  -- (50 100) -- (20 50) -- ( 0 0))))

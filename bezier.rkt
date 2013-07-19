@@ -1,6 +1,8 @@
 #lang racket
 
-(require "vec.rkt"
+(require racket/draw
+         (prefix-in pict: slideshow/pict)
+         "vec.rkt"
          "utilities.rkt")
 
 (provide (all-defined-out))
@@ -33,7 +35,7 @@
 ; Bezier, Natural -> list of Segments
 ; produce the list of Segments in which the gth order Bezier can be divided 
 
-(define (segments b g)
+(define (segments b [g 3])
   (if (> (remainder (- (length b) 1) g) 0)
       (error "Segments: Invalid number of points")
       (n-groups b (+ g 1))))
@@ -44,7 +46,7 @@
 ; Bezier , Natural-> list of Vec
 ; produce a list of nodes that lie on the Cubic Bezier (remove the 'control points')
 
-(define (on-curve-nodes b g)
+(define (on-curve-nodes b [g 3])
   (append (map car (segments b g)) (list (last b))))
 
       
@@ -224,9 +226,51 @@
           (last sorted-intersections))))
 
 
-    
+; bezier->path
+; Bezier, DrawingPath -> DrawingPath
+; Draw the Cubic Bezier curve in the Drawing Path
 
+(define (bezier->path b p)
+  (let ([ss (segments b)]
+        [f (car b)])
+    (letrec ([aux (lambda (segments)
+                    (match segments
+                      [(list) (begin
+                                (send p close)
+                                p)]
+                      [(list-rest (list (vec x y) (vec cx cy) (vec cx1 cy1) (vec x1 y1))
+                                  r)
+                       (begin 
+                         (send p curve-to cx cy cx1 cy1 x1 y1)
+                         (aux r))]))])
+      (begin
+        (send p move-to (vec-x f) (vec-y f))
+        (aux ss)))))
 
+; print-beziers
+; ListOfBeziers -> side effect
+; print the beziers
+
+(define (print-beziers bs)
+  (let* ([bb (apply combine-bounding-boxes
+                    (map bezier-bounding-box bs))]
+         [vbb (vec- (cdr bb) (car bb))]
+         [w (vec-x vbb)]
+         [h (vec-y vbb)]
+         [x-min (vec-x (car bb))]
+         [y-max (vec-y (cdr bb))]
+         [f (/ 400 h)]
+         [path (new dc-path%)])
+    (pict:dc
+     (lambda (dc dx dy)
+       (begin
+         (send dc set-brush "black" 'solid)
+         (send dc set-pen (new pen% [style 'transparent]))
+         (send dc scale f (- f))
+         (send dc translate x-min (- y-max))
+         (for-each (lambda (b) (bezier->path b path)) bs)
+         (send dc draw-path path dx dy 'winding)))
+     (* f w) 400)))
 
 
                  

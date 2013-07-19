@@ -19,6 +19,13 @@
          ovs-height
          font
          from
+         pi/2
+         pi/3
+         pi/4
+         pi/6
+         2pi
+         °
+         (all-from-out "font.rkt")
          (all-from-out "bezier.rkt")
          (except-out (all-from-out "vec.rkt")
                      translate
@@ -61,7 +68,7 @@
     [(~ (insert vlist) . r)
      (join-subpaths vlist (~ . r))]
     [(~ (x y)) (list (vec x y))]
-    [(~ (x y) (-- x1 y1) . r)
+    [(~ (x y) -- (x1 y1) . r)
      (append (list (vec x y) (vec x y) (vec x1 y1))
              (~ (x1 y1) . r))]
     [(~ (x y) (cx cy) (cx1 cy1) (x1 y1) . r)
@@ -91,7 +98,12 @@
 
     
 
+; °
+; Number -> Number
+; convert from degree to radians
 
+(define (° d)
+  (* (/ d 180) pi))
 
 ; process-path
 ; path -> bezier curve
@@ -132,7 +144,7 @@
 (define (rect x y w h)
   (let ([x2 (+ x w)]
         [y2 (+ y h)])
-    (~ (x y) (-- x2 y) (-- x2 y2) (-- x y2) (-- x y))))
+    (~ (x y) -- (x2 y) -- (x2 y2) -- (x y2) -- (x y))))
 
 ; rect
 ; Number, Number, Number, Number -> bezier
@@ -231,8 +243,14 @@
         (list (char->integer (string-ref ns 0))))))
 
 (define-syntax glyph
-  (syntax-rules (contours)
-    [(glyph name ([s v] ...)
+  (syntax-rules (contours locals)
+    [(glyph name 
+            (advance-op advance-v ...)
+            [contours contour ...])
+     (glyph name (locals)
+            (advance-op advance-v ...)
+            [contours contour ...])]
+    [(glyph name (locals [s v] ...)
             (advance-op advance-v ...)
             [contours contour ...])
      (let* ([s v] ...)
@@ -243,12 +261,14 @@
     ))
  
 (define (build-contour-list . cnts)
-  (foldl (lambda (c r)
-           (append r (if (andmap vec? c)
-                         (list c)
-                         c)))
-         '()
-         cnts))
+  (if (not (car cnts))
+      '()
+      (foldl (lambda (c r)
+               (append r (if (andmap vec? c)
+                             (list c)
+                             c)))
+             '()
+             cnts)))
 
 
 
@@ -346,11 +366,11 @@
                    #f #f #f
                    (list 
                     (ufo:layer 'public.default #f
-                               (build-list glyph ...)))
+                               (build-glyphs-list glyph ...)))
                    #f #f #f))]))
 
 
-(define (build-list . glyphs)
+(define (build-glyphs-list . glyphs)
   (foldl (lambda (g r) (if (list? g) 
                            (append r g)
                            (append r (list g))))
@@ -369,13 +389,13 @@
                        font-form))]))
 
 (define-syntax font 
-  (syntax-rules (alignments variables)
+  (syntax-rules (alignments variables glyphs)
     [(font (name params ...) . rest)
      (kw-args-lambda (params ...) () (font name . rest))]
     [(font name
        (alignments als ...)
        (variables v ...)
-       glyph ...)
+       (glyphs glyph ...))
      (let-alignment (als ...)
                     (emit-font-form name 
                                     (find-ascender (als ...)) 

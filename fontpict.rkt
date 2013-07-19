@@ -1,22 +1,33 @@
 #lang slideshow
-(require racket/draw)
 
-(require "vec.rkt"
+
+(require racket/draw
+         "vec.rkt"
          "bezier.rkt")
 
 (provide *size*
          *text*
          set-sample-size!
          set-sample-text!
+         set-contour-view!
          with-sample-text
-         pictf:font)
+         pictf:font
+         pictf:glyph)
+
+(define *pen* (new pen% [style 'transparent]))
+
 
 (define *size* 100)
 (define *text* '(a b c d e f g h j k l m n o p q r s t u v w x y z))
 
 (define (set-sample-size! s) (set! *size* s))
 (define (set-sample-text! t) (set! *text* t))
+(define (set-contour-view! b) 
+  (if b 
+      (set! *pen* (new pen% [color "red"]))
+      (set! *pen* (new pen% [style 'transparent]))))
 
+      
 (define-syntax-rule (with-sample-text (text size) body)
   (let ([t *text*]
         [s *size*])
@@ -31,6 +42,7 @@
 (define (name glyph) (car glyph))
 (define (advance glyph) (cadr glyph))
 (define (contours glyph) (cddr glyph))
+
 
 (define (draw-contour path c)
   (define (aux pts)
@@ -55,10 +67,9 @@
 
 (define (pictf:draw-glyph dc glyph)
   (begin
-    
     (define path (new dc-path%))
     
-    (for-each (lambda (c) (draw-contour path c))
+    (for-each (lambda (c) (bezier->path c path))
               (contours glyph))
     (send dc draw-path path 0 0 'winding)
     (send dc translate (advance glyph) 0)))
@@ -74,8 +85,31 @@
       (lambda (dc dx dy)
          (begin
            (send dc set-brush "black" 'solid)
+           (send dc set-pen *pen*)
            (send dc scale f (- f))
            (send dc translate 0 (- (/ (* *size* -0.5) f) ascender))                      
            (for-each (lambda (g) (pictf:draw-glyph dc g)) glyphs-to-display )))
       1300 (* *size* 2))))
+
+(define (pictf:glyph g bb [ascender #f] [upm #f])
+  (let* ([vbb (vec- (cdr bb) (car bb))]
+         [w (vec-x vbb)]
+         [h (vec-y vbb)]
+         [x-min (vec-x (car bb))]
+         [by-max (vec-y (cdr bb))]
+         [y-max (if ascender
+                    (max by-max ascender)
+                    by-max)]
+         [f (cond [upm (/ 400 upm)]
+                  [(> h 0) (/ 400 h)]
+                  [else 1])])
+    (dc
+     (lambda (dc dx dy)
+       (begin
+         (send dc set-brush "black" 'solid)
+         (send dc set-pen *pen*)
+         (send dc scale f (- f))
+           (send dc translate (- x-min) (- y-max))
+           (pictf:draw-glyph dc g)))
+       (* f w) (* f (if upm upm h)))))
       

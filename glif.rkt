@@ -5,7 +5,9 @@
          "bezier.rkt"
          "vec.rkt"
          "properties.rkt"
-          (planet wmfarr/plt-linalg:1:13/matrix))
+         "fontpict.rkt"
+          (planet wmfarr/plt-linalg:1:13/matrix)
+          slideshow/pict-convert)
 
 
 (provide read-glif-file
@@ -53,7 +55,16 @@
                          guidelines anchors contours components lib) 
   #:transparent
   #:property prop:transform 
-  (lambda (v m) (glyph-transform v m)))
+  (lambda (v m) (glyph-transform v m))
+  #:property prop:pict-convertible 
+  (lambda (g)
+    (let* ([cs (map-contours contour->bezier g)]
+           [bb (if (null? cs)
+                   (cons (vec 0 0) (vec 0 0))
+                   (apply combine-bounding-boxes
+                          (map bezier-bounding-box cs)))])
+      (pictf:glyph (draw-glyph g) bb))))
+                      
 
 ; glyph-transform
 ; glyph, TransformationMatrix -> glyph
@@ -279,7 +290,7 @@
 (define (draw-glyph g)
   (append (list (glyph-name g)
                 (advance-width (glyph-advance g)))
-          (map-contours draw-contour g)))
+          (map-contours contour->bezier g)))
 
 (define (draw-contour c)
   (letrec ((aux (lambda (pts)

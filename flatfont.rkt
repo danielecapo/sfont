@@ -16,7 +16,7 @@
   (lambda (f)
     (let ([ascender (dict-ref (font-info f) 'ascender 750)]
           [descender (dict-ref (font-info f) 'descender -250)]
-          [glyphs (map (lambda (g) (glyph->pict (decompose-glyph f g)))
+          [glyphs (map (lambda (g) (draw-glyph (decompose-glyph f g)))
                        (get-glyphs f *text*))])
       (apply pictf:font ascender descender glyphs))))
 
@@ -146,20 +146,28 @@
 (struct glyph (name advance contours components anchors)
   #:transparent)
 
-(define (glyph->pict g)
-  
+(define (draw-glyph g)
    (append (list (glyph-name g)
                  (car (glyph-advance g)))
-           (map (lambda (c)
-                  (letrec ((aux (lambda (pts acc)
-                                 
-                                  (match pts
-                                    [(list-rest off1 off2 p rp)
-                                     (aux rp (append acc (list (cons 'off off1) (cons 'off off2) p)))]
-                                    [(list) acc]))))
-                    (cons (cons 'move (car c))
-                          (aux (cdr c) '()))))
-                (glyph-contours g))))
+           (map contour->bezier (glyph-contours g))))
+
+; contour->bezier
+; Contour -> Bezier
+; produce a Bezier curve from a Contour
+
+(define (contour->bezier c)
+  (map list->vec c))
+
+;           (map (lambda (c)
+;                  (letrec ((aux (lambda (pts acc)
+;                                 
+;                                  (match pts
+;                                    [(list-rest off1 off2 p rp)
+;                                     (aux rp (append acc (list (cons 'off off1) (cons 'off off2) p)))]
+;                                    [(list) acc]))))
+;                    (cons (cons 'move (car c))
+;                          (aux (cdr c) '()))))
+;                (glyph-contours g))))
   
 
 (define (flatfont:glif->glyph g)
