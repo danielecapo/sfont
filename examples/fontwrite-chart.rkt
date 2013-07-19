@@ -98,4 +98,3 @@
 ;(chartme #:angle 9)
 ;(chartme #:angle 10)
 
-(print-beziers (list (~ (0 0) -- (100 0) -- (100 100)  -- (50 100) -- (20 50) -- ( 0 0))))

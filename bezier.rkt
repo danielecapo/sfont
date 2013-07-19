@@ -259,7 +259,7 @@
          [h (vec-y vbb)]
          [x-min (vec-x (car bb))]
          [y-max (vec-y (cdr bb))]
-         [f (/ 400 h)]
+         [f (/ 300 h)]
          [path (new dc-path%)])
     (pict:dc
      (lambda (dc dx dy)
@@ -267,10 +267,10 @@
          (send dc set-brush "black" 'solid)
          (send dc set-pen (new pen% [style 'transparent]))
          (send dc scale f (- f))
-         (send dc translate x-min (- y-max))
+         (send dc translate (- x-min) (- y-max))
          (for-each (lambda (b) (bezier->path b path)) bs)
          (send dc draw-path path dx dy 'winding)))
-     (* f w) 400)))
+     (* f w) 300)))
 
 
                  
