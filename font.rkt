@@ -41,7 +41,10 @@
          set-sidebearings-at
          adjust-sidebearings
          correct-directions
-         print-glyph)
+         print-glyph
+         font-round
+         layer-round
+         kerning-round)
 
 ;;; DATA DEFINITIONS
 ;;; Font
@@ -204,6 +207,17 @@
                                                      (lambda (a b) (string<? (symbol->string a)
                                                                              (symbol->string b))))]))
                         f)]))
+
+; map-kerning
+; Procedure, Hashtable -> Hashtable
+; apply the procedure to every kerning value, produce a new kerning table
+
+(define (map-kerning proc k)
+  (make-immutable-hash
+   (hash-map k (lambda (l kr)
+                 (cons l 
+                       (make-immutable-hash
+                        (hash-map kr (lambda (r v) (cons r (proc v))))))))))
         
 
 
@@ -676,5 +690,30 @@
                         (map bezier-bounding-box cs)))])
       (pictf:glyph (draw-glyph g) bb ascender upm)))
                      
+
+; font-round
+; Font -> Font
+; Round the coordinates of the font using the current *precision* factor
+
+(define (font-round f)
+  (struct-copy font f
+               [layers (map-layers layer-round f)]
+               [kerning (kerning-round (font-kerning f))]))
+
+; layer-round
+; Layer -> Layer
+; Round the coordinates of the layer using the current *precision* factor
+
+(define (layer-round l)
+  (struct-copy layer l
+               [glyphs (map-glyphs glyph-round l)]))
+
+
+; kerning-round
+; kerning -> kerning
+; Round the kerning values using the current *precision* factor
+
+(define (kerning-round k)
+  (map-kerning approx k))
 
 

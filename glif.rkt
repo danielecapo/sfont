@@ -20,6 +20,14 @@
          (struct-out contour)
          (struct-out component)
          (struct-out point)
+         glyph-round
+         advance-round
+         image-round
+         guideline-round
+         anchor-round
+         contour-round
+         component-round
+         point-round
          make-advance
          make-guideline
          make-image
@@ -77,7 +85,31 @@
                  [components (map tfn (glyph-components g))]
                  [contours   (map tfn (glyph-contours g))])))
 
+; glyph-round
+; Glyph -> Glyph
+; Round the coordinates of the glyph using the current *precision* factor
+
+(define (glyph-round g)
+  (struct-copy glyph g
+               [advance (advance-round (glyph-advance g))]
+               [image (if (glyph-image g)
+                          (image-round (glyph-image g))
+                          #f)]
+               [guidelines (map guideline-round (glyph-guidelines g))]
+               [anchors (map anchor-round (glyph-anchors g))]
+               [contours (map contour-round (glyph-contours g))]
+               [components (map component-round (glyph-components g))]))
+
 (struct advance (width height) #:transparent)
+
+; advance-round
+; Advance -> Advance
+; Round the coordinates of the advance using the current *precision* factor
+
+(define (advance-round a)
+  (struct-copy advance a 
+               [width (approx (advance-width a))]
+               [height (approx (advance-height a))]))
 
 (struct image (filename x-scale xy-scale yx-scale 
                             y-scale x-offset y-offset color) 
@@ -108,10 +140,27 @@
                      (,yx-scale ,y-scale ,y-offset)
                      (0 0 1)))]))
          
+; image-round
+; Image -> Image
+; Round the coordinates of the image using the current *precision* factor
+
+(define (image-round i)
+  (struct-copy image i 
+               [x-offset (approx (image-x-offset i))]
+               [y-offset (approx (image-y-offset i))]))
+
 
 (struct guideline (x y angle name color identifier) 
   #:transparent)
 
+; guideline-round
+; Guideline -> Guideline
+; Round the coordinates of the guideline using the current *precision* factor
+
+(define (guideline-round g)
+  (struct-copy guideline g 
+               [x (approx (guideline-x g))]
+               [y (approx (guideline-y g))]))
 
 (struct anchor (x y name color identifier) 
   #:transparent
@@ -127,6 +176,15 @@
     (struct-copy anchor a
                  [x (vec-x v)] [y (vec-y v)])))
 
+; anchor-round
+; Anchor -> Anchor
+; Round the coordinates of the anchor using the current *precision* factor
+
+(define (anchor-round a)
+  (struct-copy anchor a 
+               [x (approx (anchor-x a))]
+               [y (approx (anchor-y a))]))
+
 (struct contour (identifier points) 
   #:transparent
   #:property prop:transform 
@@ -140,6 +198,14 @@
   (struct-copy contour c
                [points (map (lambda (p) (transform p m))
                             (contour-points c))]))
+
+; contour-round
+; Contour -> Contour
+; Round the coordinates of the contour using the current *precision* factor
+
+(define (contour-round c)
+  (struct-copy contour c 
+               [points (map point-round (contour-points c))]))
 
 
 (struct component (base x-scale xy-scale yx-scale y-scale 
@@ -160,9 +226,19 @@
                  (composed-transformation-matrix (component->matrix c) m)))
           (list (component-identifier c)))))
 
+
+; component-round
+; Component -> Component
+; Round the coordinates of the component using the current *precision* factor
+
+(define (component-round c)
+  (struct-copy component c 
+               [x-offset (approx (component-x-offset c))]
+               [y-offset (approx (component-y-offset c))]))
+
 ; component->matrix 
 ; component -> TransformationMatrix
-; produces a transformation matrix from the component
+; produce a transformation matrix from the component
 
 (define (component->matrix i)
   (match i 
@@ -178,12 +254,21 @@
 
 ; point-transform
 ; point, TransformationMatrix -> point
-; produces a new point applying the transformation matrix to point
+; produce a new point applying the transformation matrix to point
 
 (define (point-transform p m)
   (let ([v (transform (vec (point-x p) (point-y p)) m)])
     (struct-copy point p
                  [x (vec-x v)] [y (vec-y v)])))
+
+; point-round
+; Point -> Point
+; Round the coordinates of the point using the current *precision* factor
+
+(define (point-round p)
+  (struct-copy point p 
+               [x (approx (point-x p))]
+               [y (approx (point-y p))]))
 
 (define (ensure-number n)
   (if (or (not n) (number? n)) n (string->number n)))

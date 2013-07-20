@@ -18,7 +18,8 @@
                      [m-skew-x skew-x]
                      [m-skew-y skew-y]
                      [m-reflect-x reflect-x]
-                     [m-reflect-y reflect-y])
+                     [m-reflect-y reflect-y]
+                     [flatfont:font->ufo flatfont->ufo])
          (all-from-out "fontpict.rkt")
          (except-out (all-from-out "vec.rkt")
                      translate
@@ -36,8 +37,7 @@
          code+expr
          write-font
          degree->rad
-         fix-components
-         )
+         fix-components)
 
 
 ;(define current-transformation 
@@ -207,10 +207,13 @@
                                                       
 
 
-(define (write-font f path [format 2])
-  (ufo:write-ufo ((if (= format 2)
-                     ufo:ufo3->ufo2
-                     ufo:ufo2->ufo3)
-                  (flatfont:font->ufo f))
-                 path))
+(define (write-font f path #:round-coord [round-coord #f] #:format [format 2])
+  (let ([rf (if round-coord 
+                (with-precision (1) (ufo:font-round (flatfont:font->ufo f)))
+                (flatfont:font->ufo f))])
+    (ufo:write-ufo ((if (= format 2)
+                        ufo:ufo3->ufo2
+                        ufo:ufo2->ufo3)
+                    rf)
+                   path)))
   
