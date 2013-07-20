@@ -1,6 +1,6 @@
 #lang racket
 
-(require "math.rkt")
+(require "../math.rkt")
 
 ;To run the code in this page download the Source Sans Pro Fonts from
 ;https://github.com/adobe/source-sans-pro
