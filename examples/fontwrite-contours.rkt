@@ -1,29 +1,37 @@
 #lang racket
-(require "../fontwriter.rkt")
+(require "../fontwriter.rkt"
+         "../utilities.rkt")
 
 ;Contours examples
 ;
 ;Contours can be written with the ~ macro,
 ;they are transformed in a cubic bezier curves.
 ;In this file the beziers are printed with the print-beziers
-;procedures that takes a list of bezier curves.
-;
+;procedures that takes any number of bezier curves
+;(printed with the same convention of postscript fonts
+;a clockwise contour inside a counterclockwise contour
+;is printed white.
+
+;The macro code+expr imported from utilities.rkt
+;is used to show the expression.
+
 ;Points in the ~ macros are written in the form (x y)
 ;The first point is define a point on the curve,
 ;the second and third points are control points,
 ;the fourth is a curve point, etc ...
 
-(print-beziers 
- (list (~ (0 -100) 
-          (60 -100) (100 -60) (100 0)
-          (100 60) (60 100) (0 100)
-          (-60 100) (-100 60) (-100 0)
-          (-100 -60) (-60 -100) (0 -100))))
+(code+expr
+ (print-beziers 
+  (~ (0 -500) 
+     (300 -500) (500 -300) (500 0)
+     (500 300) (300 500) (0 500)
+     (-300 500) (-500 300) (-500 0)
+     (-500 -300) (-300 -500) (0 -500))))
 
 ; To draw a line between two points we can use --
-
-(print-beziers 
- (list (~ (0 0) -- (100 0) -- (100 100) -- (0 100) -- (0 0))))
+(code+expr
+ (print-beziers 
+  (~ (0 0) -- (500 0) -- (500 500) -- (0 500) -- (0 0))))
 
 ; There's another way to wite a bezier segment
 ; let A, B and C be three non aligned points,
@@ -37,86 +45,87 @@
 ; With (x y 0) A'=A and C'=C (the curve becomes a line)
 ; With (x y 1) A'=B and C'=B
 
-(print-beziers
- (list (~ (0 -100) (100 -100 0.6) (100 0) (100 100 1) (0 100) 
-          (-100 100 0) (-100 0) (-100 -100 0 1) (0 -100))))
+(code+expr
+ (print-beziers
+  (~ (0 -500) (500 -500 0.6) (500 0) (500 500 1) (0 500) 
+     (-500 500 0) (-500 0) (-500 -500 0 1) (0 -500))))
 
 ; If we already have a contour we can 'insert' it inside a macro
 ; and it will joined with a line to the previous point.
 
-(define p1 (~ (0 -100) 
-              (60 -100) (100 -60) (100 0)))
-(print-beziers 
- (list (~ (100 0) -- (0 100) -- (-100 0) (insert p1))))
+(define p1 (~ (0 -500) 
+              (300 -500) (500 -300) (500 0)))
+(code+expr
+ (print-beziers 
+  (~ (500 0) -- (0 500) -- (-500 0) (insert p1))))
 
 ; The primitives rect and ellipse accept four arguments:
 ; the x and y coordinates of the lower left corner
 ; the width and the height
 
-(print-beziers
- (list (rect 0 0 100 200)))
+(code+expr
+ (print-beziers
+  (rect 0 0 400 800)))
 
-
-(print-beziers
- (list (ellipse 0 0 100 120)))
+(code+expr
+ (print-beziers
+  (ellipse 0 0 400 500)))
 
 ; The arc primitive define an open arc
 ; given the center, the radius and the amplitude,
 ; angles are expressed in radians,
 ; the function ° can be used to transform degrees in radians
 
-(print-beziers 
- (list (arc 0 0 100 (° 60))))
-
-(print-beziers 
- (list (~ (insert (arc 0 0 100 (° 120))) (0 0) -- (100 0))))
+(code+expr
+ (print-beziers 
+  (arc 0 0 800 (° 60))))
+(code+expr
+ (print-beziers 
+  (~ (insert (arc 0 0 800 (° 120))) (0 0) -- (800 0))))
 
 ; Transformations
 
-(print-beziers
- (list (translate (rect 0 0 100 200) 100 0)))
+(code+expr
+ (print-beziers
+  (translate (rect 0 0 400 600) 300 0)))
+
+(code+expr
+ (print-beziers
+  (rotate (rect 0 0 400 600) (° 30))))
+
+(code+expr
+ (print-beziers
+  (skew-x (rect 0 0 400 600) (° 30))))
+
+(code+expr
+ (print-beziers
+  (skew-y (rect 0 0 400 600) (° 30))))
+
+(code+expr
+ (print-beziers
+  (reflect-x (arc 0 0 500 (° 60)))))
+
+(code+expr
+ (print-beziers
+  (reflect-y (arc 0 0 500 (° 60)))))
+
+
+; transformations can be done relative to a point in two ways 
+
+(code+expr
+ (print-beziers
+  (rect 0 0 400 600)
+  (from (0 0) (rotate (rect 0 0 400 600) (° 90)))))
+
+
 
 (print-beziers
- (list (rotate (rect 0 0 100 200) (° 30))))
+ (rect 0 0 400 600)
+ (from (0 300) (rotate (rect 0 0 400 600) (° 90))))
+
+
 
 (print-beziers
- (list (skew-x (rect 0 0 100 200) (° 30))))
+ (rect 0 0 400 600)
+ (rotate (rect 0 0 400 600) from (200 0) (° 90)))
 
-(print-beziers
- (list (skew-y (rect 0 0 100 200) (° 30))))
-
-(print-beziers
- (list (reflect-x (arc 0 0 100 (° 60)))))
-
-(print-beziers
- (list (reflect-y (arc 0 0 100 (° 60)))))
-
-
-; transformations can be done relative to a point
-; in two ways (notice, printing is relative to the bounding box, so I will display the contours as text)
-
-(define (print-as-text b)
- (for-each
-  (lambda (v) (begin
-                (display "(")
-                (display (vec-x v)) 
-                (display " ")
-                (display (vec-y v))
-                (display ")")
-                (newline)))
-  b))
-
-(print-as-text
- (from (0 0) (rotate (ellipse 0 0 100 200) (° 90))))
-
-(newline)
-(newline)
-
-(print-as-text
- (from (100 200) (rotate (ellipse 0 0 100 200) (° 90))))
-
-(newline)
-(newline)
-
-(print-as-text
- (rotate (ellipse 0 0 100 200) from (100 200) (° 90)))

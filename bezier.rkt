@@ -248,29 +248,34 @@
         (aux ss)))))
 
 ; print-beziers
-; ListOfBeziers -> side effect
+; Beziers Curves -> side effect
 ; print the beziers
 
-(define (print-beziers bs)
-  (let* ([bb (apply combine-bounding-boxes
-                    (map bezier-bounding-box bs))]
-         [vbb (vec- (cdr bb) (car bb))]
-         [w (vec-x vbb)]
-         [h (vec-y vbb)]
-         [x-min (vec-x (car bb))]
-         [y-max (vec-y (cdr bb))]
-         [f (/ 300 h)]
+(define (print-beziers . bs)
+  (let* ([scene-side 500]
+         [real-side 2000]
+         [max-x 1000]
+         [max-y 1000]
+         [min-x (- max-x real-side)]
+         [min-y (- max-y real-side)]
+         [f (/ scene-side (- max-y min-y))]
          [path (new dc-path%)])
     (pict:dc
      (lambda (dc dx dy)
        (begin
-         (send dc set-brush "black" 'solid)
-         (send dc set-pen (new pen% [style 'transparent]))
          (send dc scale f (- f))
-         (send dc translate (- x-min) (- y-max))
+         (send dc translate (- min-x) (- max-y))
+         (send dc set-pen "Gainsboro" 10 'solid)
+         (send dc draw-line min-x 0 max-x 0)
+         (send dc draw-line 0 max-y 0 min-y)
+         (send dc set-brush "black" 'solid)
+         (send dc set-pen "LightGray" 1 'solid)
+         
          (for-each (lambda (b) (bezier->path b path)) bs)
          (send dc draw-path path dx dy 'winding)))
-     (* f w) 300)))
+     scene-side scene-side)))
+
+
 
 
                  
