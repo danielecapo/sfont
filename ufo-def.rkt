@@ -8,6 +8,17 @@
          (planet wmfarr/plt-linalg:1:13/matrix)
          slideshow/pict-convert)
 
+(provide 
+ (except-out (all-defined-out)
+             position-based-trans
+             matrix-based-trans
+             compound-based-trans
+             clean-arg
+             geometric-struct))
+             
+             
+             
+             
 ;;; Syntax defintion
 ;;; The following macros are used to create objects that implement the generic interface gen:geometric
 ;;; there can be three kinds of behaviour:
@@ -911,6 +922,17 @@
 
 ; Glyph -> Glyph
 ; reverse the direction of all contours in the glyph if the area is negative
+(define (glyph-correct-directions g)
+  (let* ([cs (map-contours (lambda (c) (map-points point-pos c)) g)]
+         [a (foldl (lambda (b acc) 
+                     (+ acc (bezier-signed-area b)))
+                   0 cs)])
+    (if (< a 0)
+        (glyph-reverse-directions g)
+        g)))
+
+
+#;
 (define (glyph-correct-directions g)
   (let* ([cs (map contour->bezier (glyph-contours g))]
          [a (foldl (lambda (b acc) 
