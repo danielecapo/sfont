@@ -2,7 +2,9 @@
 
 (provide n-groups
          num->int
-         code+expr)
+         code+expr
+         square
+         double)
 ; n-groups
 ; List [Any], Natural -> List of List [Any]
 ; (n-groups '(a b c d e f) 2) -> '((a b) (b c) (c d) (d e) (e f))
@@ -30,4 +32,8 @@
        (display "evaluates to:")
        (newline)
        expr)]))
+
+(define (square n) (* n n))
+
+(define (double n) (* n 2))
 
