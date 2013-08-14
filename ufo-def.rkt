@@ -14,7 +14,8 @@
              matrix-based-trans
              compound-based-trans
              clean-arg
-             geometric-struct))
+             geometric-struct
+             apply-glyph-trans))
              
              
              
@@ -118,8 +119,41 @@
                    (cons (vec 0 0) (vec 0 0))
                    (apply combine-bounding-boxes
                           (map bezier-bounding-box cs)))])
-      (pictf:glyph (draw-glyph g) bb))))
+      (pictf:glyph (draw-glyph g) bb)))
+  #:methods gen:geometric
+  [(define/generic super-transform transform)
+   (define/generic super-translate translate)
+   (define/generic super-scale scale)
+   (define/generic super-rotate rotate)
+   (define/generic super-skew-x skew-x)
+   (define/generic super-skew-y skew-y)
+   (define/generic super-reflect-x reflect-x)
+   (define/generic super-reflect-y reflect-y)
+   (define (transform g m)
+     (apply-glyph-trans g super-transform m))
+  (define (translate g x y)
+    (apply-glyph-trans g super-translate x y))
+  (define (scale g fx [fy fx])
+    (apply-glyph-trans g super-scale fx fy))
+  (define (rotate g a)
+    (apply-glyph-trans g super-rotate a))
+  (define (skew-x g a)
+    (apply-glyph-trans g super-skew-x a))
+  (define (skew-y g a)
+    (apply-glyph-trans g super-skew-y a))
+  (define (reflect-x g)
+    (apply-glyph-trans g super-reflect-x))
+  (define (reflect-y g)
+    (apply-glyph-trans g super-reflect-y))])
 
+; Glyph  (T . ... -> T) . ... -> Glyph
+; apply a geometric transformations to a glyph
+(define (apply-glyph-trans g fn . args)
+  (let ([t (lambda (o) (apply fn o args))])
+    (struct-copy glyph g
+                 [components (map t (glyph-components g))]
+                 [anchors (map t (glyph-anchors g))]
+                 [contours (map t (glyph-contours g))])))
 
 ;;; Advance
 ;;; (advance Number Number)
@@ -472,10 +506,10 @@
         (let* ([la (- left (car os))]
                [ra (+ la (- right (cdr os)))])
           (struct-copy glyph 
-                       (translate g (vec la 0))
+                       (translate g la 0)
                        [advance (advance (+ oa ra)
-                                             (advance-height 
-                                              (glyph-advance g)))]))
+                                         (advance-height 
+                                          (glyph-advance g)))]))
         #f)))
                        
      
@@ -489,7 +523,7 @@
         (let* ([la (- left (car os))]
                [ra (+ la (- right (cdr os)))])
           (struct-copy glyph 
-                       (translate g (vec la 0))
+                       (translate g la 0)
                        [advance (advance (+ oa ra)
                                              (advance-height 
                                               (glyph-advance g)))]))

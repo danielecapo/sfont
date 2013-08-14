@@ -1,6 +1,5 @@
 #lang racket
-(require "font.rkt"
-         "glif.rkt"
+(require "ufo.rkt"
          "vec.rkt"
          "bezier.rkt"
          "writepfa.rkt"
@@ -49,23 +48,23 @@
   (lambda (d)
     (list (car d) ((cadr d) h))))
 
-; ufoinfo->pfa
-; fontinfo -> pfafontinfo
+
+; Info -> PfaFontInfo
 (define (ufoinfo->pfa info)
   (cons 'FontInfo 
         (filter (lambda (o) (not (equal? "" (cadr o))))
                 (map (convert info) INFODEFAULT))))
 
-; ufoprivate->pfa
-; fontinfo -> pfafontprivate
+
+; Info -> PfaFontPrivate
 (define (ufoprivate->pfa info)
   (cons 'Private
         (filter (lambda (o) (not (null? (cadr o))))
                 (map (convert info) PRIVATEDEAFULT))))
 
-; ufoglyph->pfa
-; glyph -> charstring
-; produces a glyph ready to be written in type1 format
+
+; Glyph -> Charstring
+; produce a glyph ready to be written in type1 format
 (define (ufoglyph->pfa g)
   (cons
    (glyph-name g)
