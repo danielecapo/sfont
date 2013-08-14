@@ -1,8 +1,7 @@
 #lang racket
 (require "vec.rkt"
          "bezier.rkt"
-         (prefix-in ufo: "glif.rkt")
-         (prefix-in ufo: "font.rkt")
+         (prefix-in ufo: "ufo.rkt")
          "utilities.rkt"
          "fontpict.rkt")
 
@@ -19,8 +18,7 @@
          ovs-height
          font
          from
-        
-         (all-from-out "font.rkt")
+         (all-from-out "ufo.rkt")
          (all-from-out "bezier.rkt")
          (except-out (all-from-out "vec.rkt")
                      translate
@@ -181,8 +179,8 @@
       )))
 
 
-(define (translate- o x y) (translate o (vec x y)))
-(define-transform translate* translate-)
+
+(define-transform translate* translate)
 (define-transform rotate* rotate)
 (define-transform scale* scale)
 (define-transform skew-x* skew-x)

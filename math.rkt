@@ -37,7 +37,6 @@
          define-space
          code+expr
          write-font
-         degree->rad
          fix-components)
 
 
@@ -183,8 +182,7 @@
              (apply values (map (lambda (f) (add origin f)) (cons f fs))))
            (define fname (sub font origin)) ...))]))
 
-(define (degree->rad angle)
-  (* pi (/ angle 180.0)))
+
 
 ;(define-syntax-rule (rot exp angle)
 ;  (let [(rad-angle (degree->rad angle))]
