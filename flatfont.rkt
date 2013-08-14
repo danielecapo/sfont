@@ -1,15 +1,30 @@
 #lang racket
 
-(require (prefix-in ufo: "font.rkt")
-         (prefix-in ufo: "glif.rkt")
+(require (prefix-in ufo: "ufo.rkt")
          "vec.rkt"
          "fontpict.rkt"
          (prefix-in bz: "bezier.rkt")
+         "properties.rkt"
          slideshow/pict-convert
          (planet wmfarr/plt-linalg:1:13/matrix))
 
-(provide (all-defined-out))
+(provide 
+ (except-out (all-defined-out)
+             sort-by-key
+             ->int
+             ->float
+             ->intlist
+             ->widthclass
+             filter-common))
 
+;;; KERNING
+;;; Kerning data are stored in an association list
+
+;;; INFO
+;;; Font Info are stored in an association list
+
+;;; FONT
+;;; (font ufo:Font AssociationList AssociationList (listOf Glyph))
 (struct font (ufo info kerning glyphs) 
   #:transparent
   #:property prop:pict-convertible 
@@ -20,7 +35,8 @@
                        (get-glyphs f *text*))])
       (apply pictf:font ascender descender glyphs))))
 
-
+; Font (listOf Symbol) -> (listOf Glyph)
+; produce a list of Glyph in the font whose name is in gs
 (define (get-glyphs f gs)
   (let ([g-hash (make-hash (map (lambda (g) 
                                   (cons (glyph-name g) g)) 
@@ -28,24 +44,29 @@
     (filter identity
             (map (lambda (g) (hash-ref g-hash g #f))
                  gs))))
-    
-(define (flatfont:ufo->font f)
-  (font f
-        (interpolable-infos (sort-by-keyword (hash->list (ufo:font-fontinfo f))))
-        (if (ufo:font-kerning f)
-            (sort-by-keyword 
-             (hash-map (ufo:font-kerning f)
-                       (lambda (left right)
-                         (cons left (sort-by-keyword (hash->list right))))))
-            '())
-        (flat-glyphs f)))
 
-(define (sort-by-keyword alist)
+; Ufo:Font -> Font   
+; produce a font from a ufo
+(define (ufo->font f)
+  (font f
+        (interpolable-infos (sort-by-key (hash->list (ufo:font-fontinfo f))))
+        (if (ufo:font-kerning f)
+            (sort-by-key       (hash-map (ufo:font-kerning f)
+                       (lambda (left right)
+                         (cons left (sort-by-key (hash->list right))))))
+            '())
+        (ufo->glyphs f)))
+
+; AssociationList -> AssociationList
+; sort the alist with key name
+(define (sort-by-key alist)
   (sort alist string<? 
         #:key (lambda (p) 
                 (symbol->string (car p)))))
 
-(define (flatfont:font->ufo f)
+; Font -> Ufo:Font
+; produce a ufo font from a font
+(define (font->ufo f)
   (struct-copy ufo:font (font-ufo f)
                [fontinfo (ufo-infos f)]
                [kerning (if (null? (font-kerning f))
@@ -54,10 +75,11 @@
                              (map (lambda (p) (cons (car p) (make-immutable-hash (cdr p))))
                                   (font-kerning f))))]
                [layers (list (struct-copy ufo:layer (ufo:get-layer (font-ufo f))
-                                          [glyphs (map (lambda (g) (glyph->ufo g (font-ufo f)))  
+                                          [glyphs (map (lambda (g) (glyph->ufo-glyph g (font-ufo f)))  
                                                        (font-glyphs f))]))]))
 
 
+; Utility functions used for infos
 (define (->int n) (inexact->exact (round n)))
 (define (->float n) (exact->inexact n))
 (define (->intlist l) (map ->int l))
@@ -120,6 +142,8 @@
     (postscriptDefaultWidthX ,->int)
     (postscriptNominalWidthX ,->int)))
 
+; Ufo:fontinfo -> Info
+; produce an alist from ufo's fontinfo
 (define (interpolable-infos infos)
   (let ((keys (map car *infos*)))
     (filter identity
@@ -127,7 +151,8 @@
                               (if (member key keys)
                                   (cons key value)
                                   #f))))))
-
+; Info -> Ufo:fontinfo 
+; produce the ufo's fontinfo from an alist
 (define (ufo-infos f)
   (let ((infos (make-immutable-hash 
                 (dict-map
@@ -139,131 +164,100 @@
     (dict-set* infos 'postscriptFontName psname 'familyName famname)))
 
      
-     
-     
+;;; POINT
+; point is (list x y)
+
+; Number Number -> Point
 (define (pt x y) (list x y))
 
+;;; GLYPH
+;;; (glyph Symbol Number (listOf Contours) (listOf Components) (listOf Anchors))
 (struct glyph (name advance contours components anchors)
   #:transparent)
 
+; Glyph -> DrawableGlyph
+; produce a drawable glyph
 (define (draw-glyph g)
    (append (list (glyph-name g)
                  (car (glyph-advance g)))
            (map contour->bezier (glyph-contours g))))
 
-; contour->bezier
+
 ; Contour -> Bezier
 ; produce a Bezier curve from a Contour
-
 (define (contour->bezier c)
   (map list->vec c))
 
-;           (map (lambda (c)
-;                  (letrec ((aux (lambda (pts acc)
-;                                 
-;                                  (match pts
-;                                    [(list-rest off1 off2 p rp)
-;                                     (aux rp (append acc (list (cons 'off off1) (cons 'off off2) p)))]
-;                                    [(list) acc]))))
-;                    (cons (cons 'move (car c))
-;                          (aux (cdr c) '()))))
-;                (glyph-contours g))))
-  
-
-(define (flatfont:glif->glyph g)
+; Ufo:Glyph -> Glyph
+; produce a glyph from a ufo's glyph
+(define (ufo-glif->glyph g)
   (glyph (ufo:glyph-name g)
              (let ((a (ufo:glyph-advance g)))
                (pt (ufo:advance-width a) (ufo:advance-height a)))
-             (ufo:map-contours flat-contour g)
-             (ufo:map-components flat-component g)
-             (ufo:map-anchors flat-anchor g)))
+             (ufo:map-contours ufo->contour g)
+             (ufo:map-components ufo->component g)
+             (ufo:map-anchors ufo->anchor g)))
 
-; flat-contour
-; ufo:contour -> FlatContour
-; produce a flat contour from a ufo:contour
 
-(define (flat-contour c)
+; Ufo:Contour -> Contour
+; produce a contour from a ufo contour
+(define (ufo->contour c)
   (map vec->list (ufo:contour->bezier c)))
 
-#;
-(define (flat-contour c)
-  (letrec ((ensure-first-on-curve 
-            (lambda (pts)
-              (match pts
-                [(list-rest (ufo:point _ _ 'move _ _ _) pr) pts]
-                [(list-rest (ufo:point _ _ 'curve _ _ _) pr) pts]
-                [(list-rest (ufo:point _ _ 'line _ _ _) pr) pts]
-                [(list-rest (ufo:point _ _ 'qcurve _ _ _) pr) pts]
-                [(list-rest (ufo:point _ _ 'offcurve _ _ _) pr) 
-                 (ensure-first-on-curve (append pr (list (car pts))))])))
-           (flattener 
-            (lambda (pts acc)
-              (match pts
-                [(list-rest (or
-                             (ufo:point x y 'curve _ _ _)
-                             (ufo:point x y 'move _ _ _)
-                             (ufo:point x y 'line _ _ _))
-                            (ufo:point x1 y1 'line _ _ _)
-                            _)
-                 (flattener (cdr pts) (append acc (list (pt x y) (pt x y)(pt x1 y1))))]
-                [(list-rest (ufo:point x y 'offcurve _ _ _) pr)
-                 (flattener pr (append acc (list (pt x y))))]
-                [(list-rest (ufo:point x y 'curve _ _ _) pr)
-                 (flattener pr (append acc (list (pt x y))))]
-                [(list-rest (ufo:point x y 'move _ _ _) pr)
-                 (flattener pr (append acc (list (pt x y))))]
-                [(list-rest (ufo:point x y 'line _ _ _) pr)
-                 (flattener pr (append acc (list (pt x y))))]
-                [(list) acc]))))
-    (let* ((points (ensure-first-on-curve (ufo:contour-points c)))
-           (first-point (car points)))
-      (if (eq? (ufo:point-type first-point) 'move)
-          (flattener points '())
-          (flattener (append points (list first-point)) '())))))
-             
-                  
-           
-(define (flat-anchor a)
-  (list (ufo:anchor-name a) (ufo:anchor-x a) (ufo:anchor-y a)))
-  
-(define (flat-component c)
+; Ufo:Anchor -> Anchor
+; produce an anchor froma a ufo anchor
+(define (ufo->anchor a)
+  (list (ufo:anchor-name a) 
+        (vec-x (ufo:anchor-pos a))
+        (vec-y (ufo:anchor-pos a))))
+ 
+; Ufo:Component -> Component
+; produce a component from a ufo component
+(define (ufo->component c)
   (match c
-    [(ufo:component base x-scale xy-scale yx-scale y-scale x-offset y-offset _)
+    [(ufo:component base (trans-mat x-scale xy-scale yx-scale y-scale x-offset y-offset) _)
      (list base x-scale xy-scale yx-scale y-scale x-offset y-offset)]))
 
-(define (flat-glyphs f)
-  (ufo:map-glyphs flatfont:glif->glyph f #:sorted #t))
+; Ufo:Font -> (listOf Glyph)
+; produce a sorted list of Glyphs from a Ufo
+(define (ufo->glyphs f)
+  (ufo:map-glyphs ufo-glif->glyph f #:sorted #t))
 
-(define (glyph->ufo g ufo) 
+; Glyph -> Ufo:Glyph
+; produce a ufo glyph from a glyph
+(define (glyph->ufo-glyph g ufo) 
   (match g
     [(glyph name (list aw ah) contours components anchors)
      (let ((ufo-glyph (ufo:get-glyph ufo name)))
        (struct-copy ufo:glyph ufo-glyph
                     [advance (ufo:advance aw ah)]
-                    [anchors (map ufo-anchor anchors)]
-                    [components (map ufo-component components)]
-                    [contours (map ufo-contour contours)]))]))
+                    [anchors (map anchor->ufo anchors)]
+                    [components (map component->ufo components)]
+                    [contours (map contour->ufo contours)]))]))
 
-(define (ufo-anchor a)
+; Anchor -> Ufo:Anchor
+; produce a ufo anchor from an anchor
+(define (anchor->ufo a)
   (match a
    [(list name x y) (ufo:anchor x y name #f #f)]))
 
-(define (ufo-component c)
+; Component -> Ufo:Component
+; produce a component anchor from a component
+(define (component->ufo c)
   (match c
    [(list base x-scale xy-scale yx-scale y-scale x-offset y-offset) 
-    (ufo:component base x-scale xy-scale yx-scale 
-                        y-scale x-offset y-offset #f)]))
-; ufo-contour
-; FlatContour -> ufo:contour
-; produces a ufo:contour from a FlatContour
+    (ufo:component base 
+                   (trans-mat x-scale xy-scale yx-scale 
+                              y-scale x-offset y-offset)
+                   #f)]))
 
-(define (ufo-contour fc)
+; Contour -> ufo:contour
+; produces a ufo:contour from a FlatContour
+(define (contour->ufo fc)
   (ufo:bezier->contour (map list->vec fc)))
 
-; import-component-scale
 ; Component, Component -> Component
 ; produce a new component with scale fields imported from another component
-
 (define (import-component-scale c1 c2)
   (match c1 
     [(list base _ _ _ _ x-offset y-offset)
@@ -271,44 +265,26 @@
        [(list _ x-scale xy-scale yx-scale y-scale _ _)
         (list base x-scale xy-scale yx-scale y-scale x-offset y-offset)])]))
 
-#;
-(define (ufo-contour c)
-  (letrec ((aux 
-            (lambda (prev pts acc)
-              (match (cons prev pts)
-                [(list-rest `(,x ,y) `(,x ,y) `(,x2 ,y2) `(,x2 ,y2) rest-pts)
-                   (aux (pt x2 y2) rest-pts (append acc (list (ufo:make-point #:x x2 #:y y2 #:type 'line))))]
-                [(list-rest `(,x ,y) `(,ox1 ,oy1) `(,ox2 ,oy2) `(,x2 ,y2) rest-pts)
-                 (aux (pt x2 y2) rest-pts (append acc
-                                                  (list (ufo:make-point #:x ox1 #:y oy1)
-                                                        (ufo:make-point #:x ox2 #:y oy2)
-                                                        (ufo:make-point #:x x2 #:y y2 #:type 'curve))))]
-                [(list _) acc]
-                [(list) null]))))
-    (let* ((first-pt (car c))
-           (ufo-pts (aux first-pt (cdr c) null)))
-      (ufo:make-contour #:points 
-                        (if (closed? c) ufo-pts
-                            (cons (ufo:make-point #:x (car first-pt)
-                                                  #:y (cadr first-pt)
-                                                  #:type 'move)
-                                  ufo-pts))))))
-
-
-
-(define (keep-glyphs f glyphs)
+; Font (listOf Symbol) -> Font
+; produce a font with the glyphs NOT in gs removed
+(define (keep-glyphs f gs)
   (struct-copy font f
                [glyphs (filter (lambda (g)
-                                 (member (glyph-name g) glyphs))
+                                 (member (glyph-name g) gs))
                                  (font-glyphs f))]))
 
-
+; Glyph [(Contour -> Contour)] -> Glyph
+; produce a new glyph with contours sorted
 (define (sort-contours g [sort-points-fn identity])
   (struct-copy glyph g
                [contours 
                 (sort (map sort-points-fn (glyph-contours g))
                       contour<?)]))
-                               
+      
+; Contour Contour -> Boolean
+; True if the first contour has fewer points than the second
+; or if the first point of the first contours is nearer the origin
+; than the first point of the second contour
 (define (contour<? c1 c2)
   (let ([l1 (length c1)]
         [l2 (length c2)])
@@ -317,23 +293,34 @@
              (< (vec-length (list->vec (car c1)))
                 (vec-length (list->vec (car c2))))))))
              
-
+; Contour -> Boolean 
+; True if the last point is equal to the first point 
+; (and the contour has more than one point)
 (define (closed? c)
   (and (> (length c) 1) (equal? (first c) (last c))))
 
+; Contour -> (listOf Points)
+; produce a list of the "on curve" points 
+; (remove the control points)
 (define (on-curve-points c)
   (if (null? (cdr c)) c
       (cons (car c) (on-curve-points (cdddr c)))))
 
+; Point -> Point
+; True if x1 < x2, if x coord. are equal true if y1 < y2
 (define (point<? pt1 pt2)
   (or (< (car pt1) (car pt2))
       (and (= (car pt1) (car pt2)) 
            (< (cadr pt1) (cadr pt2)))))
 
+; Contour -> Contour
+; Rotate the point list by removing the first 'segment' and appeding it to the end of contour
 (define (cycle-points c)
   (append (cdddr (take c (- (length c) 1)))
           (take c 4)))
 
+; Contour -> Contour
+; Rearrange the contour so that the first point is the mimimum (using point<) of all points
 (define (canonical-start-point c)
   (if (closed? c)
       (let ((min-pt (car (sort (on-curve-points c) point<?))))
@@ -343,6 +330,8 @@
           (aux c)))
       c))
 
+; Glyph -> Glyph
+; produce a new glyph trying to fix the directions of contours
 (define (correct-directions g)
   (define (area cs)
     (foldl (lambda (c acc) (+ acc (signed-polygonal-area (map list->vec c))))
@@ -352,7 +341,8 @@
                  [contours (if (< (area cs) 0)
                                (map reverse cs)
                                cs)])))
-
+; Glyph -> Glyph
+; produce a new glyph with components sorted
 (define (sort-components g)
   (struct-copy glyph g
                [components (sort (glyph-components g)
@@ -361,25 +351,31 @@
                                                  (symbol->string (car c2)))
                                        (point<? (take-right c1 2) (take-right c2 2)))))]))
 
+; Glyph -> Glyph
+; produce a new glyph with anchors sorted
 (define (sort-anchors g)
   (struct-copy glyph g
                [anchors (sort (glyph-anchors g)
                               #:key car
                               string<?)]))
 
-                                                                                      
+; Font [Boolean] -> Font
+; Maximize the 'interpolability' of a font (or, at least, that's what we hope to do)
 (define (prepare-for-interpolation f [weak #t])
     (struct-copy font f
                  [glyphs (map (lambda (g) (prepare-glyph g weak)) 
                               (font-glyphs f))]))
 
+; Glyph [Boolean] -> Glyph
+; Maximize the 'interpolability' of a glyph
+; if weak is false, correct directions and reset the first points of contours
 (define (prepare-glyph g [weak #t])
   (sort-components 
    (sort-anchors
     (sort-contours (if weak g (correct-directions g)) (if weak identity canonical-start-point)))))
 
-  
-       
+; Font Font -> Font Font
+; produce two new interpolable fonts 
 (define (compatible-fonts f1 f2)
   (let* ((common (set->list 
                   (set-intersect
@@ -407,12 +403,15 @@
                          [kerning (cdr kerning)]
                          [info (cdr infos)]))))
 
+; Kerning Kerning -> (Kerning . Kernig)
+; produce a pair of Kerning with the same pairs
 (define (compatible-kerning k1 k2)
   (let [(pairs (common-pairs k1 k2))]
     (cons (filter-kerning k1 pairs)
           (filter-kerning k2 pairs))))
 
-
+; Kerning Kerning -> (listOf (Symbol . Symbol))
+; produce a list of kerning pairs used in noth fonts
 (define (common-pairs k1 k2)
   (define (kerning-pairs k)
     (foldl (lambda (k acc)
@@ -427,6 +426,8 @@
     (list->set (kerning-pairs k1))
     (list->set (kerning-pairs k2)))))
 
+; Kerning (listOf (Symbol . Symbol)) -> Kerning
+; produce a new kerning removing data for combinations NOT in pairs
 (define (filter-kerning k1 pairs)
   (define (filter-left k1 left)
     (filter (lambda (k) (member (car k) left)) k1))
@@ -437,6 +438,8 @@
                        (cdr l))))
        (filter-left k1 (map car pairs))))
 
+; Info Info -> (Info . Info)
+; produce a pair of compatible infos  
 (define (compatible-infos i1 i2)
   (let* ([common (set->list
                   (set-intersect (list->set (map car i1))
@@ -446,11 +449,12 @@
                                 (= (length (dict-ref i1 i)) (length (dict-ref i2 i)))
                                 #t))
                           common)])
-    (cons (sort-by-keyword (filter-common commonf i1 car))
-          (sort-by-keyword (filter-common commonf i2 car)))))
+    (cons (sort-by-key (filter-common commonf i1 car))
+          (sort-by-key (filter-common commonf i2 car)))))
 
                 
-
+; Glyph Glyph -> (Glyph . Glyph) or False
+; if the two Glyph can be made interpolable produce a pair of Glyph, otherwise False
 (define (compatible-glyphs g1 g2)
   (let ((c1 (glyph-contours g1))
         (c2 (glyph-contours g2)))
@@ -465,10 +469,9 @@
                 (struct-copy glyph g2 [components c2] [anchors a2])))
         #f)))
 
-; match-contour-order
-; List of contours, List of contours -> List of contours
-; match the second list of contours against the first list.
 
+; (listOf Contour) (listOf Contour) -> (listOf Contour)
+; match the second list of contours against the first list.
 (define (match-contour-order cs1 cs2)
   (define (contour-distance c1 c2)
     (foldl (lambda (p1 p2 d)
@@ -490,27 +493,26 @@
            (cons cs2 '())
            cs1))))
 
-; match-glyphs-contours
-; glyph, glyph -> glyph
-; match the contours of the second glyph against the first
 
+; Glyph Glyph -> Glyph
+; match the contours of the second glyph against the first
 (define (match-glyphs-contours g1 g2)
   (let ([cs1 (glyph-contours g1)]
         [cs2 (glyph-contours g2)])
     (struct-copy glyph g2 [contours (match-contour-order cs1 cs2)])))
 
              
-; match-fonts-contours
-; font, font -> font
-; match the contours of the second font against the first
 
+; Font, Font -> Font
+; match the contours of the second font against the first
 (define (match-fonts-contours f1 f2)
   (let ([gs1 (font-glyphs f1)]
         [gs2 (font-glyphs f2)])
     (struct-copy font f2 [glyphs (map match-glyphs-contours gs1 gs2)])))
                   
              
-
+; (listOf Component) (listOf Component) -> (listOf Component) (listOf Component)
+; produce two interpolable component lists
 (define (compatible-components c1 c2)
   (let ((common-comp (set->list 
                       (set-intersect (list->set (map car c1))
@@ -518,7 +520,8 @@
          (values (filter-common common-comp c1 car)
                  (filter-common common-comp c2 car))))
 
-
+; (listOf Anchor) (listOf Anchor) -> (listOf Anchor) (listOf Anchor)
+; produce two interpolable anchor lists
 (define (compatible-anchors a1 a2)
   (let ((common-anc (set->list 
                      (set-intersect (list->set (map car a1))
@@ -526,35 +529,27 @@
          (values (filter-common common-anc a1 car)
                  (filter-common common-anc a2 car))))
 
-
-    
-           
-    
+; (listOf T1) (listOf T2) (T2 -> T1) ->  (listOf T2) 
+; keep the elements i of lst for which (key i) is member of common (?)
 (define (filter-common common lst key)
   (filter (lambda (i) (member (key i) common))
           lst))
                      
-        
-                                 
-
+; Component -> TransformationMatrix                                  
+; produce a transformation matrix from a component
 (define (component->matrix c)
-  (match c
-    [(list base x-scale xy-scale yx-scale y-scale x-offset y-offset) 
-     (matrix 3 3 x-scale yx-scale 0 
-             xy-scale y-scale 0
-             x-offset y-offset 1)]))
+  (apply trans-mat (cdr c)))
 
+; TransformationMatrix -> Component
+; produce a component from a transformation matrix
 (define (matrix->component m)
-  (list (matrix-ref m 0 0) (matrix-ref m 0 1) (matrix-ref m 1 0) 
-         (matrix-ref m 1 1) (matrix-ref m 0 2) (matrix-ref m 1 2)))
-   
-    
-              
-     
-; decompose-glyph
-; Font, Glyph, Symbol -> Glyph
-; decompose glyph components to outlines
+  (match m
+    [(trans-mat x-scale xy-scale yx-scale y-scale x-offset y-offset)
+     (list x-scale xy-scale yx-scale y-scale x-offset y-offset)]))
 
+
+; Font Glyph Symbol -> Glyph
+; decompose glyph components to outlines
 (define (decompose-glyph f g)
   (let* ([cs (glyph-components g)])
     (if (null? cs)
@@ -566,6 +561,8 @@
                        [components null]
                        [contours (append (glyph-contours g) dcs)])))))
 
+; Component Glyph -> (listOf Contour)
+; reduce the component to a list of contour
 (define (component->outlines c b)
   (define (transform-contour c m)
     (map (lambda (p)
