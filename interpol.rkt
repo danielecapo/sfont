@@ -2,10 +2,13 @@
 
 (require (planet wmfarr/plt-linalg:1:13/matrix)
          "flatfont.rkt"
-         "vec.rkt")
+         "vec.rkt"
+         "properties.rkt")
+
 (provide (all-defined-out))
 
-                      
+;;; TRANSFORMATIONS FOR "FLAT" FONTS
+
 (define (font:transform o m)
   ((match o
      [(font _ _ _ _) font-transform]
@@ -49,24 +52,22 @@
 
 
 
-;[advance 
-;                (vec->list 
-;                 (transform 
-;                  (list->vec (glyph-advance g))
-;                  m))]
-  
+; Font TransformationMatrix -> Font
+; produce a new font by applying the transformation to each glyph
 (define (font-transform f m)
   (struct-copy font f
                [glyphs (map (lambda (g) (glyph-transform g m))
                             (font-glyphs f))]))
 
+; Font Number [Number] -> Font
+; produce a new font with info, kerning and glyphs scaled 
 (define (font-scale f sx [sy sx])
   (struct-copy font (glyphs-scale f sx sy)
                [info (info-scale (font-info f) sx sy)]))
 
-;; glyphs-scale
-;; Font, Number, Number -> Font
-;; produce a new font with glyphs and kerning scaled (do not affect info)
+
+; Font Number [Number] -> Font
+; produce a new font with glyphs and kerning scaled (do not affect info)
 (define (glyphs-scale f sx [sy sx])
   (struct-copy font f
                [info (font-info f)]
@@ -75,7 +76,8 @@
                             (font-glyphs f))]))
 
 
-
+; Kerning Number -> Kerning
+; Scale kerning
 (define (kerning-scale kern s)
   (map (lambda (k)
          (cons (car k) 
@@ -84,6 +86,8 @@
                     (cdr k))))
        kern))
 
+; Info Number [Number] -> Info
+; Scale Info
 (define (info-scale i sx [sy sx])
   (dict-map i (lambda (key value)
                 (cons key 
@@ -91,6 +95,8 @@
                         * value) sx sy)))))
 
     
+;;; Functions used for info
+
 (define (->x fn n)
   (lambda (x y)
     (fn n x)))
@@ -170,6 +176,9 @@
     (postscriptDefaultWidthX ,->x)
     (postscriptNominalWidthX ,->x)))
                
+
+; Glyph TransformationMatrix -> Glyph
+; apply the tranf. matrix to the glyph
 (define (glyph-transform g m)
   (struct-copy glyph g
                [contours 
@@ -182,6 +191,8 @@
                 (map (lambda (a) (anchor-transform a m))
                      (glyph-anchors g))]))
 
+; Glyph Number [Number] -> Glyph
+; Scale the glyph
 (define (glyph-scale g sx [sy sx])
   (struct-copy glyph g
                [contours 
@@ -194,39 +205,50 @@
                 (map (lambda (a) (anchor-scale a sx sy))
                      (glyph-anchors g))]
                [advance (vec->list 
-                         (vec-quick-scale (list->vec (glyph-advance g))
+                         (scale (list->vec (glyph-advance g))
                                           sx sy))]))
 
+; Contour TransformationMatrix -> Contour
+; apply the tranf. matrix to the contour
 (define (contour-transform c m)
   (map (lambda (p)
          (vec->list (transform (list->vec p) m)))
        c))
 
+; Contour Number [Number] -> Contour
+; Scale the contour
 (define (contour-scale c sx [sy sx])
   (map (lambda (p)
-         (vec->list (vec-quick-scale (list->vec p) sx sy)))
+         (vec->list (scale (list->vec p) sx sy)))
        c))
 
+; Anchor TransformationMatrix -> Anchor
+; apply the tranf. matrix to the anchor
 (define (anchor-transform a m)
   (match a
     [(list name x y) (cons name (vec->list (transform (vec x y) m)))]))
 
+; Anchor Number [Number] -> Anchor
+; Scale the anchor
 (define (anchor-scale a sx [sy sx])
   (match a
-    [(list name x y) (cons name (vec->list (vec-quick-scale (vec x y) sx sy)))]))
+    [(list name x y) (cons name (vec->list (scale (vec x y) sx sy)))]))
 
-
-
-
+; Component TransformationMatrix -> Component
+; apply the tranf. matrix to the component
 (define (component-transform c m)
   (match c
     [(list base x-scale xy-scale yx-scale y-scale x-offset y-offset) 
      (cons base (matrix->component (matrix-mul m (component->matrix c))))]))
 
+; Component Number [Number] -> Component
+; scale the component
 (define (component-scale c sx [sy sx])
   (match c
     [(list base x-scale xy-scale yx-scale y-scale x-offset y-offset) 
      (list base (* x-scale sx) (* xy-scale sx) (* yx-scale sy) (* y-scale sy) (* x-offset sx) (* y-offset sy))])) 
+
+;;; MATH operations for fonts data
 
 (define (contour+ c1 . cs)
   (apply map (lambda (p1 . ps)
@@ -316,8 +338,14 @@
                               (cons s1 ss)))))
 
 
+;; PROJECTIONS
+
+; T -> T
+; project the object on the x axis (set every y coord. to zero)
 (define (x-> o)
   (font:scale o 1 0))
 
+; T -> T
+; project the object on the y axis (set every x coord. to zero)
 (define (y-> o)
   (font:scale o 0 1))  
