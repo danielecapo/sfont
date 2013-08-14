@@ -210,7 +210,7 @@ bold
  )
 
 (code+expr
- (translate bold (vec -200 0))
+ (translate bold -200 0)
  )
 
 (code+expr

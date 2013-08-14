@@ -1,17 +1,17 @@
 #lang racket
 (require "interpol.rkt"
          "flatfont.rkt"
-         (prefix-in ufo: "font.rkt")
+         (prefix-in ufo: "ufo.rkt")
          "vec.rkt"
          "fontpict.rkt"
-         "utilities.rkt"
-         (planet wmfarr/plt-linalg:1:13/matrix))
+         "utilities.rkt")
 
 (provide (except-out (all-from-out racket) + - * /)
          (rename-out [prod *]
                      [add +]
                      [sub -]
                      [div /]
+                     [m-transform transform]
                      [m-translate translate]
                      [m-rotate rotate]
                      [m-scale scale]
@@ -19,9 +19,10 @@
                      [m-skew-y skew-y]
                      [m-reflect-x reflect-x]
                      [m-reflect-y reflect-y]
-                     [flatfont:font->ufo flatfont->ufo])
+                     [font->ufo flatfont->ufo])
          (all-from-out "fontpict.rkt")
          (except-out (all-from-out "vec.rkt")
+                     transform
                      translate
                      rotate
                      scale
@@ -40,20 +41,21 @@
          fix-components)
 
 
-;(define current-transformation 
-;  (make-parameter
-;   (list->matrix
-;    '((1 0 0)
-;      (0 1 0)
-;      (0 0 1)))))
-
-
-(define (m-translate a v)
+(define (m-transform a m)
   (match a
     [(? font? _)
-     (font:translate a v)]
+     (font:transform a m)]
     [(? vec? _)
-     (translate a v)]
+     (transform a m)]
+    [_ (error "Invalid operand for transform")]))
+
+
+(define (m-translate a x y)
+  (match a
+    [(? font? _)
+     (font:translate a x y)]
+    [(? vec? _)
+     (translate a x y)]
     [_ (error "Invalid operand for translate")]))
 
 (define (m-rotate a angle)
@@ -163,7 +165,7 @@
            (apply interpolables
                   (map (lambda (p)
                          (prepare-for-interpolation
-                          (flatfont:ufo->font (ufo:read-ufo p))
+                          (ufo->font (ufo:read-ufo p))
                           #f))
                        (list path ...))))))
 
@@ -209,11 +211,11 @@
 
 (define (write-font f path #:round-coord [round-coord #f] #:format [format 2])
   (let ([rf (if round-coord 
-                (with-precision (1) (ufo:font-round (flatfont:font->ufo f)))
-                (flatfont:font->ufo f))])
+                (with-precision (1) (ufo:font-round (font->ufo f)))
+                (font->ufo f))])
     (ufo:write-ufo ((if (= format 2)
-                        ufo:ufo3->ufo2
-                        ufo:ufo2->ufo3)
+                        ufo:font->ufo2
+                        ufo:font->ufo3)
                     rf)
                    path)))
   

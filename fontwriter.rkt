@@ -19,12 +19,7 @@
          ovs-height
          font
          from
-         pi/2
-         pi/3
-         pi/4
-         pi/6
-         2pi
-         °
+        
          (all-from-out "font.rkt")
          (all-from-out "bezier.rkt")
          (except-out (all-from-out "vec.rkt")
@@ -98,12 +93,7 @@
 
     
 
-; °
-; Number -> Number
-; convert from degree to radians
 
-(define (° d)
-  (* (/ d 180) pi))
 
 ; process-path
 ; path -> bezier curve
@@ -161,11 +151,7 @@
        (x y t) (xm y)
        (x2 y t) (x2 ym))))
 
-(define pi/2 (/ pi 2))
-(define pi/3 (/ pi 3))
-(define pi/4 (/ pi 4))
-(define pi/6 (/ pi 6))
-(define 2pi (* 2 pi))
+
 
 
 

@@ -4,9 +4,7 @@
          "vec.rkt"
          "fontpict.rkt"
          (prefix-in bz: "bezier.rkt")
-         "properties.rkt"
-         slideshow/pict-convert
-         (planet wmfarr/plt-linalg:1:13/matrix))
+         slideshow/pict-convert)
 
 (provide 
  (except-out (all-defined-out)
@@ -239,7 +237,7 @@
 ; produce a ufo anchor from an anchor
 (define (anchor->ufo a)
   (match a
-   [(list name x y) (ufo:anchor x y name #f #f)]))
+   [(list name x y) (ufo:anchor (vec x y) name #f #f)]))
 
 ; Component -> Ufo:Component
 ; produce a component anchor from a component

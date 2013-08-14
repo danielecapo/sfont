@@ -5,23 +5,11 @@
 (provide (all-defined-out))
 
 
-(define-values (prop:transform transform? transform-ref)
-  (make-struct-type-property 'transform))
+;(define-values (prop:transform transform? transform-ref)
+;  (make-struct-type-property 'transform))
       
-(define-generics geometric
-  (transform geometric m)
-  (translate geometric x y)
-  (scale geometric fx [fy])
-  (rotate geometric a)
-  (skew-x geometric a)
-  (skew-y geometric a)
-  (reflect-x geometric)
-  (reflect-y geometric))
 
-(define (ufo-pict-convertible f) 
-  #f)
-(define (ufo-glyph-pict-convertible f) 
-  #f)
+
 
   
 ;;; property prop:has-matrix  

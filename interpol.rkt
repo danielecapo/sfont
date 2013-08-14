@@ -1,9 +1,7 @@
 #lang racket
 
-(require (planet wmfarr/plt-linalg:1:13/matrix)
-         "flatfont.rkt"
-         "vec.rkt"
-         "properties.rkt")
+(require "flatfont.rkt"
+         "vec.rkt")
 
 (provide (all-defined-out))
 
@@ -32,8 +30,8 @@
   (define (id o args ...)
     (font:transform o matrix-form)))
 
-(define-transform (font:translate v)
-  (translation-matrix (vec-x v) (vec-y v)))
+(define-transform (font:translate x y)
+  (translation-matrix x y))
 
 (define-transform (font:rotate angle)
   (rotation-matrix angle))
@@ -239,7 +237,7 @@
 (define (component-transform c m)
   (match c
     [(list base x-scale xy-scale yx-scale y-scale x-offset y-offset) 
-     (cons base (matrix->component (matrix-mul m (component->matrix c))))]))
+     (cons base (matrix->component (trans-mat* m (component->matrix c))))]))
 
 ; Component Number [Number] -> Component
 ; scale the component

@@ -4,7 +4,13 @@
          num->int
          code+expr
          square
-         double)
+         double
+         °
+         pi/2
+         pi/3
+         pi/4
+         pi/6
+         2pi)
 ; n-groups
 ; List [Any], Natural -> List of List [Any]
 ; (n-groups '(a b c d e f) 2) -> '((a b) (b c) (c d) (d e) (e f))
@@ -37,3 +43,17 @@
 
 (define (double n) (* n 2))
 
+(define (degree->rad angle)
+  (* pi (/ angle 180.0)))
+
+
+; Number -> Number
+; convert from degree to radians
+(define (° d)
+  (* (/ d 180) pi))
+
+(define pi/2 (/ pi 2))
+(define pi/3 (/ pi 3))
+(define pi/4 (/ pi 4))
+(define pi/6 (/ pi 6))
+(define 2pi (* 2 pi))

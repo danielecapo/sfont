@@ -6,34 +6,19 @@
          "utilities.rkt"
          racket/generic)
 
-(provide approx
-         *precision*
-         set-precision!
-         with-precision
-         (struct-out vec)
-         (struct-out trans-mat)
-         vec=
-         vec-approx=
-         vec->list
-         list->vec
-         vec-length
-         vec-angle
-         vec+
-         vec-
-         vec*
-         trans-mat*
-         aligned?
-         translation-matrix
-         rotation-matrix
-         shear-matrix
-         scale-matrix
-         signed-area
-         signed-polygonal-area
-         intersect-hor
-         intersect-vert
-         pass-through-hor?
-         pass-through-vert?)
+(provide (all-defined-out))
+  
 
+;;; Generic interface for geometric transformations
+(define-generics geometric
+  (transform geometric m)
+  (translate geometric x y)
+  (scale geometric fx [fy])
+  (rotate geometric a)
+  (skew-x geometric a)
+  (skew-y geometric a)
+  (reflect-x geometric)
+  (reflect-y geometric))
 
 ;;; DEFINITIONS 
 ;;; *precision* is a variable used to approximate numbers
