@@ -395,7 +395,8 @@
 ; Font -> Font
 ; produce a new font that try to be compatible with ufo3 spec     
 (define (font->ufo3 f) 
-  (struct-copy font f [format 3]
+  (struct-copy font (kern-groups2->3 f)
+               [format 3]
                [layers (map-layers
                         (lambda (l)
                           (struct-copy layer l
@@ -979,3 +980,108 @@
                                                    [points (contour-points (bezier->contour (reverse b)))]))
                                     (glyph-contours g) cs)])
         g)))
+
+; Font -> Font
+; convert kerning groups' names to UFO3 
+
+(define (kern-groups2->3 f)
+  (let* ([gn (kerning-group-names f)]
+         [ut (group-name-update-table (car gn) (cdr gn))])
+  (struct-copy font f
+               [groups (update-group-names (font-groups f) ut)]
+               [kerning (update-kern-names (font-kerning f) ut)])))
+
+; Font -> ((listOf Symbol) . (listOf Symbol))
+; produce a list of kerning groups' names
+(define (kerning-group-names f)
+  (let ([g (group-names (font-groups f))]
+        [k1 (all-kerning-ref1 (font-kerning f))]
+        [k2 (all-kerning-ref2 (font-kerning f))])
+    (cons
+     (filter (lambda (n) (member n k1)) g)
+     (filter (lambda (n) (member n k2)) g))))
+
+; Groups -> (listOf Symbol)
+; produce a list of all group names
+(define (group-names gs)
+  (hash-map gs (lambda (k v) k)))
+    
+; Kerning -> (listOf Symbol)
+; Produce a list of all references used in kerning for the left side
+(define (all-kerning-ref1 ks)
+  (remove-duplicates
+   (hash-map ks (lambda (k v) k))))
+
+; Kerning -> (listOf Symbol)
+; Produce a list of all references used in kerning for the right side
+(define (all-kerning-ref2 ks)
+  (remove-duplicates
+   (foldl append  '()
+          (hash-map ks (lambda (k v)
+                         (hash-map v (lambda (k2 v2) k2)))))))
+
+; (listOf Symbol) (listOf Symbol) -> HashTable (oldname . newname)
+; Produce an update table for kerning groups
+(define (group-name-update-table gl gr) 
+  (define (aux gn side)
+    (foldl (lambda (n acc)
+           (if (valid-kerning-group-name? n side)
+               acc
+               (cons (cons n (update-group-name n side))
+                     acc)))
+         '()
+         gn))
+  (make-immutable-hash (append (aux gl 'left) (aux gr 'right))))
+
+; Symbol Symbol -> Boolean
+; True if the group's name complies with UFO3 specs
+(define (valid-kerning-group-name? n side)
+  (let ([ns (symbol->string n)])
+    (cond [(eq? side 'left)
+           (starts-with? ns "public.kern1.")]
+          [(eq? side 'right)
+           (starts-with? ns "public.kern2.")])))
+
+; String String-> Boolean
+; True if the string starts with the prefix
+(define (starts-with? s pre)
+  (if (> (string-length s) (string-length pre))
+      (string=? (substring s 0 (string-length pre)) pre)
+      #f))
+  
+; Symbol Symbol -> Symbol
+; produce an updated a kerning group name
+(define (update-group-name n side)
+  (let ([ns (symbol->string n)])
+    (string->symbol
+     (cond [(eq? side 'left)
+            (string-append "public.kern1." ns)]
+           [(eq? side 'right)
+            (string-append "public.kern2." ns)]))))
+
+; Groups HashTable -> Groups
+; produce a new group table with updated names
+(define (update-group-names gs gut)
+  (make-immutable-hash
+   (hash-map gs (lambda (k v)
+                  (let ([un (hash-ref gut k #f)])
+                    (cons (if un un k)
+                          (map (lambda (vn) 
+                                 (let ([vun (hash-ref gut vn #f)])
+                                  (if vun vun vn)))
+                               v)))))))
+
+; Kerning HashTable -> Kerning
+; produce a new kerning table with updated names
+(define (update-kern-names ks gut)
+  (make-immutable-hash
+   (hash-map ks (lambda (k v)
+                  (let ([un (hash-ref gut k #f)])
+                    (cons (if un un k)
+                          (make-immutable-hash
+                           (hash-map v
+                                     (lambda (k2 kv) 
+                                       (let ([vun (hash-ref gut k2 #f)])
+                                         (cons (if vun vun k2) kv)))))))))))
+
+                     
