@@ -1,4 +1,4 @@
-Font-Racket
+sfont
 
 
 The goal of this project is to produce a library to work with fonts in Racket.
@@ -12,15 +12,16 @@ Once 'loaded' the font is represented in Racket struct and drawn in the REPL.
 
 It can perform operations on fonts, using the idea of font math (see http://code.typesupply.com/wiki/FontMath). The operations are implemented on a different and simpler representation of the data, they works with contours, components, anchors and kerning pairs.
 These operations can be used to implement interpolations.
-While they aren't assured to always work they can be actually useful to make complex operations and exporting the result to UFO.
+While they aren't assured to always work they can actually be useful to make complex operations and exporting the result to UFO.
 
 The other functionality that need to be developed more carefully is a system of macros used to produce parametric fonts. There is a first approximation of it in fontwriter.rkt.
 
-To learn more about it, I suggest to read the files in the examples directory, they have comment that explain the usage.
+To learn more about it, I suggest to read the files in the examples directory, they have comments that explain the usage.
 
-The examples use two ufo files from the Adobe Source Sans Pro code that can be downloaded from github. If you want to run the example you need to get these files and rewrite the correct path to them.
+The examples use two ufo files from the Adobe Source Sans Pro code that can be downloaded from github. If you want to run the example you need to get these files and rewrite the correct path to them, or you can use other UFOs.
 
 Every comment, suggestion and critique is wellcome.
+
 
 
 
