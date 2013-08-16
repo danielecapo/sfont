@@ -1,5 +1,8 @@
 #lang racket
 
+;; This file borrows concepts from fontMath by Tal Leming (https://github.com/typesupply/fontMath)
+;; in particular I have used its list of 'interpolable' Fontinfos 
+
 (require "ufo.rkt"
          "vec.rkt"
          "fontpict.rkt"
