@@ -3,7 +3,8 @@
          "bezier.rkt"
          (prefix-in ufo: "ufo.rkt")
          "utilities.rkt"
-         "fontpict.rkt")
+         "fontpict.rkt"
+         "glyphlist.rkt")
 
 (set-sample-size! 150)
 
@@ -221,10 +222,7 @@
 ; note: this has to be changed to deal with common names
 
 (define (unicode name)
-  (let ([ns (symbol->string name)])
-    (if (> (string-length ns) 1)
-        '()
-        (list (char->integer (string-ref ns 0))))))
+  (hash-ref adobe-glyph-list name '()))
 
 (define-syntax glyph
   (syntax-rules (contours locals)

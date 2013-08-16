@@ -3,6 +3,7 @@
 ;;;; Adobe glyph list
 ;;;; http'//partners.adobe.com/public/developer/en/opentype/glyphlist.txt
 
+(provide (all-defined-out))
 (define adobe-glyph-list
   (hash
    'A #x0041
