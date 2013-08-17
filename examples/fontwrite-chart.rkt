@@ -29,7 +29,7 @@
          [slicer (chart-slicer mid-h mid-v radius (/ pi 5))])
         (glyphs
          (glyph 'a
-                (/--/ width)
+                (metrics (/--/ width))
                 [contours
                  (slicer pos angle)]))))
 
@@ -51,10 +51,10 @@
             [slicer (chart-slicer mid-h mid-v radius (/ (* 2 pi) divider))])
            (glyphs
             (glyph 'space
-                   (/--/ width)
+                   (metrics (/--/ width))
                    [contours #f])
             (glyph g
-                   (/--/ 0)
+                   (metrics (/--/ 0))
                    [contours
                     (slicer (foldl + 0 (range ampl)) ampl)]) ...
            ))]))

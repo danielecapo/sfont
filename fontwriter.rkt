@@ -37,13 +37,14 @@
                      [reflect-y* reflect-y]))
 
 
+
+
 (define-syntax ~
   (syntax-rules (-- insert)
-    [(~) '()]
+    [(~) '()]     
     [(~ (x y) (insert vlist) . r)
      (join-subpaths (list (vec x y))
                     (~ (insert vlist) . r))]
-   
     [(~ (insert vlist) . r)
      (join-subpaths vlist (~ . r))]
     [(~ (x y)) (list (vec x y))]
