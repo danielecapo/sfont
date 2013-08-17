@@ -13,7 +13,6 @@
          ellipse
          arc
          glyph
-        ; /--/
          alg
          ovs
          ovs-height
@@ -36,20 +35,6 @@
                      [skew-y* skew-y]
                      [reflect-x* reflect-x]
                      [reflect-y* reflect-y]))
-
-; (~ (10 20) (-- x y) (10 20 0.2) (20 39) (-- 10 2) (100 50) (50 100) (120 200) (insert path))
-#;
-(define-syntax-rule (~ (c v ...) ...)
-  (process-path (foldl (lambda (pe p)
-                         (append p 
-                                 (if (eq? (car pe) insert)
-                                     (let ([ips (map vec->list (cadr pe))])
-                                       (cons (cons -- (first ips))
-                                             (cdr ips)))
-                                     (list pe))))
-                       '()
-                       (list (list c v ...) ...))))
-
 
 
 (define-syntax ~
@@ -76,10 +61,9 @@
                    (vec+ (vec x1 y1) (vec* (vec- (vec cx cy) (vec x1 y1)) t1)))
              (~ (x1 y1) . r))]))
 
-; join-subpaths
-; BezierCurve, BezierCurve -> BezierCurve
-; joins two subpaths with a straight line
 
+; Bezier, Bezier -> Bezier
+; joins two subpaths with a straight line
 (define (join-subpaths p1 p2)
   (cond [(null? p2) p1]
         [(null? p1) p2]
@@ -94,51 +78,17 @@
 
 
 
-; process-path
-; path -> bezier curve
-; produce a bezier vurve from instruction in 'path'
-#;
-(define (process-path pth)
-  (letrec ([aux (lambda (pth acc)
-                  (match pth
-                    [(list p) acc]
-                   
-                    [(list-rest `(,x ,y) `(-- ,x ,y) p)
-                     (aux (cons `(,x ,y) p)
-                          acc)]
-                    [(list-rest `(,x ,y) `(-- ,x1 ,y1) p)
-                     (aux (cons `(,x1 ,y1) p)
-                          (append acc (list (vec x y) (vec x1 y1) (vec x1 y1))))]
-                    [(list-rest `(,x1 ,y1) `(,cx1 ,cy1) `(,cx2 ,cy2) `(,x2 ,y2) p)
-                     (aux (cons `(,x2 ,y2) p)
-                          (append acc (list (vec cx1 cy1) (vec cx2 cy2) (vec x2 y2))))]
-                    [(list-rest `(,x1 ,y1) `(,cx ,cy ,t) `(,x2 ,y2) p)
-                     (aux (cons `(,x2 ,y2) p)
-                          (append acc (list (vec+ (vec x1 y1) (vec* (vec- (vec cx cy) (vec x1 y1)) t)) 
-                                            (vec+ (vec x2 y2) (vec* (vec- (vec cx cy) (vec x2 y2)) t))
-                                            (vec x2 y2))))]
-                    [(list-rest `(,x1 ,y1) `(,cx ,cy ,t1 ,t2) `(,x2 ,y2) p)
-                     (aux (cons `(,x2 ,y2) p)
-                          (append acc (list (vec+ (vec x1 y1) (vec* (vec- (vec cx cy) (vec x1 y1)) t1)) 
-                                            (vec+ (vec x2 y2) (vec* (vec- (vec cx cy) (vec x2 y2)) t2))
-                                            (vec x2 y2))))]
-                   
-                    ))])
-    (aux pth (list (vec (caar pth) (cadar pth))))))
 
-
-; rect
-; Number, Number, Number, Number -> bezier
+; Number, Number, Number, Number -> Bezier
 ; produce a rectangle (as a bezier curve) with lower left corner in (x, y) with width w and height h
 (define (rect x y w h)
   (let ([x2 (+ x w)]
         [y2 (+ y h)])
     (~ (x y) -- (x2 y) -- (x2 y2) -- (x y2) -- (x y))))
 
-; rect
-; Number, Number, Number, Number -> bezier
-; produce an ellipse (as a bezier curve) with lower left corner (of the bounding box) in (x, y) with width w and height h
 
+; Number, Number, Number, Number -> Bezier
+; produce an ellipse (as a bezier curve) with lower left corner (of the bounding box) in (x, y) with width w and height h
 (define (ellipse x y w h)
   (let* ([x2 (+ x w)]
          [y2 (+ y h)]
@@ -151,9 +101,8 @@
        (x2 y t) (x2 ym))))
 
 
-
-
-
+; Number Number Number Number -> Bezier
+; produce an arc with center (cx cy) radius r and angle a
 (define (arc cx cy r a)
   (let* ([x1 (+ cx r)]
          [y2 (+ cy r)]
@@ -169,6 +118,7 @@
                                            (rotate* (arc cx cy r (- a pi/2))
                                                     pi/2)))])))
 
+; Syntax for defining geometric transformations
 (define-syntax-rule (define-transform name fn)
   (define-syntax name
     (syntax-rules (from)
@@ -198,23 +148,14 @@
 
 
 ;(glyph 'a 
-;       ([a 0]
+;       (locals 
+;        [a 0]
 ;        [b 100]
 ;        [c 500])
-;       (/--/ 400)
-;       [(~ (0 0) (30 30) ...)
-;        (circle a b c c)])
+;       (metrics (/--/ 400))
+;       [contours (~ (0 0) (30 30) ...)
+;                 (circle a b c c)])
 ;
-
-; /--/
-; Number -> procedure
-; produce a procedure that calculate the advance width and transform beziers in ufo contours
-#;
-(define (/--/ n)
-  (lambda (cnts)
-    (values
-     (ufo:advance n 0)
-     (map ufo:bezier->contour cnts))))
 
 
 ; Symbol -> Number
@@ -237,9 +178,7 @@
        (glyph-metric
          (ufo:glyph 1 name (ufo:advance 0 0) (unicode name) #f #f '() '() 
                     (map ufo:bezier->contour (build-contour-list contour ...)) '() #f)
-         metric-form ...))]
-    
-    ))
+         metric-form ...))]))
 
 (define-syntax glyph-metric
   (syntax-rules (/--/ /<- ->/)
@@ -289,7 +228,8 @@
             [sr (cdr sb)])
        (glyph-metric g (/<- (+ a sl sr (- r)) rm) (/--/ a)))]))
      
-     
+
+; (Bezier or (listOf Bezier) ... -> (listOf Bezier)
 (define (build-contour-list . cnts)
   (if (not (car cnts))
       '()
@@ -302,79 +242,28 @@
 
 
 
-;    [(with-transformation [(tfn . args) (rtfn . rargs) ...] cnt ...)
-;     (with-transformation [(rtfn . rargs) ...] . (with-transformation [(tfn . args)] cnt ...))]))
 
-;(font (augusto 1000 720 [weight 0.5] [width 0.5])
-;      (alignments
-;       [a 0 -10]
-;       [b (* width 100) 10])
-;      (variables
-;       [k (* a 2)])
-;      (glyph 'A
-;         ([a 0]
-;          [b 100]
-;          [c 500])
-;         (/--/ 500)
-;         [(ellipse a b c c)])
-;      ...)
        
 ; Alignemnt is a pair, the first element is the position, the second represents the height of overshoot
 
-; alg 
+
 ; Alignment -> Number
 ; return the position of alignment
-
 (define (alg al)
   (car al))
 
 
-; ovs
+
 ; Alignment -> Number
 ; return the position of overshoot for Alignment
-
 (define (ovs al)
   (+ (alg al) (ovs-height al)))
 
-; ovs-height
+
 ; Alignment -> Number
 ; return the height of overshoot for Alignment
-
 (define (ovs-height al)
   (cadr al))
-#;
-(define-syntax build-alignments
-  (syntax-rules (-is-ascender)
-    [(build-alignments ()) ()]
-    [(build-alignments ([a al ov] . r)) ([a (list al ov)] . ((build-alignments r)))]
-    [(build-alignments ([a al ov -is-ascender] . r)) ([a (list al ov)] . ((build-alignments r)))]))
-
-
-#;
-(define-syntax font
-  (syntax-rules (alignments variables :use-as-ascender)
-    [(font (name upm param ...)
-           (alignments [n al ovs . r] ...)
-           (variables v ...)
-           glyph ...)
-     (define (name param ...)
-       (let* ([n (list al ovs)] ...
-             ; [ascender (list asc-al asc-ovs)]
-              v ...)
-         (ufo:font 2 "ufo-rkt"
-                   (make-immutable-hash
-                    (list (cons 'unitsPerEm upm)
-                         ; (cons 'ascender asc-al)
-                         ; (cons 'descender (- asc-al upm))
-                          (cons 'familyName (symbol->string (quote name)))
-                          (cons 'postscriptFontName (symbol->string (quote name)))
-                          (cons 'versionMajor 1)
-                          (cons 'versionMinor 0)))
-                   #f #f #f
-                   (list 
-                    (ufo:layer 'public.default #f
-                               (list glyph ...)))
-                   #f #f #f)))]))
 
 
 (define-syntax emit-font-form
@@ -400,6 +289,7 @@
                    #f #f #f))]))
 
 
+; (Glyph or (listOf Glyph)) ... -> (listOf Glyph)
 (define (build-glyphs-list . glyphs)
   (foldl (lambda (g r) (if (list? g) 
                            (append r g)
@@ -442,125 +332,6 @@
                                     () 
                                     glyph ...))]))
 
-;     (step-1 name
-;             (als ...)
-;             (v ...)
-;             (glyph ...)
-;             ()
-;             ()
-;       )]))
-
-;     (step-1 (name upm param ...)
-;             ()
-;             ()
-;             (als ...)
-;             (v ...)
-;             glyph ...)]))
-
-#;
-(define-syntax step-1
-  (syntax-rules (:use-as-ascender :use-as-descender)
-    [(step-1 name
-             ([n a o] . als)
-             (v ...)
-             (glyph ...)
-             . r)
-     (let ([n (list a o)])
-       (step-1 name
-               als
-               (v ...)
-               (glyph ...)
-               . r))]
-    
-    [(step-1 name
-             ([n a o :use-as-ascender] . als)
-             (v ...)
-             (glyph ...)
-             as
-             desc)
-     (let ([n (list a o)])
-       (step-1 name
-               als
-               (v ...)
-               (glyph ...)
-               n
-               desc))]
-    [(step-1 name
-             ([n a o :use-as-descender] . als)
-             (v ...)
-             (glyph ...)
-             as
-             desc)
-     (let ([n (list a o)])
-       (step-1 name
-               als
-               (v ...)
-               (glyph ...)
-               asc
-               n))]
-    [(step-1 name
-             ()
-             (v ...)
-             (glyph ...)
-             asc
-             desc)
-     (emit-font-form name asc desc (v ...) glyph ...)]))
-
-
-
-#;
-(define-font (squarefont 1000  asc* [x-height 500] [width 0.5] [weight 0.5]) 
-        (alignments
-         [base 0 -10]
-         [xh x-height 10]
-         [dsc -200 -10]
-         [ascender 740 10]
-         [asc* 750 0])
-        (
-         [gw (* 1000 width)]
-         [v-stem (* x-height weight 0.333)]
-         [h-stem (* v-stem 0.9)]
-         [space (/ (- gw (* 2 v-stem)) 2)]
-         [x1 space]
-         [y1 (alg base)]
-         [ym (/ x-height 2)]
-         [x2 (+ space gw (- v-stem))])
-        (glyph 'a
-               ()
-               (/--/ (+ gw space space))
-               [(rect x1 y1 gw h-stem)
-                (rect x1 y1 v-stem ym)
-                (rect x1 (- ym (/ h-stem 2)) gw h-stem)
-                (rect x2 y1 v-stem x-height)
-                (rect x1 (- x-height h-stem) gw h-stem)])
-        (glyph 'b
-               ()
-               (/--/ (+ gw space space))
-               [(rect x1 y1 v-stem (alg ascender))
-                (rect x1 y1 gw x-height)
-                (reverse (rect (+ x1 v-stem) (+ y1 h-stem) 
-                               (- gw (* 2 v-stem)) (- x-height (* 2 h-stem))))])
-        (glyph 'c
-               ([term ym])
-               (/--/ (+ gw space space))
-               [(rect x1 y1 v-stem x-height)
-                (rect x1 (- x-height h-stem) gw h-stem)
-                (rect x1 y1 gw h-stem)
-                (rect (+ x1 gw (- v-stem)) (- x-height term) v-stem term)])
-        (glyph 'd
-               ()
-               (/--/ (+ gw space space))
-               [(rect x1 y1 gw x-height)
-                (reverse (rect (+ x1 v-stem) (+ y1 h-stem) 
-                               (- gw (* 2 v-stem)) (- x-height (* 2 h-stem))))
-                (rect (+ x1 gw (- v-stem)) y1 v-stem (alg ascender))])
-        (glyph 'o
-               ()
-               (/--/ (+ gw space space))
-               [(rect x1 y1 gw x-height)
-                (reverse (rect (+ x1 v-stem) (+ y1 h-stem) 
-                               (- gw (* 2 v-stem)) (- x-height (* 2 h-stem))))])
-        )
 
 
 (define-syntax (let-alignment stx)
