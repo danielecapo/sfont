@@ -429,7 +429,7 @@
 ; Font Glyph Symbol Boolean -> BoundingBox
 ; produces the Bounding Box for the given glyph
 (define (glyph-bounding-box f g [ln 'public.default] [components #t])
-  (let* ([g (if components 
+  (let* ([g (if (and f components)
                 (decompose-glyph f g ln)
                 g)]
          [cs (glyph-contours g)])
@@ -464,7 +464,7 @@
 ; Font Glyph Number Symbol -> (listOf Vec)
 ; produce a list of the intersections of outlines with the line y = h
 (define (intersections-at f g h [ln 'public.default])
-  (let* ([g (decompose-glyph f g ln)]
+  (let* ([g (if f (decompose-glyph f g ln) g)]
          [cs (glyph-contours g)])
     (sort 
      (remove-duplicates
@@ -490,7 +490,7 @@
 ; Font Glyph Symbol -> Number
 ; produces the area for the given glyph (negative if in the wrong direction)
 (define (glyph-signed-area f g [ln 'public.default])
-  (let* ([g (decompose-glyph f g ln)]
+  (let* ([g (if f (decompose-glyph f g ln) g)]
          [cs (glyph-contours g)])
     (foldl + 0 
            (map (lambda (c) 

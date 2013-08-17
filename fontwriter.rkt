@@ -13,7 +13,7 @@
          ellipse
          arc
          glyph
-         /--/
+        ; /--/
          alg
          ovs
          ovs-height
@@ -209,39 +209,87 @@
 ; /--/
 ; Number -> procedure
 ; produce a procedure that calculate the advance width and transform beziers in ufo contours
-
+#;
 (define (/--/ n)
   (lambda (cnts)
     (values
      (ufo:advance n 0)
      (map ufo:bezier->contour cnts))))
 
-; unicode
-; Symbol -> Number
-; produce the unicode code of the glyph
-; note: this has to be changed to deal with common names
 
+; Symbol -> Number
+; produce the unicode code of the glyph using adobe glyph list
 (define (unicode name)
   (hash-ref adobe-glyph-list name '()))
 
 (define-syntax glyph
-  (syntax-rules (contours locals)
+  (syntax-rules (metrics contours locals)
     [(glyph name 
-            (advance-op advance-v ...)
+            (metrics metric-form ...)
             [contours contour ...])
      (glyph name (locals)
-            (advance-op advance-v ...)
+            (metrics metric-form ...)
             [contours contour ...])]
     [(glyph name (locals [s v] ...)
-            (advance-op advance-v ...)
+            (metrics metric-form ...)
             [contours contour ...])
      (let* ([s v] ...)
-       (let-values ([(adv cnts)
-                     ((advance-op advance-v ...) (build-contour-list contour ...))])
-         (ufo:glyph 1 name adv (unicode name) #f #f '() '() cnts '() #f)))]
+       (glyph-metric
+         (ufo:glyph 1 name (ufo:advance 0 0) (unicode name) #f #f '() '() 
+                    (map ufo:bezier->contour (build-contour-list contour ...)) '() #f)
+         metric-form ...))]
     
     ))
- 
+
+(define-syntax glyph-metric
+  (syntax-rules (/--/ /<- ->/)
+    [(glyph-metric g (/--/ a))
+     (struct-copy ufo:glyph g
+                  [advance (ufo:advance a 0)])]
+    [(glyph-metric g (/<- l) (->/ r))
+     (glyph-metric 
+      (glyph-metric g (/<- l))
+      (->/ r))]
+    [(glyph-metric g (/<- l))
+     (let ([sr (cdr (ufo:sidebearings #f g))])
+       (ufo:set-sidebearings #f g l sr))]
+    [(glyph-metric g (->/ r))
+     (let ([sl (car (ufo:sidebearings #f g))])
+       (ufo:set-sidebearings #f g sl r))]
+    [(glyph-metric g (/<- l lm) (->/ r rm))
+     (glyph-metric 
+      (glyph-metric g (/<- l lm))
+      (->/ r rm))]
+    [(glyph-metric g (/<- l) (->/ r rm))
+     (glyph-metric 
+      (glyph-metric g (/<- l))
+      (->/ r rm))]
+    [(glyph-metric g (/<- l lm) (->/ r))
+     (glyph-metric 
+      (glyph-metric g (/<- l lm))
+      (->/ r))]
+    [(glyph-metric g (/<- l lm))
+     (let ([sr (cdr (ufo:sidebearings-at #f g lm))])
+       (ufo:set-sidebearings-at #f g l sr lm))]
+    [(glyph-metric g (->/ r rm))
+     (let ([sl (car (ufo:sidebearings-at #f g rm))])
+       (ufo:set-sidebearings-at #f g sl r rm))]
+    [(glyph-metric g (/<- l) (/--/ a))
+     (glyph-metric (ufo:set-sidebearings #f g l 0) (/--/ a))]
+    [(glyph-metric g (/<- l lm) (/--/ a))
+     (glyph-metric (ufo:set-sidebearings-at #f g l 0 lm) (/--/ a))]
+    [(glyph-metric g (/--/ a) (->/ r))
+     (let* ([sb (ufo:sidebearings #f g)]
+            [sl (car sb)]
+            [sr (cdr sb)])
+       (glyph-metric g (/<- (+ a sl sr (- r))) (/--/ a)))]
+    [(glyph-metric g (/--/ a) (->/ r rm))
+     (let* ([sb (ufo:sidebearings-at #f g rm)]
+            [sl (car sb)]
+            [sr (cdr sb)])
+       (glyph-metric g (/<- (+ a sl sr (- r)) rm) (/--/ a)))]))
+     
+     
 (define (build-contour-list . cnts)
   (if (not (car cnts))
       '()

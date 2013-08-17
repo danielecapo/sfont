@@ -62,14 +62,14 @@
       ;; We can also provide a list of glyphs here.
         (glyph 'a
                ; every glyph has a name 
-               (/--/ (+ gw space space))
+               (metrics (/<- space) (->/ space))
                ; an advance form
                [contours a-cnt]
                ;inside the contours section we can insert contours 
                ;or list of contours
                )
         (glyph 'b
-               (/--/ (+ gw space space))
+               (metrics (/<- space) (/--/ (+ gw space space)))
                [contours
                 (rect x1 y1 v-stem (alg ascender))
                 (rect x1 y1 gw x-height)
@@ -78,27 +78,27 @@
         (glyph 'c
                (locals [term ym])
                ; local variables can be defined inside a glyph
-               (/--/ (+ gw space space))
+               (metrics (/--/ (+ gw space space)) (->/ space))
                [contours
                 (rect x1 y1 v-stem x-height)
                 (rect x1 (- x-height h-stem) gw h-stem)
                 (rect x1 y1 gw h-stem)
                 (rect (+ x1 gw (- v-stem)) (- x-height term) v-stem term)])
         (glyph 'd
-               (/--/ (+ gw space space))
+               (metrics (/--/ (+ gw space space)))
                [contours
                 (rect x1 y1 gw x-height)
                 (reverse (rect (+ x1 v-stem) (+ y1 h-stem) 
                                (- gw (* 2 v-stem)) (- x-height (* 2 h-stem))))
                 (rect (+ x1 gw (- v-stem)) y1 v-stem (alg ascender))])
         (glyph 'e
-               (/--/ (+ gw space space))
+               (metrics (/<- space) (/--/ (+ gw space space)))
                [contours
                 (map (lambda (c) (from ((+ space (/ gw 2)) (/ x-height 2))
                                        (rotate c pi)))
                      a-cnt)])
         (glyph 'o
-               (/--/ (+ gw space space))
+               (metrics (/<- space) (->/ space))
                [contours
                 (rect x1 y1 gw x-height)
                 (reverse (rect (+ x1 v-stem) (+ y1 h-stem) 
