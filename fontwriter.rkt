@@ -42,6 +42,8 @@
 (define-syntax ~
   (syntax-rules (-- insert @)
     [(~) '()]     
+    [(~ (x y) (@ insert vlist) . r)
+     (~ (x y) (insert (translate* vlist x y)) . r)] 
     [(~ (x y) (insert vlist) . r)
      (join-subpaths (list (vec x y))
                     (~ (insert vlist) . r))]
