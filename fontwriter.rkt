@@ -40,7 +40,7 @@
 
 
 (define-syntax ~
-  (syntax-rules (-- insert)
+  (syntax-rules (-- insert @)
     [(~) '()]     
     [(~ (x y) (insert vlist) . r)
      (join-subpaths (list (vec x y))
@@ -51,6 +51,14 @@
     [(~ (x y) -- (x1 y1) . r)
      (append (list (vec x y) (vec x y) (vec x1 y1))
              (~ (x1 y1) . r))]
+    [(~ (x y) -- (@ x1 y1) . r)
+     (~ (x y) -- ((+ x1 x) (+ y1 y)) . r)]
+    [(~ (x y) (@ x1 y1 . a) . r)
+     (~ (x y) ((+ x1 x) (+ y1 y) . a) . r)]
+    [(~ (x y) (x1 y1 . a) (@ x2 y2 . a2) . r)
+     (~ (x y) (x1 y1 . a) ((+ x2 x1) (+ y2 y1) . a2) . r)]
+    [(~ (x y) (x1 y1 . a) (x2 y2 . a2) (@ x3 y3 . a3) . r)
+     (~ (x y) (x1 y1 . a) (x2 y2 . a2) ((+ x3 x2) (+ y3 y2) . a3) . r)]
     [(~ (x y) (cx cy) (cx1 cy1) (x1 y1) . r)
      (append (list (vec x y) (vec cx cy) (vec cx1 cy1))
              (~ (x1 y1) . r))]
