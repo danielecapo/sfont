@@ -14,6 +14,8 @@
 
 ;The macro code+expr imported from utilities.rkt
 ;is used to show the expression.
+;Utilities also defines the function ° used to convert degree in radians
+;and common angles: pi/2 pi/3 pi/4 pi/6 2pi
 
 ;Points in the ~ macros are written in the form (x y)
 ;The first point is define a point on the curve,
@@ -33,6 +35,21 @@
  (print-beziers 
   (~ (0 0) -- (500 0) -- (500 500) -- (0 500) -- (0 0))))
 
+; A curve is closed when the first and last points
+; are the same. The command cycle can be used to copy
+; the first point at the end and close the curve: 
+(code+expr
+ (print-beziers 
+  (~ (0 0) -- (500 0) -- (500 500) -- (0 500) -- cycle)))
+
+; Point positions can be absolutes or relatives
+; Relative points are preceded by the @ sign.
+; The first point can't be relative.
+; The previous example can be rewritten:
+(code+expr
+ (print-beziers 
+  (~ (0 0) -- (@ 500 0) -- (@ 0 500) -- (@ -500 0) -- cycle)))
+
 ; There's another way to wite a bezier segment
 ; let A, B and C be three non aligned points,
 ; where A and C are the extrema. The positions
@@ -48,16 +65,29 @@
 (code+expr
  (print-beziers
   (~ (0 -500) (500 -500 0.6) (500 0) (500 500 1) (0 500) 
-     (-500 500 0) (-500 0) (-500 -500 0 1) (0 -500))))
+     (-500 500 0) (-500 0) (-500 -500 0 1) cycle)))
 
 ; If we already have a contour we can 'insert' it inside a macro
 ; and it will joined with a line to the previous point.
+; If the inserted contour starts where the last point is
+; the zero-length line segment will be removed
 
 (define p1 (~ (0 -500) 
               (300 -500) (500 -300) (500 0)))
 (code+expr
  (print-beziers 
   (~ (500 0) -- (0 500) -- (-500 0) (insert p1))))
+
+; The @ sign can be used for insert
+; (in this way the parts can be defined starting from zero
+; maximizing the reusability):
+
+(define rel-p1 (~ (0 0)
+                  (300 0) (500 200) (500 500)))
+
+(code+expr
+ (print-beziers 
+  (~ (500 0) -- (0 500) -- (-500 0) -- (0 -500) (@ insert rel-p1))))
 
 ; The primitives rect and ellipse accept four arguments:
 ; the x and y coordinates of the lower left corner
@@ -79,9 +109,18 @@
 (code+expr
  (print-beziers 
   (arc 0 0 800 (° 60))))
+
 (code+expr
  (print-beziers 
-  (~ (insert (arc 0 0 800 (° 120))) (0 0) -- (800 0))))
+  (~ (0 0) (insert (arc 0 0 800 (° 120))) cycle)))
+
+; Using relative insertion it is easy to draw the same
+; shape in another position changing only one point
+
+(code+expr
+ (print-beziers 
+  (~ (-200 -200) (@ insert (arc 0 0 800 (° 120))) cycle)))
+
 
 ; Transformations
 
