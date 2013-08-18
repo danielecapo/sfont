@@ -20,7 +20,7 @@ To learn more about it, I suggest to read the files in the examples directory, t
 
 The examples use two ufo files from the Adobe Source Sans Pro code that can be downloaded from github. If you want to run the example you need to get these files and rewrite the correct path to them, or you can use other UFOs.
 
-Every comment, suggestion and critique is wellcome.
+Every comment, suggestion and critique is welcome.
 
 
 
