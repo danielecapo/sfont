@@ -4,6 +4,10 @@ sfont
 The goal of this project is to produce a library to work with fonts in Racket.
 The idea is that using the ability of DrRacket to draw images in the REPL a similar software can be used for teaching and making experiment with 'parametric' definitions of fonts in an interective environment.
 
+You can see two screencasts here:
+https://vimeo.com/69951725
+https://vimeo.com/70019868
+
 At the moment it can be used to read and write fonts in the UFO format. It can (but it is not tested in a serious way) read from UFO 2 and UFO 3, covert UFO 2 to UFO 3 and UFO 3 to UFO 2.
 
 It can export the font in a minimal type1 plain text format that can be used by the last version of the AFDKO to produce an otf font file, or converted in a pfa format with the command type1 (available with AFDKO).
