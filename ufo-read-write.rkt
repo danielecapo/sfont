@@ -114,8 +114,8 @@
          
          [_ acc])]))
   (aux (glyph (string->number (se-path* '(glyph #:format) x))
-                  (if name name (string->symbol (se-path* '(glyph #:name) x)))
-                  (make-advance) null #f #f null null null null #f)
+              (if name name (string->symbol (se-path* '(glyph #:name) x)))
+              (make-advance) null #f #f null null null null (make-immutable-hash))
        (se-path*/list '(glyph) x)))
 
 ; if the value expr evaluetes to the default value produce the empty list otherwise evaluates expr
@@ -142,7 +142,7 @@
                          ,@(map (lambda (anchor) (aux anchor)) anchors)
                          (outline ,@(map (lambda (contour) (aux contour)) contours)
                                   ,@(map (lambda (component) (aux component)) components))
-                         (lib ,@(not-default lib #f (dict->xexpr lib)))
+                         ,@(not-default lib (make-immutable-hash) `(lib () ,(dict->xexpr lib)))
                          )]
                 [(advance width height)
                  `(advance (,@(list `(width ,(number->string width)))
@@ -237,7 +237,7 @@
     (with-handlers ([exn:fail? (lambda (e) #f)])
       (if (file-exists? path)
           (read-dict path)
-          (make-immutable-hash))))
+          #f)))
   (define (read-from-text-file path)
     (if (file-exists? path)
          (call-with-input-file path port->string)
@@ -274,7 +274,8 @@
             (cons 'meta (lambda () (read-from-plist (make-ufo-path "metainfo.plist"))))
             (cons 'info (lambda () (read-from-plist (make-ufo-path "fontinfo.plist"))))
             (cons 'groups read-groups) 
-            (cons 'kerning (lambda () (read-from-plist (make-ufo-path "kerning.plist"))))
+            (cons 'kerning (lambda () (let ([k (read-from-plist (make-ufo-path "kerning.plist"))])
+                                        (if k k (make-immutable-hash)))))
             (cons 'features (lambda () (read-from-text-file (make-ufo-path "features.fea"))))
             (cons 'lib (lambda () (read-from-plist (make-ufo-path "lib.plist"))))
             (cons 'layers read-layers)
@@ -328,7 +329,7 @@
   (define (make-ufo-path file)
     (build-path path file))
   (define (write-on-plist dict path)
-    (when (> (dict-count dict) 0)
+    (when (and dict (> (dict-count dict) 0))
       (write-dict dict path)))
   (define (write-directory dir path [proc #f])
     (when dir
