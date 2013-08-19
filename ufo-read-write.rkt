@@ -341,11 +341,12 @@
         (lambda (o)
           (write-string text o)))))
   (define (write-groups)
-    (write-on-plist (make-immutable-hash
-                     (hash-map (font-groups font)
-                               (lambda (name content)
-                                 (cons name (map symbol->string content)))))
-                    (make-ufo-path "groups.plist")))
+    (when (font-groups font)
+      (write-on-plist (make-immutable-hash
+                       (hash-map (font-groups font)
+                                 (lambda (name content)
+                                   (cons name (map symbol->string content)))))
+                      (make-ufo-path "groups.plist"))))
   (define (get-layers-names)
     (letrec ([aux (lambda (acc layers names)
                     (match layers
