@@ -237,7 +237,7 @@
     (with-handlers ([exn:fail? (lambda (e) #f)])
       (if (file-exists? path)
           (read-dict path)
-          #f)))
+          (make-immutable-hash))))
   (define (read-from-text-file path)
     (if (file-exists? path)
          (call-with-input-file path port->string)
@@ -248,7 +248,7 @@
           (make-immutable-hash
            (hash-map g (lambda (name content)
                          (cons name (map string->symbol content)))))
-          #f)))
+          (make-immutable-hash))))
   (define (read-layerinfo glyphsdir)
     (read-from-plist 
      (build-path (make-ufo-path glyphsdir) "layerinfo.plist")))
@@ -328,7 +328,7 @@
   (define (make-ufo-path file)
     (build-path path file))
   (define (write-on-plist dict path)
-    (when dict 
+    (when (> (dict-count dict) 0)
       (write-dict dict path)))
   (define (write-directory dir path [proc #f])
     (when dir
