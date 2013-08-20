@@ -56,7 +56,9 @@
             [groups (name glyphs) ...]
             . spacing-forms)
      (let ([name glyphs] ...)
-       (space-glyphs f . spacing-forms))]))
+       (space-glyphs f . spacing-forms))]
+    [(space f . spacing-forms)
+     (space f [groups] . spacing-form)]))
 
 (define-syntax space-glyphs
   (syntax-rules (/ @)
@@ -182,14 +184,16 @@
 
 
 ; define-spacing-rule
-(define-syntax (define-spacing-rule stx)
-  (syntax-case stx ()
+(define-syntax define-spacing-rule 
+  (syntax-rules ()
     [(define-spacing-rule name (variable ...) (binding ...) (group ...) rule ...)
-       #'(define (name font variable ...)
+       (define (name font variable ...)
            (let (binding ...)
              (space font
                     [groups group ...]
-                    rule ...)))]))
+                    rule ...)))]
+    [(define-spacing-rule name (variable ...) (binding ...) rule ...)
+     (define-spacing-rule name (variable ...) (binding ...) () rule ...)]))
 
 
 ; Font Number Number Number Number -> Font
@@ -204,7 +208,6 @@
    [d min]
    [e o]
    [f (floor (* c-adj o))])
-  ()
   a / -- (b mid)
   b / (a mid) e
   c / e f
@@ -241,7 +244,6 @@
    [c (floor (/ h 2))]
    [d min]
    [e o])
-  ()
   A / d d
   B / (a mid) c
   C / e c
