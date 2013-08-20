@@ -51,7 +51,7 @@
 
 ; space-macro
 (define-syntax space
-  (syntax-rules (/)
+  (syntax-rules ()
     [(space f 
             [groups (name glyphs) ...]
             . spacing-forms)
@@ -74,11 +74,6 @@
              fo group)
       . spacing-forms)]))
             
-    
-    
-;       (foldl (lambda (gl fo) 
-;                (insert-glyph fo gl))
-;              f (list (space-glyph f (get-glyph f g) l r) ...)))]))
 
 (define-syntax space-glyph
   (syntax-rules (-- <-> /--/)
@@ -185,24 +180,8 @@
        (range n)))
 
 
-;(define-syntax (define-spacing-rule stx)
-;  (syntax-case stx ()
-;    [(define-spacing-rule name (variable ...) (binding ...) [(letter left right) ...])
-;     (with-syntax ([(sides ...) 
-;                    (map (lambda (l r)
-;                           (datum->syntax stx (let ([sl (syntax->datum l)]
-;                                                    [sr (syntax->datum r)])
-;                                                (list 'list 
-;                                                      (if (list? sl) (cons 'list sl) sl)
-;                                                      (if (list? sr) (cons 'list sr) sr)))))
-;                                                      
-;                         (syntax->list #'(left ...))
-;                         (syntax->list #'(right ...)))])
-;                           
-;       #'(define (name font variable ...)
-;           (let (binding ...)
-;             (spacing font (list (cons (quote letter) sides) ...)))))]))
 
+; define-spacing-rule
 (define-syntax (define-spacing-rule stx)
   (syntax-case stx ()
     [(define-spacing-rule name (variable ...) (binding ...) (group ...) rule ...)
@@ -289,121 +268,12 @@
   X / d d
   Y / d d
   Z / c c)
-;(define-spacing-rule
-;  lowercase-tracy 
-;  [xh n o min [c-adj 0.80] [l-adj 1.05]]
-;  ([mid (/ xh 2)]
-;   [a n]
-;   [b (floor (* 0.9 n))]
-;   [c (floor (* l-adj n))]
-;   [d min]
-;   [e o]
-;   [f (floor (* c-adj o))])
-;  [(a 0 (b mid))
-;   (b (a mid) e)
-;   (c e f)
-;   (d e (a mid))
-;   (e e f)
-;   (f 0 0)
-;   (g 0 0)
-;   (h (c mid) (b mid))
-;   (i (c mid) (a mid))
-;   (j (a mid) (a mid))
-;   (k (c mid) d)
-;   (l (c mid) (a mid))
-;   (m (a mid) (b mid))
-;   (n (a mid) (b mid))
-;   (o e e)
-;   (p (c mid) e)
-;   (q e (a mid))
-;   (r (a mid) d)
-;   (s 0 0)
-;   (t 0 0)
-;   (u (b mid) (b mid))
-;   (v d d)
-;   (w d d)
-;   (x d d)
-;   (y (d xh) (d xh))
-;   (z 0 0)])
-;                         
-;(define-spacing-rule
-;  uppercase-tracy 
-;  [asc h o min]
-;  ([mid (/ asc 2)]
-;   [a h]
-;   [b (floor (* 0.9 h))]
-;   [c (floor (/ h 2))]
-;   [d min]
-;   [e o])
-;  [(A d d)
-;   (B (a mid) c)
-;   (C e c)
-;   (D (a mid) e)
-;   (E (a mid) c)
-;   (F (a mid) c)
-;   (G e b)
-;   (H (a mid) (a mid))
-;   (I (a mid) (a mid))
-;   (J d (a mid))
-;   (K (a mid) d)
-;   (L (a mid) d)
-;   (M (b mid) (a mid))
-;   (N (b mid) (b mid))
-;   (O e e)
-;   (P (a mid) e)
-;   (Q (e mid) (e mid))
-;   (R (a mid) d)
-;   (S 0 0)
-;   (T d d)
-;   (U (a mid) (b mid))
-;   (V d d)
-;   (W d d)
-;   (X d d)
-;   (Y d d)
-;   (Z c c)])
+
+
+
+;(define fo (read-ufo "/Users/daniele/Downloads/source-sans-pro-master/RomanMM/SourceSansPro_1.ufo"))
+      
 #;
-(define (lowercase-tracy font xh n o min [c-adj 0.80] [l-adj 1.05])
-  (let ([mid (/ xh 2)]
-        [a n]
-        [b (floor (* 0.9 n))]
-        [c (floor (* l-adj n))]
-        [d min]
-        [e o]
-        [f (floor (* c-adj o))])
-    (spacing
-     font
-     `((a 0 (,b ,mid))
-       (b (,a ,mid) ,e)
-       (c ,e ,f)
-       (d ,e (,a ,mid))
-       (e ,e ,f)
-       (f 0 0)
-       (g 0 0)
-       (h (,c ,mid) (,b ,mid))
-       (i (,c ,mid) (,a ,mid))
-       (j (,a ,mid) (,a ,mid))
-       (k (,c ,mid) ,d)
-       (l (,c ,mid) (,a ,mid))
-       (m (,a ,mid) (,b ,mid))
-       (n (,a ,mid) (,b ,mid))
-       (o ,e ,e)
-       (p (,c ,mid) (,e ,mid))
-       (q (,e ,mid) (,a ,mid))
-       (r (,a ,mid) ,d)
-       (s 0 0)
-       (t 0 0)
-       (u (,b ,mid) (,b ,mid))
-       (v ,d ,d)
-       (w ,d ,d)
-       (x ,d ,d)
-       (y (,d ,xh) (,d ,xh))
-       (z 0 0)))))
-      
-
-
-(define fo (read-ufo "/Users/daniele/Downloads/source-sans-pro-master/RomanMM/SourceSansPro_1.ufo"))
-      
-
 (define sp
     '((a #f #f)
       (b #f #f)
