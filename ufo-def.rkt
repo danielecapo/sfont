@@ -498,14 +498,14 @@
                 cs))))
 
 
-; Font Glyph Number Number Symbol -> Glyph
+; Font Glyph (Number or False) (Number or False) Symbol -> Glyph
 ; set left and right sidebearings for the glyph 
 (define (set-sidebearings f g left right [ln 'public.default])
   (let* ([os (sidebearings f g ln)]
          [oa (advance-width (glyph-advance g))])     
     (if os
-        (let* ([la (- left (car os))]
-               [ra (+ la (- right (cdr os)))])
+        (let* ([la (if left (- left (car os)) 0)]
+               [ra (if right (+ la (- right (cdr os))) la)])
           (struct-copy glyph 
                        (translate g la 0)
                        [advance (advance (+ oa ra)
@@ -515,14 +515,14 @@
                        
      
 
-; Font Glyph Number Number Number Symbol -> Glyph
+; Font Glyph (Number or False) (Number or False) Number Symbol -> Glyph
 ; set left and right sidebearings (measured at y = h) for the glyph 
 (define (set-sidebearings-at f g left right h [ln 'public.default])
   (let* ([os (sidebearings-at f g h ln)]
          [oa (advance-width (glyph-advance g))])     
     (if os
-        (let* ([la (- left (car os))]
-               [ra (+ la (- right (cdr os)))])
+        (let* ([la (if left (- left (car os)) 0)]
+               [ra (if right (+ la (- right (cdr os))) la)])
           (struct-copy glyph 
                        (translate g la 0)
                        [advance (advance (+ oa ra)
@@ -538,8 +538,8 @@
     (if os
         (set-sidebearings f 
                           g 
-                          (+ (car os) left) 
-                          (+ (cdr os) right)
+                          (if left (+ (car os) left) #f)
+                          (if right (+ (cdr os) right) #f)
                           ln)
         g)))
 
