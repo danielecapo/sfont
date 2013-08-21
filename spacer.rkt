@@ -70,12 +70,14 @@
        (space-glyphs (insert-glyph fo (space-glyph fo (get-glyph fo 'name) l r)) . spacing-forms))]
     [(space-glyphs f) f]
     [(space-glyphs f @ group / l r . spacing-forms)
-     (space-glyphs 
-      (foldl (lambda (g fo) 
-              (insert-glyph fo (space-glyph fo (get-glyph fo g) l r)))
-             fo group)
-      . spacing-forms)]))
-            
+     (let ([fo f])
+       (space-glyphs 
+        (foldl (lambda (g fo) 
+                 (insert-glyph fo (space-glyph fo (get-glyph fo g) l r)))
+               fo group)
+        . spacing-forms))]))
+
+
 
 (define-syntax space-glyph
   (syntax-rules (-- <-> /--/)
@@ -116,6 +118,56 @@
      (space-glyph f (space-glyph f g l --)
                   -- r)]))
 
+; Symbol -> Symbol
+; add public.kern1 to the group name
+(define (left-kern-group n)
+  (string->symbol (~a "public.kern1." n)))
+
+; Symbol -> Symbol
+; add public.kern2 to the group name
+(define (right-kern-group n)
+  (string->symbol (~a "public.kern2." n)))
+
+(define-syntax kern
+  (syntax-rules (left-groups right-groups)
+    [(kern f 
+           [left-groups  (ln lgs) ...]
+           [right-groups (rn rgs) ...]
+           . kern-forms)
+     (let ([f1 f]
+           [kh (make-hash)]
+           [ln (left-kern-group 'ln)] ...
+           [rn (right-kern-group 'rn)] ...)
+       (struct-copy font f1
+                    [groups (make-immutable-hash 
+                             (list (cons ln lgs) ...
+                                   (cons rn rgs) ...))]
+                    [kerning (make-kerns f1 kh . kern-forms)]))]))
+
+(define-syntax make-kerns
+  (syntax-rules (/ @)
+    [(make-kerns f1 #f . kern-forms)
+     (let ([k (make-hash)])
+       (make-kerns f1 k . kern-forms))]
+    [(make-kerns f1 kh @ l r / v . kern-forms)
+     (make-kerns f1 (add-kern f1 kh (left-kern-group 'l) 'r v) . kern-forms)] 
+    [(make-kerns f1 kh l @ r / v . kern-forms)
+     (make-kerns f1 (add-kern f1 kh 'l (right-kern-group 'r) v) . kern-forms)] 
+    [(make-kerns f1 kh l r / v . kern-forms)
+     (make-kerns f1 (add-kern f1 kh 'l 'r v) . kern-forms)] 
+    [(make-kerns f1 kh) (make-immutable-hash (hash->list kh))]))
+
+    
+(define-syntax add-kern
+  (syntax-rules ()
+    [(add-kern f k l r v)
+       (begin
+         (if (hash-has-key? k l)
+             (hash-set! (hash-ref k l) r v)
+             (hash-set! k l (make-hash (list (cons r v)))))    
+         k)]))
+
+ 
 ; Font (listOf Adjustment) -> Font
 ; adjust the spacing
 (define (adjust-spacing f s)
@@ -271,8 +323,11 @@
 
 
 
+
+
+
 (define fo (read-ufo "/Users/daniele/Downloads/source-sans-pro-master/RomanMM/SourceSansPro_1.ufo"))
-fo
+;fo
       
 #;
 (define sp

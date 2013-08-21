@@ -85,7 +85,7 @@
           [descender (dict-ref (font-fontinfo f) 'descender -250)]
           [glyphs (map (lambda (g) (draw-glyph (decompose-glyph f g)))
                        (get-glyphs f (unique-letters *text*)))])
-      (apply pictf:font ascender descender glyphs))))
+      (pictf:font ascender descender glyphs (lambda (p) (apply kerning-value f p))))))
 
 
 ;;; Layer
@@ -1083,5 +1083,75 @@
                                      (lambda (k2 kv) 
                                        (let ([vun (hash-ref gut k2 #f)])
                                          (cons (if vun vun k2) kv)))))))))))
+
+; Font Symbol Symbol -> Number Boolean
+; produce the kerning value for the pair, the second value returned is false if the kerning pair is not defined
+(define (lookup-kerning-pair f gl gr)
+  (define (groups-with-glyph gs g)
+    (filter identity
+            (hash-map gs (lambda (k v) 
+                   (if (member g v) k #f)))))                            
+  (let* ([groups (font-groups f)]
+         [kerning (font-kerning f)]
+         [first-ids (cons gl (groups-with-glyph groups gl))]
+         [second-ids (cons gr (groups-with-glyph groups gr))]
+         [fg (filter identity
+                      (map (lambda (g) (hash-ref kerning g #f))
+                           first-ids))]
+         [k (filter identity
+                    (flatten
+                     (map (lambda (g) 
+                            (map (lambda (s) (hash-ref g s #f)) second-ids))
+                           fg)))])
+    (cond [(> (length k) 1)
+           (error (~a "More than one kerning value for the same pair " gl " " gr))]
+          [(null? k) (values 0 #f)]
+          [else (values (car k) #t)])))
+
+; Font Symbol Symbol -> Number
+; produce the kerning value for the pair (without the found flag)
+(define (kerning-value f gl gr)
+  (let-values ([(k f) (lookup-kerning-pair f gl gr)])
+    k))
+
+; Macro for easy access to font data
+; (in-font f 'a)   -> (get-glyph f 'a)
+; (in-font f 'a 2) -> third contour of glyph a
+; (in-font f 'a 2 0) -> first point of third contour of a
+; (in-font f 'a (@ anchors 2)) -> second anchor of a
+; (in-font f 'a (@ anchors "top")) -> anchor top of a
+
+
+(define-syntax in-font
+  (syntax-rules (@kerning @groups @contours @anchors @layers @components @points)
+    [(in-font f (@kerning l)) (hash-ref (font-kerning f) l #f)]
+    [(in-font f (@groups)) (font-groups f)]
+    [(in-font f (@groups n)) (hash-ref (in-font f (@groups)) n #f)]
+    [(in-font f (@layers)) (font-layers f l)]
+    [(in-font f (@layers l g)) (get-glyph f g l)]
+    [(in-font f g) (get-glyph f g)]
+    [(in-font f g (@components)) (glyph-components (in-font f g))]
+    [(in-font f g (@components n)) (list-ref (in-font f g (@components)) n)]
+    [(in-font f g (@contours)) (glyph-contours (in-font f g))]
+    [(in-font f g (@contours n)) (in-font f g n)]
+    [(in-font f g (@anchors)) (glyph-anchors (in-font f g))]
+    [(in-font f g (@anchors n)) (cond [(number? n)
+                                        (list-ref (in-font f g (@anchors)) n)]
+                                       [(string? n)
+                                        (let ([f (memf (lambda (a) (equal? (anchor-name a) n))
+                                                       (in-font f g (@anchors)))])
+                                          (if f (car f) (error "Anchor not found")))])]
+    [(in-font f g n) (list-ref (glyph-contours (in-font f g)) n)]
+    [(in-font f g n (@points)) (contour-points (in-font f g n))]
+    [(in-font f g n (@points np)) (in-font f g n np)]
+    [(in-font f g n np) (list-ref (in-font f g n (@points)) np)]
+    ))
+
+(define-syntax ==>
+  (syntax-rules ()
+    [(==> form) form]
+    [(==> form (f . a) . r)
+     (==> (f form . a) . r)]
+    [(==> form f . r) (==> (f form) . r)]))
 
                      

@@ -292,7 +292,7 @@
              [meta ((reader 'meta))]
              [format (dict-ref meta 'formatVersion)]
              [creator (dict-ref meta 'creator)])
-        (cond [(= format 2) (read-ufo2 creator reader)]
+        (cond [(= format 2) (kern-groups2->3  (read-ufo2 creator reader))]
               [(= format 3) (read-ufo3 creator reader)]
               [#t (error "I can only read ufo 2 and ufo 3 fonts")]))
       (error "file do not exists")))
@@ -419,8 +419,9 @@
 
 ; Font String [Boolean] (String -> ...) (String -> ...) -> side effects
 ; write the UFO to the given path
-(define (write-ufo font path #:overwrite [overwrite #t] #:proc-data [proc-data #f] #:proc-images [proc-images #f])
+(define (write-ufo f path #:overwrite [overwrite #t] #:proc-data [proc-data #f] #:proc-images [proc-images #f])
   (let ([format (font-format font)]
+        [f (if (= format 3) (font->ufo3 f) (font->ufo2 f))] 
         [writer (writer font path proc-data proc-images)])
     (if (and (directory-exists? path) (not overwrite))
         #f
