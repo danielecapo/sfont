@@ -10,15 +10,18 @@
          set-sample-size!
          set-sample-text!
          set-contour-view!
+         string->text
          with-sample-text
          pictf:font
-         pictf:glyph)
+         pictf:glyph
+         unique-letters)
 
+;;; Global variables
 (define *pen* (new pen% [style 'transparent]))
 
 
 (define *size* 100)
-(define *text* '(a b c d e f g h i j k l m n o p q r s t u v w x y z))
+(define *text* '((a b c d e f g h i j k l m n o p q r s t u v w x y z)))
 
 (define (set-sample-size! s) (set! *size* s))
 (define (set-sample-text! t) (set! *text* t))
@@ -27,6 +30,59 @@
       (set! *pen* (new pen% [color "red"]))
       (set! *pen* (new pen% [style 'transparent]))))
 
+;;; Line is one of:
+;;; - nil
+;;; - (cons Symbol Line)
+
+;;; Text
+;;; Text is one of:
+;;; - nil
+;;; - (cons Line Text)
+;;; The text to be displayed
+
+; Text -> Boolean
+; True if it is a multiline text
+(define (multiline? t)
+  (> (length t) 1))
+
+; Text -> Natural
+; produce the total number of lines in text
+(define (lines t)
+  (length t))
+
+; Text -> Line
+; produce a line with all the glyph used in text without duplicates
+(define (unique-letters t)
+  (remove-duplicates (flatten t)))
+
+; String -> Line
+; produce a line from a string
+(define (string->line s)
+  (letrec ([m-read 
+            (lambda (loc acc)
+              (cond [(null? loc) (reverse acc)]
+                    [(eq? #\space (car loc)) (m-read (cdr loc) (cons 'space acc))]
+                    [(eq? #\newline (car loc)) (m-read (cdr loc) (cons 'space acc))]
+                    [(eq? #\/ (car loc)) (read-name (cdr loc) acc '())]
+                    [else (m-read (cdr loc)
+                                  (cons (string->symbol (list->string (list (car loc))))
+                                        acc))]))]
+           [read-name (lambda (loc acc n)
+                        (cond [(null? loc)
+                               (m-read loc
+                                       (cons (string->symbol (list->string (reverse n)))
+                                             acc))]
+                          [(eq? #\space (car loc))
+                               (m-read (cdr loc)
+                                       (cons (string->symbol (list->string (reverse n)))
+                                             acc))]
+                              [else (read-name (cdr loc) acc (cons (car loc) n))]))])
+           (m-read (string->list s) '())))
+
+; String -> Text
+; produce a text from a string
+(define (string->text s)
+  (map string->line (string-split s "\n")))
       
 (define-syntax-rule (with-sample-text (text size) body)
   (let ([t *text*]
@@ -76,9 +132,42 @@
     
 (define (calculate-length glyphs)
   (foldr + 0 (map advance glyphs)))
-      
+     
+; Number Number DrawableGlyph ... -> void
+; draw the current *text*
 (define (pictf:font ascender descender . glyphs)
-   (let* ([letters *text*];(map string->symbol (string-split *text* "/"))]
+   (let* ([t *text*]
+          [leading 1.2]
+          [n-lines (lines t)]
+          [f (/  *size* (+ ascender (- descender)))]  
+          [area-height (* *size* (+ 1 n-lines (* (- leading 1) (- n-lines 1))))])
+     (dc
+      (lambda (dc dx dy)
+         (begin
+           (send dc set-brush "black" 'solid)
+           (send dc set-pen *pen*)
+           (send dc scale f (- f))
+           (send dc translate 0 (- (/ (* *size* -0.5) f) ascender))                      
+           (for-each (lambda (l) 
+                       (begin
+                         (pictf:draw-line dc l (- (/ (* *size* leading) f)) glyphs)
+                         (let ([current-x (vector-ref (vector-ref (send dc get-transformation) 0) 4)])
+                           (send dc translate (/ (- current-x) f) 0))))
+                     t)))
+      1300 area-height)))
+
+; DC Line Number (listOf DrawableGlyph) -> void
+; draw the line to the dc
+(define (pictf:draw-line dc l leading glyphs)
+  (let ([glyphs-to-display (filter identity (map (lambda (g) (assoc g glyphs)) l))])
+    (begin
+      ;(print (send dc get-transformation))
+      (for-each (lambda (g) (pictf:draw-glyph dc g)) glyphs-to-display )
+      (send dc translate 0 leading))))
+
+#; 
+(define (pictf:font ascender descender . glyphs)
+   (let* ([letters *text*]
           [f (/  *size* (+ ascender (- descender)))]     
           [glyphs-to-display (filter identity (map (lambda (g) (assoc g glyphs)) letters))])
      (dc

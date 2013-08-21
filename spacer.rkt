@@ -51,14 +51,14 @@
 
 ; space-macro
 (define-syntax space
-  (syntax-rules ()
+  (syntax-rules (groups)
     [(space f 
             [groups (name glyphs) ...]
             . spacing-forms)
      (let ([name glyphs] ...)
        (space-glyphs f . spacing-forms))]
     [(space f . spacing-forms)
-     (space f [groups] . spacing-form)]))
+     (space f [groups] . spacing-forms)]))
 
 (define-syntax space-glyphs
   (syntax-rules (/ @)
@@ -116,8 +116,6 @@
      (space-glyph f (space-glyph f g l --)
                   -- r)]))
 
-
-    
 ; Font (listOf Adjustment) -> Font
 ; adjust the spacing
 (define (adjust-spacing f s)
@@ -250,7 +248,7 @@
   D / (a mid) e
   E / (a mid) c
   F / (a mid) c
-  G / e b
+  G / e (b (/ mid 2.5))
   H / (a mid) (a mid)
   I / (a mid) (a mid)
   J / d (a mid)
@@ -273,7 +271,8 @@
 
 
 
-;(define fo (read-ufo "/Users/daniele/Downloads/source-sans-pro-master/RomanMM/SourceSansPro_1.ufo"))
+(define fo (read-ufo "/Users/daniele/Downloads/source-sans-pro-master/RomanMM/SourceSansPro_1.ufo"))
+fo
       
 #;
 (define sp

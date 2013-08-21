@@ -84,7 +84,7 @@
     (let ([ascender (dict-ref (font-fontinfo f) 'ascender 750)]
           [descender (dict-ref (font-fontinfo f) 'descender -250)]
           [glyphs (map (lambda (g) (draw-glyph (decompose-glyph f g)))
-                       (get-glyphs f *text*))])
+                       (get-glyphs f (unique-letters *text*)))])
       (apply pictf:font ascender descender glyphs))))
 
 
