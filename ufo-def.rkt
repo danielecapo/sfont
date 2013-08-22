@@ -15,7 +15,9 @@
              compound-based-trans
              clean-arg
              geometric-struct
-             apply-glyph-trans))
+             apply-glyph-trans
+             build-accessor 
+             accessor))
              
              
              
@@ -1148,10 +1150,71 @@
     ))
 
 (define-syntax ==>
-  (syntax-rules ()
+  (syntax-rules (lambda)
     [(==> form) form]
+    [(==> form (lambda . a) . r)
+     (==> ((lambda . a) form) . r)]
     [(==> form (f . a) . r)
      (==> (f form . a) . r)]
     [(==> form f . r) (==> (f form) . r)]))
 
-                     
+
+(define-syntax in
+  (syntax-rules ()
+    [(in o [field])
+     (let ([lo o])
+       ((build-accessor lo field) lo))]
+    [(in o (field fn))
+     (==> (in o [field]) fn)]
+    [(in o field . r)
+     (==> o 
+          (in field)
+          (in . r))]))
+
+(define-syntax seq
+  (syntax-rules ()
+    [(seq ob a)
+     (cond [(symbol? a)
+            (hash-ref (seq ob) a)]
+           [(number? a)
+            (sequence-ref (seq ob) a)])]
+            
+    [(seq ob)
+     (let ([o ob])
+       (cond [(font? o) (layer-glyphs (get-layer o 'public.default))]
+             [(glyph? o) (glyph-contours o)]
+             [(layer? o) (layer-glyphs o)]
+             [(contour? o) (contour-points o)]))]
+    [(seq ob a . r)
+     (==> (seq ob a) (seq . r))]
+    ))
+    
+(define-syntax build-accessor 
+  (syntax-rules ()
+    [(build-accessor ob a)
+     (let ([o ob])
+       (cond [(font? o) (accessor font a)]
+             [(glyph? o) (accessor glyph a)]
+             [(layer? o) (accessor layer a)]
+             [(anchor? o) (accessor anchor a)]
+             [(component? o) (accessor component a)]
+             [(contour? o) (accessor contour a)]
+             [(point? o) (accessor point a)]
+             [(vec? o) (accessor vec a)]
+             [(trans-mat? o) (accessor trans-mat a)]
+             [(guideline? o) (accessor guideline a)]
+             [(image? o) (accessor image a)]))]))
+
+
+
+(define-syntax (accessor stx)
+  (syntax-case stx ()
+      [(accessor t name)
+  
+         (with-syntax ([n (datum->syntax 
+                           stx (string->symbol 
+                                (format "~a-~a" 
+                                        (syntax->datum #'t)
+                                        (syntax->datum #'name))))])
+         #'n)]))
+
