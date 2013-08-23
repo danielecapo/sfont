@@ -3,7 +3,15 @@
          "vec.rkt"
          "fontpict.rkt")
 
-
+(provide
+ get-spacing
+ space 
+ kern
+ space-glyph
+ add-kern
+ lowercase-tracy
+ uppercase-tracy)
+ 
 ; Spacer
 ; (list Symbol (Number or False) (Number or False))
 
@@ -153,6 +161,8 @@
      (make-kerns f1 (add-kern f1 kh (left-kern-group 'l) 'r v) . kern-forms)] 
     [(make-kerns f1 kh l @ r / v . kern-forms)
      (make-kerns f1 (add-kern f1 kh 'l (right-kern-group 'r) v) . kern-forms)] 
+    [(make-kerns f1 kh @ l @ r / v . kern-forms)
+     (make-kerns f1 (add-kern f1 kh (left-kern-group 'l) (right-kern-group 'r) v) . kern-forms)] 
     [(make-kerns f1 kh l r / v . kern-forms)
      (make-kerns f1 (add-kern f1 kh 'l 'r v) . kern-forms)] 
     [(make-kerns f1 kh) (make-immutable-hash (hash->list kh))]))
@@ -326,7 +336,7 @@
 
 
 
-(define fo (read-ufo "/Users/daniele/Downloads/source-sans-pro-master/RomanMM/SourceSansPro_1.ufo"))
+;(define fo (read-ufo "/Users/daniele/Downloads/source-sans-pro-master/RomanMM/SourceSansPro_1.ufo"))
 ;fo
       
 #;

@@ -121,7 +121,70 @@ The basic usage of space is
 	b / 60 20
 	...)
 	
-The form is a / 20 60, should be intuitive, the first is the glyph, after the slash you have left and right sidebearings.
+The form is a / 20 60, should be intuitive, the first is the glyph, after the slash you have the left and right sidebearings.
 Sidebearings can be expressed in various ways:
+
+-- 
+keeps the sidebearing unchanged
+
+(v h) 
+
+sets the sidebearing v at height h (like measurement line in FontLab)
+
+(/--/ v) 
+set the advance width to v
+
+(<-> v)
+adjust the sidebearing by v
+
+You can mix the various forms in left and right sidebearings
+
+a / 30 (60 200)
+it means: set the left sidebearing to 30, set the right sidebearing (measured at height 200) to 60
+
+z / (/--/ 300) 40
+it means: set the advance width to 300 with the right sidebearing to 40
+
+etc.
+
+You can define groups (but they are not added to the groups dictionary):
+
+(space f
+	[groups
+		(rounded-left '(c d e o q))]
+	@ rounded-left / 30 --)
+	
+You need to place @ in front of the group names in the spacing forms.
+
+It is like
+(space f
+	c / 30 --
+	d / 30 --
+	e / 30 --
+	o / 30 --
+	q / 30 --)
+	
+Another way to do this is to group glyphs in parentheses in the spacing form:
+
+(c d e o q) / 30 --
+	
+	
+Kern macro
+
+(kern fo
+	[left-groups 
+			(rounded_left '(o b p))]
+	[right-groups
+		    (diagonal_right '(v w y))]
+	@ rounded_left @ diagonal_right / -40
+	o o / 20)
+	
+The kerning groups are added to the font groups with the prefixes public.kern1. and public.kern2., the kern form is simple enough (use @ before groups, in that way the macro will add the correct prefix for you).
+
+
+
+	
+
+	
 
 
