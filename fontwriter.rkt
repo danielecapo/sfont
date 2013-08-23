@@ -4,7 +4,8 @@
          (prefix-in ufo: "ufo.rkt")
          "utilities.rkt"
          "fontpict.rkt"
-         "glyphlist.rkt")
+         "glyphlist.rkt"
+         "spacer.rkt")
 
 (set-sample-size! 150)
 
@@ -202,10 +203,16 @@
             (metrics metric-form ...)
             [contours contour ...])
      (let* ([s v] ...)
-       (glyph-metric
-         (ufo:glyph 1 name (ufo:advance 0 0) (unicode name) #f #f '() '() 
-                    (map ufo:bezier->contour (build-contour-list contour ...)) '() #f)
+       (space-glyph
+        #f
+        (ufo:glyph 1 name (ufo:advance 0 0) (unicode name) #f #f '() '() 
+                   (map ufo:bezier->contour (build-contour-list contour ...)) '() #f)
          metric-form ...))]))
+
+;(glyph-metric
+;         (ufo:glyph 1 name (ufo:advance 0 0) (unicode name) #f #f '() '() 
+;                    (map ufo:bezier->contour (build-contour-list contour ...)) '() #f)
+;         metric-form ...))]))
 
 (define-syntax glyph-metric
   (syntax-rules (/--/ /<- ->/)
@@ -309,11 +316,14 @@
                           (cons 'postscriptFontName (symbol->string (quote name)))
                           (cons 'versionMajor 1)
                           (cons 'versionMinor 0)))
-                   #f #f #f
+                   (make-immutable-hash) 
+                   (make-immutable-hash) 
+                   #f
                    (list 
                     (ufo:layer 'public.default #f
                                (build-glyphs-list glyph ...)))
-                   #f #f #f))]))
+                   (make-immutable-hash)
+                   #f #f))]))
 
 
 ; (Glyph or (listOf Glyph)) ... -> (listOf Glyph)

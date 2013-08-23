@@ -76,7 +76,7 @@
 ;;;
 ;;; DATA DEFINITIONS
 ;;; Font
-;;; (font Number Symbol HashTable HashTable HashTable String (listOf Layer) HashTable ... ...)
+;;; (font Number String HashTable HashTable HashTable String (listOf Layer) HashTable ... ...)
 
 (struct font 
   (format creator fontinfo groups kerning features layers lib data images)
