@@ -858,7 +858,7 @@
 
 
 ; Contour -> Bezier
-; Transform a contour in a bezier curve (i.e. all segments are made by 4 points)
+; Transform a contour in a cubic bezier curve (i.e. all segments are made by 4 points)
 (define (contour->bezier c)
   (letrec ((ensure-first-on-curve 
             (lambda (pts)
@@ -869,16 +869,48 @@
                 [(list-rest (point _ 'qcurve _ _ _) pr) pts]
                 [(list-rest (point _ 'offcurve _ _ _) pr) 
                  (ensure-first-on-curve (append pr (list (car pts))))])))
+           (process-quadratic-implicit 
+            (lambda (pts [acc '()])
+              (match pts
+                [(list-rest (point _ 'qcurve _ _ _) pr)
+                 (process-quadratic-implicit pr (append acc (list (car pts))))]
+                [(list-rest (point v 'offcurve _ _ _)
+                            (point v1 'offcurve _ _ _)
+                            _)
+                 (process-quadratic-implicit 
+                  (cdr pts) (append acc (list (car pts)
+                                       (point (vec+ v (vec* (vec- v1 v) 0.5))
+                                              'qcurve #f #f #f))))]
+                [(list-rest (point _ 'offcurve _ _ _)
+                            (point _ 'qcurve _ _ _)
+                            pr)
+                 (append acc pts)])))            
            (flattener 
             (lambda (pts acc)
               (match pts
                 [(list-rest (or
                              (point v 'curve _ _ _)
                              (point v 'move _ _ _)
-                             (point v 'line _ _ _))
+                             (point v 'line _ _ _)
+                             (point v 'qcurve _ _ _))
                             (point v1 'line _ _ _)
                             _)
                  (flattener (cdr pts) (append acc (list v v v1)))]
+                [(list-rest (point v 'qcurve _ _ _)
+                            (point v1 'offcurve _ _ _)
+                            (point v2 'qcurve _ _ _)
+                            _)
+                 (flattener (cddr pts) (append acc 
+                                       (list v 
+                                             (vec+ v (vec* (vec- v1 v) (/ 2 3)))
+                                             (vec+ v2 (vec* (vec- v1 v2) (/ 2 3))))))]
+                [(list-rest (point _ 'qcurve _ _ _) 
+                            (point _ 'offcurve _ _ _) 
+                            (point _ 'offcurve _ _ _)
+                            _)
+                 (flattener (process-quadratic-implicit pts) acc)]
+                [(list (point v 'qcurve _ _ _))
+                 (append acc (list v))]
                 [(list-rest (point v 'offcurve _ _ _) pr)
                  (flattener pr (append acc (list v)))]
                 [(list-rest (point v 'curve _ _ _) pr)
@@ -1123,7 +1155,7 @@
 ; (in-font f 'a (@ anchors 2)) -> second anchor of a
 ; (in-font f 'a (@ anchors "top")) -> anchor top of a
 
-
+#;
 (define-syntax in-font
   (syntax-rules (@kerning @groups @contours @anchors @layers @components @points)
     [(in-font f (@kerning l)) (hash-ref (font-kerning f) l #f)]
