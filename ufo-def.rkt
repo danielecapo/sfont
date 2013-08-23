@@ -856,20 +856,20 @@
                                            #:type 'move))))
 
 
+(define (ensure-first-on-curve pts)
+  (match pts
+    [(list-rest (point _ 'move _ _ _) pr) pts]
+    [(list-rest (point _ 'curve _ _ _) pr) pts]
+    [(list-rest (point _ 'line _ _ _) pr) pts]
+    [(list-rest (point _ 'qcurve _ _ _) pr) pts]
+    [(list-rest (point _ 'offcurve _ _ _) pr) 
+     (ensure-first-on-curve (append pr (list (car pts))))]))
+           
 
 ; Contour -> Bezier
 ; Transform a contour in a cubic bezier curve (i.e. all segments are made by 4 points)
 (define (contour->bezier c)
-  (letrec ((ensure-first-on-curve 
-            (lambda (pts)
-              (match pts
-                [(list-rest (point _ 'move _ _ _) pr) pts]
-                [(list-rest (point _ 'curve _ _ _) pr) pts]
-                [(list-rest (point _ 'line _ _ _) pr) pts]
-                [(list-rest (point _ 'qcurve _ _ _) pr) pts]
-                [(list-rest (point _ 'offcurve _ _ _) pr) 
-                 (ensure-first-on-curve (append pr (list (car pts))))])))
-           (process-quadratic-implicit 
+  (letrec ((process-quadratic-implicit 
             (lambda (pts [acc '()])
               (match pts
                 [(list-rest (point _ 'qcurve _ _ _) pr)
@@ -891,10 +891,14 @@
                 [(list-rest (or
                              (point v 'curve _ _ _)
                              (point v 'move _ _ _)
-                             (point v 'line _ _ _)
-                             (point v 'qcurve _ _ _))
+                             (point v 'line _ _ _))
                             (point v1 'line _ _ _)
                             _)
+                 (flattener (cdr pts) (append acc (list v v v1)))]
+                ; is this the way lines are written in quadratic contours?
+                [(list-rest (point v 'qcurve _ _ _)
+                            (point v1 'qcurve _ _ _)
+                            _) 
                  (flattener (cdr pts) (append acc (list v v v1)))]
                 [(list-rest (point v 'qcurve _ _ _)
                             (point v1 'offcurve _ _ _)
@@ -928,7 +932,7 @@
 
 
 ; Bezier -> Contour
-; Transform a bezier curve in a contour 
+; Transform a cubic bezier curve in a contour 
 (define (bezier->contour b)
   (letrec ((aux 
             (lambda (prev pts acc)
@@ -945,13 +949,46 @@
     (let* ((first-pt (car b))
            (ufo-pts (aux first-pt (cdr b) null)))
       (make-contour #:points 
-                        (if (closed? b) ufo-pts
+                        (if (closed? b) (cons (last ufo-pts) (drop-right ufo-pts 1))
                             (cons (make-point #:x (vec-x first-pt)
                                               #:y (vec-y first-pt)
                                               #:type 'move)
                                   ufo-pts))))))
-   
+  
 
+;;;; WRITE THIS LATER!
+;
+;; Contour -> Contour
+;; transform 'fake' curves in lines, set smooth when needed
+;(define (clean-contour c)
+;  (letrec ([make-lines 
+;            (lambda (pts [acc '()])
+;              (match pts
+;                [(list-rest (point v 'curve _ _ _)
+;                            (point v1 'offcurve s1 n1 i1)
+;                            (point v2 'offcurve s2 n1 i1)
+;                            (point v3 'curve s3 n3 i3)
+;                            _)
+;                 (if (and (aligned? v v1 v2)
+;                          (aligned? v v2 v3))
+;                     (make-lines (cdddr pts)
+;                                 (append acc (list (point v3 'line s3 n3 i3))))
+;                     (make-lines (cdddr pts)
+;                                 (append acc (list (point v1 'offcurve s1 n1 i1)
+;                                                   (point v2 'offcurve s2 n1 i1)
+;                                                   (point v3 'curve s3 n3 i3)))))]
+;                [(list-rest (point v _ _ _ _)
+;                            (point _ 'line _ _ _)
+;                            pr)
+;                 (make-lines (cdr pts) (append acc (cadr pts)))]
+;                [(list p) (append acc (list p))]
+;                [(list) '()]))]
+;           [(set-smooth 
+;             (lambda (pts [acc '()])
+;               (match pts
+;                 [(
+                
+                
 
 ; Component Glyph -> (listOf Contour)
 ; produce a list of contours from a component applying the trasformation matrix to the contours in the base
@@ -1221,6 +1258,8 @@
      (==> (seq ob a) (seq . r))]
     ))
     
+
+
 (define-syntax build-accessor 
   (syntax-rules ()
     [(build-accessor ob a)
@@ -1229,6 +1268,7 @@
              [(glyph? o) (accessor glyph a)]
              [(layer? o) (accessor layer a)]
              [(anchor? o) (accessor anchor a)]
+             [(advance? o) (accessor advance a)]
              [(component? o) (accessor component a)]
              [(contour? o) (accessor contour a)]
              [(point? o) (accessor point a)]
