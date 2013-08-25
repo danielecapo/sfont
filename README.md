@@ -43,6 +43,8 @@ Read and write UFOs
 (require "ufo.rkt")
 ```
 
+### Read and write UFOs
+
 To read a UFO:
 
 ```
