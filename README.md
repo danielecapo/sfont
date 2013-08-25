@@ -6,6 +6,7 @@ The idea is that using the ability of DrRacket to draw images in the REPL a simi
 
 You can see two screencasts here:
 https://vimeo.com/69951725
+
 https://vimeo.com/70019868
 
 At the moment it can be used to read and write fonts in the UFO format. It can (but it is not tested in a serious way) read from UFO 2 and UFO 3, covert UFO 2 to UFO 3 and UFO 3 to UFO 2.
@@ -119,7 +120,7 @@ But you can add more field forms, the result of the previous operation will be p
 ```
 (in (get-glyph f 'a) [contours first] [points (list-ref 2)] [pos] [x])
 
-(in (get-glyph f 'a) [contours first]) -> this evaluates to the first contour of "a" that will be passed to
+(in (get-glyph f 'a) [contours first]) -> this evaluates to the first contour of "a" 
 ```
 
 then `[points (list-ref 2)]` evaluates to the third point in the contour
