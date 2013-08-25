@@ -78,7 +78,6 @@
 ; Split a segment at coordinates v
 (define (split-at-point s v)
   (letrec ([aux (lambda (s1 start end)
-                  (display (~a start " - " end "\n\n"))
                   (cond [(not (inside-bounding-box? v (bounding-box s1))) #f]
                         [(vec-approx= (car s1) v) start]
                         [(vec-approx= (last s1) v) end]
