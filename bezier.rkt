@@ -74,6 +74,31 @@
               (map car stages)
               (reverse (map last stages)))))]))
 
+; Segment Vec -> (Segment or False) (Segment or False)
+; Split a segment at coordinates v
+(define (split-at-point s v)
+  (letrec ([aux (lambda (s1 start end)
+                  (display (~a start " - " end "\n\n"))
+                  (cond [(not (inside-bounding-box? v (bounding-box s1))) #f]
+                        [(vec-approx= (car s1) v) start]
+                        [(vec-approx= (last s1) v) end]
+                        [(= start end) start]
+                        [else (let-values ([(a b) (split s1 0.5)])
+                                (let ([fa (aux a start (+ start (* 0.5 (- end start))))])
+                                  (if fa fa
+                                      (aux b (+ start (* 0.5 (- end start))) end))))]))])
+    (let ([f (aux s 0 1)])
+      (if f (split s f) (values #f #f)))))
+
+; Bezier ... -> Bezier
+; produce a bezier joining beziers, if endpoints are equal
+(define (join-beziers s1 . ss)
+  (cond [(null? ss) s1]
+        [(vec-approx= (last s1) (car (car ss)))
+         (apply join-beziers (append s1 (cdr (car ss))) (cdr ss))]
+        [else (error "I can't join the curves")]))
+          
+         
 
 ; Segment Number [0, 1] -> Vec
 ; produce a Vec representing the point on the Bezier Segment at 'time' t
@@ -188,8 +213,8 @@
 ; Bezier Natural Natural -> Number
 ; check if the orientation of a bezier of nth order is clockwise
 ; every segment of a bezier is reduced to a polygon of s sides
-(define (clockwise? b [n 3] [s 200])
-  (< (signed-polygonal-area b n s) 0))
+(define (clockwise? b)
+  (< (signed-polygonal-area b) 0))
 
 ; Bezier Bezier -> (listOf Vec)
 (define (cubic-bezier-intersections b1 b2)
@@ -214,20 +239,21 @@
         [ep2 (end-points s2)])
     (if (not (overlap-bounding-boxes? bb1 bb2))
         '()
-        (cond [(< (vec-length (vec- (car ep1) (cdr ep1)))
-                  0.001)
+        (cond [(and (end-points-at-extrema? s1)
+                    (< (vec-length (vec- (car ep1) (cdr ep1)))
+                       0.002))
                (let ([i (segment-intersection (car ep1) (cdr ep1)
                                               (car ep2) (cdr ep2))])
                      (if i i '()))]
-              [(< (vec-length (vec- (car ep2) (cdr ep2)))
-                  0.001)
+              [(and (end-points-at-extrema? s2)
+                    (< (vec-length (vec- (car ep2) (cdr ep2)))
+                  0.002))
                (let ([i (segment-intersection (car ep1) (cdr ep1)
                                               (car ep2) (cdr ep2))])
                      (if i i '()))]
-              [else (let-values ([(sa1 sb1) (split s1 0.5)]
-                                 [(sa2 sb2) (split s2 0.5)])                     
-                      (cubic-bezier-intersections (append sa1 (cdr sb1))
-                                                  (append sa2 (cdr sb2))))]))))
+              [else (cubic-bezier-intersections 
+                       (call-with-values (lambda () (split s1 0.5)) join-beziers)
+                       (call-with-values (lambda () (split s2 0.5)) join-beziers))]))))
 
 ;        (append* (if (or (vec-approx= (car ep1) (car ep2))
 ;                         (vec-approx= (car ep1) (cdr ep2)))
@@ -254,7 +280,8 @@
          '()
          (let* ([ep (end-points s)]
                 [v (vec- (cdr ep) (car ep))])
-           (if (< (vec-length v) 0.002)
+           (if (and (end-points-at-extrema? s)
+                    (< (vec-length v) 0.002))
                (list (intersect-hor h (car ep) (cdr ep)))
                (let-values ([(sa sb) (split s 0.5)])
                  (append (segment-intersect-hor h sa)
@@ -272,7 +299,8 @@
          '()
          (let* ([ep (end-points s)]
                 [vd (vec- (cdr ep) (car ep))])
-           (if (< (vec-length vd) 0.002)
+           (if (and (end-points-at-extrema? s)
+                    (< (vec-length vd) 0.002))
                (list (intersect-vert v (car ep) (cdr ep)))
                (let-values ([(sa sb) (split s 0.5)])
                  (append (segment-intersect-vert v sa)
