@@ -242,6 +242,29 @@
    (matrix-mul (trans-mat->matrix m1)
                (trans-mat->matrix m2))))
 
+; Vec Vec -> Number
+; 2D cross product
+(define (cross-prod-2d v1 v2)
+  (- (* (vec-x v1) (vec-y v2))
+     (* (vec-y v1) (vec-x v2))))
+
+; Vec Vec Vec Vec -> Vec
+; intersection between PB and QD 
+; see http://stackoverflow.com/questions/563198/how-do-you-detect-where-two-line-segments-intersect
+(define (segment-intersection p b q d)
+  (let* ([r (vec- b p)]
+         [s (vec- d q)]
+         [rxs (cross-prod-2d r s)])
+    (if (= rxs 0)
+        #f
+        (let* ([t (/ (cross-prod-2d (vec- q p) s)
+                     rxs)]
+               [u (/ (cross-prod-2d (vec- q p) r)
+                     rxs)])
+          (if (or (< t 0) (> t 1)
+                  (< u 0) (> u 1))
+              #f
+              (vec+ p (vec* r t)))))))
 
 
 ; Vec Vec -> Number
@@ -261,6 +284,7 @@
   (foldl + 0 (map (lambda (p) (apply signed-area p)) (n-groups lv 2))))
 
 
+  
 ; Number Vec Vec -> Vec
 ; produce the intersection of the line defined by v1 and v2 with the horizontal line y=n
 (define (intersect-hor n v1 v2)
