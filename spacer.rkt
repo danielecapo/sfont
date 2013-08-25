@@ -150,7 +150,13 @@
                     [groups (make-immutable-hash 
                              (list (cons ln lgs) ...
                                    (cons rn rgs) ...))]
-                    [kerning (make-kerns f1 kh . kern-forms)]))]))
+                    [kerning (make-kerns f1 kh . kern-forms)]))]
+    [(kern f [left-groups  (ln lgs) ...] . kern-forms)
+     (kern f [left-groups  (ln lgs) ...] [right-groups] . kern-forms)]
+    [(kern f [right-groups  (ln lgs) ...] . kern-forms)
+     (kern f [left-groups] [right-groups  (ln lgs) ...] . kern-forms)]
+    [(kern f . kern-forms)
+     (kern f [left-groups] [right-groups] . kern-forms)]))
 
 (define-syntax make-kerns
   (syntax-rules (/ @)
