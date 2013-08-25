@@ -5,6 +5,7 @@ The goal of this project is to produce a library to work with fonts in Racket.
 The idea is that using the ability of DrRacket to draw images in the REPL a similar software can be used for teaching and making experiment with 'parametric' definitions of fonts in an interective environment.
 
 You can see two screencasts here:
+
 https://vimeo.com/69951725
 
 https://vimeo.com/70019868
