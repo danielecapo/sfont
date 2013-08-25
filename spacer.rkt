@@ -297,8 +297,8 @@
                          
 (define-spacing-rule
   uppercase-tracy 
-  [asc h o min]
-  ([mid (/ asc 2)]
+  [caps h o min]
+  ([mid (/ caps 2)]
    [a h]
    [b (floor (* 0.9 h))]
    [c (floor (/ h 2))]

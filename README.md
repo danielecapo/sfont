@@ -1,4 +1,4 @@
-sfont
+# sfont
 
 
 The goal of this project is to produce a library to work with fonts in Racket.
@@ -28,149 +28,181 @@ Every comment, suggestion and critique is welcome.
 
 -------
 
-Usage
+## Usage
 
-Functional style
+### Functional style
 
-Everything here is or should be immutable (at least I tried to make everything immutable).
+Everything here is or should be immutable (at least, I tried to make everything immutable).
 This means that operations like converting to UFO3 etc., will actually return a NEW font.
 
 Read and write UFOs
 
+```
 (require "ufo.rkt")
+```
 
 To read a UFO:
 
+```
 (read-ufo "/path/to/your.ufo")
+```
 
 The font is represented as a structure (read ufo-def.rkt for more detail)
 Kerning group names are autamatically converted using the UFO3 conventions (left kerning group names have to start with "public.kern1." and right group names have to start with "public.kern2").
 It is assumed that UFOs2 use contours with one point to store anchors, the font structure will convert them in anchors. When saving they will be reconverted to contours (if saved as UFO2).
 Glyphs are stored in layers (even for UFO2).
 
-If your f is your font, you can save it with write-ufo:
+If `f` is your font, you can save it with `write-ufo`:
 
+```
 (write-ufo f "/path/to/your.ufo")
+```
 
 The normal behaviour is to overwrite everything, if you DON'T want to overwrite:
 
+```
 (write-ufo f "/path/to/your.ufo" #:overwrite #f)
+```
 
-Convert between UFO2 and UFO3
+### Convert between UFO2 and UFO3
 
+```
 (font->ufo3 f)
 (font->ufo2 f)
+```
 
 So, to save as UFO3 you can:
 
+```
 (write-ufo (font->ufo3 f) "/path/to/your.ufo")
+```
 
-Navigating the font
+### Navigating the font
 
 You can use the normal way, i.e. structures field accessors, to get the various parts.
-However since this can be annoying for a deeply nested data structure (I suppose the term is correct) like a font, sfont provides the "in", "seq" and "==>" macros (it is dubious, however, if it can be considered better):
+However since this can be annoying for a deeply nested data structure (I suppose the term is correct) like a font, sfont provides the `in`, `seq` and `==>` macros (it is dubious, however, if it can be considered better):
 
 The basic structure of in is:
+
+```
 (in object [field]) -> (object-type-field object)
+```
 
 for example
 
+```
 (in f [groups]) -> (font-groups f)
+```
 
 The other way of using it is
+
+```
 (in object [field f]) -> (f (object-type-field object))
 
 (in object [field (lambda ...)]) -> ((lambda ...) (object-type-field object))
 
 (in object [field (f . r)]) -> (f (object-type-field object) . r)
+```
 
 Some example:
+
+```
 (in f [layers first]) -> (first (font-layers f))
 
 (in f [layers (lambda (ls) (map layer-name ls))]) -> ((lambda (ls) (map layer-name ls)) (font-layers f))
 
 (in f [layers (list-ref 0)]) -> (list-ref (font-layers f) 0)
+```
 
 But you can add more field forms, the result of the previous operation will be passed to the second, etc:
 
+```
 (in (get-glyph f 'a) [contours first] [points (list-ref 2)] [pos] [x])
 
-(in (get-glyph f 'a) [contours first]) -> this will get the first contour of "a" that will be passed to
+(in (get-glyph f 'a) [contours first]) -> this evaluates to the first contour of "a" that will be passed to
+```
 
-then [points (list-ref 2)] will get the third point in the contour
-then [pos] will get the position vector of the point
-finally [x] will get the x coordinate.
+then `[points (list-ref 2)]` evaluates to the third point in the contour
+then `[pos]` evaluates to the position vector of the point
+finally `[x]` evaluates to the x coordinate.
 
-This macro uses the ==> macro (it exists a similar thing in clojure) to chain expressions.
+This macro uses the `==>` macro (it exists a similar thing in clojure) to chain expressions.
 
 The macro seq let's you access data in another way:
 
+```
 (seq f) -> will returns an hashtable of glyphs in the foreground layer
 (seq f 'a) -> glyph "a" of the foreground layer
 (seq f 'a 0) -> the first contour of "a"
 (seq f 'a 0 2) -> the third point of this contour
+```
 
+### Spacing fonts
 
-Spacing fonts
-
-In spacer.rkt you have two macros "space" and "kern".
+In spacer.rkt you have two macros `space` and `kern`.
 The basic usage of space is
 
+```
 (space f
 	a / 20 60
 	b / 60 20
 	...)
-	
-The form is a / 20 60, should be intuitive, the first is the glyph, after the slash you have the left and right sidebearings.
+```
+
+The form `a / 20 60` should be intuitive, the first is the glyph, after the slash you have the left and right sidebearings.
 Sidebearings can be expressed in various ways:
 
--- 
+`--` 
 keeps the sidebearing unchanged
 
-(v h) 
-
+`(v h)` 
 sets the sidebearing v at height h (like measurement line in FontLab)
 
-(/--/ v) 
+`(/--/ v)` 
 set the advance width to v
 
-(<-> v)
+`(<-> v)`
 adjust the sidebearing by v
 
 You can mix the various forms in left and right sidebearings
 
-a / 30 (60 200)
+`a / 30 (60 200)`
 it means: set the left sidebearing to 30, set the right sidebearing (measured at height 200) to 60
 
-z / (/--/ 300) 40
+`z / (/--/ 300) 40`
 it means: set the advance width to 300 with the right sidebearing to 40
 
-etc.
+You can define groups (but they are not added to the font groups dictionary):
 
-You can define groups (but they are not added to the groups dictionary):
-
+```
 (space f
 	[groups
 		(rounded-left '(c d e o q))]
 	@ rounded-left / 30 --)
-	
-You need to place @ in front of the group names in the spacing forms.
+```
+
+You need to place `@` in front of the group names in the spacing forms.
 
 It is like
+
+```
 (space f
 	c / 30 --
 	d / 30 --
 	e / 30 --
 	o / 30 --
 	q / 30 --)
-	
+```
+
 Another way to do this is to group glyphs in parentheses in the spacing form:
 
+```
 (c d e o q) / 30 --
+```	
 	
-	
-Kern macro
+### Kern macro
 
+```
 (kern fo
 	[left-groups 
 			(rounded_left '(o b p))]
@@ -178,8 +210,34 @@ Kern macro
 		    (diagonal_right '(v w y))]
 	@ rounded_left @ diagonal_right / -40
 	o o / 20)
-	
-The kerning groups are added to the font groups with the prefixes public.kern1. and public.kern2., the kern form is simple enough (use @ before groups, in that way the macro will add the correct prefix for you).
+```
+
+The kerning groups are added to the font groups with the prefixes public.kern1. and public.kern2., the kern form is simple enough (use `@` before groups, in that way the macro will add the correct prefix for you).
+
+### Spacing Rules
+
+In spacer you will also find the `define-spacing-rule` macro. It is used to produce a function for spacing fonts according to some rule; I've used it to define the functions `lowercase-tracy` and `uppercase-tracy` that apply the procedure described by W. Tracy to space letters.
+
+#### lowercase-tracy function
+
+This function is called with the font, the x-height of the font, the space applied to straight lowercase letters, the space applied to round letters, the mimimum space (for v, w, etc.) and, optionally two values used for adjusting the spacing for letters like c and l (the adjustments are used when Tracy says 'slightly more' etc.).
+
+```
+(lowercase-tracy f 500 100 40 10) 
+```
+
+#### uppercase-tracy function
+
+The function is called with the font, the height of capitals, the space applied to H, the space applied to round letters, the minimum space for diagonal letters.
+
+```
+(upper-tracy f 700 140 70 11) 
+```
+
+
+
+
+
 
 
 
