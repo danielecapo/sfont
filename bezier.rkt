@@ -340,11 +340,16 @@
 ;               (newline)
 ;               (print "....")
 ;               (newline)
-        (cond ;[(and (line-segment? s1)
-              ;      (line-segment? s2))
-              ; (let ([i (segment-intersection (car ep1) (cdr ep1)
-              ;                                (car ep2) (cdr ep2))])
-              ;       (if i i '()))]
+        (cond [(and (line-segment? s1)
+                    (line-segment? s2))
+               (let ([i (segment-intersection (car ep1) (cdr ep1)
+                                              (car ep2) (cdr ep2))])
+                 (if i i '()))]
+              [(line-segment? s1)
+               (line-segment-intersections s1 s2)]
+              [(line-segment? s2)
+               (line-segment-intersections s2 s1)]
+             ;
               [(and (end-points-at-extrema? s1)
                     (< (vec-length (vec- (car ep1) (cdr ep1)))
                        0.002))
@@ -384,6 +389,25 @@
 ;                                               (append sa2 (cdr sb2))))))))
                   
     
+; Segment Segment -> (listOf Vec)
+; produce a list of intersections between the straight segment and the curved segment
+(define (line-segment-intersections l s)
+  (let* ([f (car l)]
+         [a (vec-angle (vec- (car l) (last l)))]
+         [ts (map (lambda (v) 
+                    (rotate (translate v (- (vec-x f)) (- (vec-y f))) 
+                            (- a)))
+                  s)])
+    (filter (lambda (v)
+              (and (>= (vec-x v) (vec-x (car (bounding-box l))))
+                   (<= (vec-x v) (vec-x (cdr (bounding-box l))))
+                   (>= (vec-y v) (vec-y (car (bounding-box l))))
+                   (<= (vec-y v) (vec-y (cdr (bounding-box l))))))
+               (map (lambda (v) (translate (rotate v a) (vec-x f) (vec-y f)))
+                    (segment-intersect-hor 0 ts)))))
+    
+
+
 ; Number Segment -> (listOf Vec)
 ; produce the list of intesection between the Bezier segment and the horizontal line y=h
 (define (segment-intersect-hor h s)
