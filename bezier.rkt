@@ -255,16 +255,21 @@
 ; produce the BoundingBox of BoundingBoxes
 (define (combine-bounding-boxes bb . bbs)
   (foldl (lambda (bb1 bb2)
-           (cons (vec (min (vec-x (car bb1)) (vec-x (car bb2)))
-                      (min (vec-y (car bb1)) (vec-y (car bb2))))
-                 (vec (max (vec-x (cdr bb1)) (vec-x (cdr bb2)))
-                      (max (vec-y (cdr bb1)) (vec-y (cdr bb2))))))
+           (cond [(not bb1) bb2]
+                 [(not bb2) bb1]
+                 [else
+                  (cons (vec (min (vec-x (car bb1)) (vec-x (car bb2)))
+                             (min (vec-y (car bb1)) (vec-y (car bb2))))
+                        (vec (max (vec-x (cdr bb1)) (vec-x (cdr bb2)))
+                             (max (vec-y (cdr bb1)) (vec-y (cdr bb2)))))]))
          bb bbs))
 
 ; BoundingBox BoundingBox -> Boolean
 ; True if the bounding boxes overlap
 (define (overlap-bounding-boxes? bb1 bb2)
   (match (cons bb1 bb2)
+    [(cons #f _) #f]
+    [(cons _ #f) #f]
     [(cons (cons (vec minx1 miny1) (vec maxx1 maxy1))
            (cons (vec minx2 miny2) (vec maxx2 maxy2)))
      (let ([t1 (and (>= minx1 minx2) (<= minx1 maxx2))]
@@ -279,15 +284,20 @@
 ; BoundingBox BoundingBox -> Boolean
 ; True if the second bounding boxe is inside the first
 (define (include-bounding-box? bb1 bb2)
-  (andmap (lambda (v) 
-            (inside-bounding-box? v bb1))
-          (list (car bb2) (cdr bb2))))
+  (if (or (not bb1) (not bb2))
+      #f
+      (andmap (lambda (v) 
+                (inside-bounding-box? v bb1))
+              (list (car bb2) (cdr bb2)))))
 
 ; Bezier Natural -> BoundingBox
 ; produce the BoundingBox for the Bezier of order n
 (define (bezier-bounding-box b [n 3])
-  (let ([ss (segments b n)])
-    (apply combine-bounding-boxes (map bounding-box ss))))
+  (cond [(null? b) #f]
+        [(= (length b) 1) (cons (car b) (car b))]
+        [else 
+         (let ([ss (segments b n)])
+           (apply combine-bounding-boxes (map bounding-box ss)))]))
 
 
 ; Bezier Natural Natural -> Number

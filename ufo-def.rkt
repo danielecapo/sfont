@@ -15,9 +15,9 @@
              compound-based-trans
              clean-arg
              geometric-struct
-             apply-glyph-trans
-             build-accessor 
-             accessor))
+             apply-glyph-trans))
+            ; build-accessor 
+             ;accessor))
              
              
              
@@ -270,10 +270,13 @@
 (define (for-each-layer proc f)
   (for-each proc (font-layers f)))
 
-; (Glyph -> Boolean) -> (listOf Glyphs)
+; (Glyph -> Boolean) (Font or Layer)-> (listOf Glyphs)
 ; filter the list of glyphs in the layer with the procedure
-(define (filter-glyphs proc layer)
-  (filter proc (layer-glyphs layer)))
+(define (filter-glyphs proc o [l 'public.default])
+  (let ([la (cond [(font? o) (get-layer o l)]
+                  [(layer? o ) o]
+                  [else (error "map-glyphs: first argument should be a layer or a font")])])
+  (filter proc (hash-values (layer-glyphs la)))))
 
 ; Font Layer -> Font
 ; produce a new font with the layer added (or updated if a layer with the same name already exists)
@@ -354,7 +357,7 @@
     (if l
         (for-each proc (if sorted
                            (sort-glyph-list (hash-values (layer-glyphs l)))
-                           (hash-values (layer-glyphs ))))
+                           (hash-values (layer-glyphs l))))
         (error "for-each-glyph: layer does not exist"))))
 
 ; Font -> (listOf Symbol)
@@ -436,7 +439,7 @@
                 g)]
          [cs (glyph-contours g)])
     (if (null? cs)
-        (cons (vec 0 0) (vec 0 0))
+        #f
         (apply combine-bounding-boxes 
                (map (lambda (c) 
                       (bezier-bounding-box (contour->bezier c)))
@@ -457,7 +460,7 @@
 (define (sidebearings f g [ln 'public.default])
   (let* ([bb (glyph-bounding-box f g ln)]
          [a (advance-width (glyph-advance g))])
-    (if (equal? bb (cons (vec 0 0) (vec 0 0)))
+    (if (not bb)
         #f
         (cons (vec-x (car bb))
               (- a (vec-x (cdr bb)))))))
@@ -652,7 +655,9 @@
 ; (String or Number) -> Number
 ; produce a number from a string or return the number
 (define (ensure-number n)
-  (if (or (not n) (number? n)) n (string->number n)))
+  (if (or (not n) (number? n)) 
+      n 
+      (string->number (string-replace n "," "."))))
 
 ; (String or Symbol) -> Symbol
 ; produce a symbol from a string or return the symbol
@@ -1227,7 +1232,7 @@
      (==> (f form . a) . r)]
     [(==> form f . r) (==> (f form) . r)]))
 
-
+#;
 (define-syntax in
   (syntax-rules ()
     [(in o [field])
@@ -1259,7 +1264,7 @@
     ))
     
 
-
+#;
 (define-syntax build-accessor 
   (syntax-rules ()
     [(build-accessor ob a)
@@ -1278,15 +1283,14 @@
              [(image? o) (accessor image a)]))]))
 
 
-
+#;
 (define-syntax (accessor stx)
   (syntax-case stx ()
       [(accessor t name)
+       (let ([id (lambda (f)
+                   (let ([str (format f (syntax-e #'t) (syntax-e #'name))])
+                     (datum->syntax #'t (string->symbol str))))])
   
-         (with-syntax ([n (datum->syntax 
-                           stx (string->symbol 
-                                (format "~a-~a" 
-                                        (syntax->datum #'t)
-                                        (syntax->datum #'name))))])
-         #'n)]))
+         (with-syntax ([ac (id "~a-~a" )])
+                       #'ac))]))
 

@@ -84,55 +84,11 @@ So, to save as UFO3 you can:
 ### Navigating the font
 
 You can use the normal way, i.e. structures field accessors, to get the various parts.
-However since this can be annoying for a deeply nested data structure (I suppose the term is correct) like a font, sfont provides the `in`, `seq` and `==>` macros (it is dubious, however, if it can be considered better):
+However since this can be annoying for a deeply nested data structure (I suppose the term is correct) like a font, sfont provides the `seq` macro
 
-The basic structure of in is:
 
-```
-(in object [field]) -> (object-type-field object)
-```
 
-for example
-
-```
-(in f [groups]) -> (font-groups f)
-```
-
-The other way of using it is
-
-```
-(in object [field f]) -> (f (object-type-field object))
-
-(in object [field (lambda ...)]) -> ((lambda ...) (object-type-field object))
-
-(in object [field (f . r)]) -> (f (object-type-field object) . r)
-```
-
-Some example:
-
-```
-(in f [layers first]) -> (first (font-layers f))
-
-(in f [layers (lambda (ls) (map layer-name ls))]) -> ((lambda (ls) (map layer-name ls)) (font-layers f))
-
-(in f [layers (list-ref 0)]) -> (list-ref (font-layers f) 0)
-```
-
-But you can add more field forms, the result of the previous operation will be passed to the second, etc:
-
-```
-(in (get-glyph f 'a) [contours first] [points (list-ref 2)] [pos] [x])
-
-(in (get-glyph f 'a) [contours first]) -> this evaluates to the first contour of "a" 
-```
-
-then `[points (list-ref 2)]` evaluates to the third point in the contour
-then `[pos]` evaluates to the position vector of the point
-finally `[x]` evaluates to the x coordinate.
-
-This macro uses the `==>` macro (it exists a similar thing in clojure) to chain expressions.
-
-The macro seq let's you access data in another way:
+The macro seq let's you access data:
 
 ```
 (seq f) -> will returns an hashtable of glyphs in the foreground layer
