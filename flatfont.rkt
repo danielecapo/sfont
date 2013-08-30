@@ -42,7 +42,7 @@
           [descender (dict-ref (ffont-info f) 'descender -250)]
           [glyphs (map (lambda (g) (draw-fglyph (decompose-fglyph f g)))
                        (fget-glyphs f (unique-letters *text*)))])
-      (apply pictf:font ascender descender glyphs)))
+      (pictf:font ascender descender glyphs)))
   #:methods gen:geometric
   [(define/generic super-transform transform)
    (define/generic super-translate translate)

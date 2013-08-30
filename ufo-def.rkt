@@ -568,15 +568,18 @@
 ; Font Symbol -> side effects
 ; Print the glyph           
 (define (print-glyph f gn)
-  (let* ([g (decompose-glyph f (get-glyph f gn))]
-         [ascender (hash-ref (font-fontinfo f) 'ascender 750)]
-         [upm (hash-ref (font-fontinfo f) 'unitsPerEm 1000)]
-         [cs (map-contours contour->bezier g)]
-         [bb (if (null? cs)
-                 (cons (vec 0 0) (vec 0 0))
-                 (apply combine-bounding-boxes
-                        (map bezier-bounding-box cs)))])
-      (pictf:glyph (draw-glyph g) bb ascender upm)))
+  (let ([gp (get-glyph f gn)])
+    (if (not gp) 
+        (error "Glyph not in font")
+        (let* ([g (decompose-glyph f (get-glyph f gn))]
+               [ascender (hash-ref (font-fontinfo f) 'ascender 750)]
+               [upm (hash-ref (font-fontinfo f) 'unitsPerEm 1000)]
+               [cs (map-contours contour->bezier g)]
+               [bb (if (null? cs)
+                       (cons (vec 0 0) (vec 0 0))
+                       (apply combine-bounding-boxes
+                              (map bezier-bounding-box cs)))])
+          (pictf:glyph (draw-glyph g) bb ascender upm)))))
                      
 ; Font -> Font
 ; Round the coordinates of the font using the current *precision* factor
@@ -1190,38 +1193,6 @@
   (let-values ([(k f) (lookup-kerning-pair f gl gr)])
     k))
 
-; Macro for easy access to font data
-; (in-font f 'a)   -> (get-glyph f 'a)
-; (in-font f 'a 2) -> third contour of glyph a
-; (in-font f 'a 2 0) -> first point of third contour of a
-; (in-font f 'a (@ anchors 2)) -> second anchor of a
-; (in-font f 'a (@ anchors "top")) -> anchor top of a
-
-#;
-(define-syntax in-font
-  (syntax-rules (@kerning @groups @contours @anchors @layers @components @points)
-    [(in-font f (@kerning l)) (hash-ref (font-kerning f) l #f)]
-    [(in-font f (@groups)) (font-groups f)]
-    [(in-font f (@groups n)) (hash-ref (in-font f (@groups)) n #f)]
-    [(in-font f (@layers)) (font-layers f l)]
-    [(in-font f (@layers l g)) (get-glyph f g l)]
-    [(in-font f g) (get-glyph f g)]
-    [(in-font f g (@components)) (glyph-components (in-font f g))]
-    [(in-font f g (@components n)) (list-ref (in-font f g (@components)) n)]
-    [(in-font f g (@contours)) (glyph-contours (in-font f g))]
-    [(in-font f g (@contours n)) (in-font f g n)]
-    [(in-font f g (@anchors)) (glyph-anchors (in-font f g))]
-    [(in-font f g (@anchors n)) (cond [(number? n)
-                                        (list-ref (in-font f g (@anchors)) n)]
-                                       [(string? n)
-                                        (let ([f (memf (lambda (a) (equal? (anchor-name a) n))
-                                                       (in-font f g (@anchors)))])
-                                          (if f (car f) (error "Anchor not found")))])]
-    [(in-font f g n) (list-ref (glyph-contours (in-font f g)) n)]
-    [(in-font f g n (@points)) (contour-points (in-font f g n))]
-    [(in-font f g n (@points np)) (in-font f g n np)]
-    [(in-font f g n np) (list-ref (in-font f g n (@points)) np)]
-    ))
 
 (define-syntax ==>
   (syntax-rules (lambda)
@@ -1232,27 +1203,13 @@
      (==> (f form . a) . r)]
     [(==> form f . r) (==> (f form) . r)]))
 
-#;
-(define-syntax in
-  (syntax-rules ()
-    [(in o [field])
-     (let ([lo o])
-       ((build-accessor lo field) lo))]
-    [(in o (field fn))
-     (==> (in o [field]) fn)]
-    [(in o field . r)
-     (==> o 
-          (in field)
-          (in . r))]))
-
 (define-syntax seq
   (syntax-rules ()
     [(seq ob a)
      (cond [(symbol? a)
             (hash-ref (seq ob) a)]
            [(number? a)
-            (sequence-ref (seq ob) a)])]
-            
+            (sequence-ref (seq ob) a)])]            
     [(seq ob)
      (let ([o ob])
        (cond [(font? o) (layer-glyphs (get-layer o 'public.default))]
@@ -1260,9 +1217,44 @@
              [(layer? o) (layer-glyphs o)]
              [(contour? o) (contour-points o)]))]
     [(seq ob a . r)
-     (==> (seq ob a) (seq . r))]
-    ))
-    
+     (==> (seq ob a) (seq . r))]))
+
+
+(define-syntax in
+  (syntax-rules ()
+    [(in o [field])
+     (let ([lo o])
+       (field lo))]
+    [(in o (field fn))
+     (==> (in o [field]) fn)]
+    [(in o field . r)
+     (==> o 
+          (in field)
+          (in . r))]))
+
+
+  
+
+
+
+
+#;    
+(define (build-accessor o f)
+  (string->symbol
+   (~a (cond [(font? o) 'font]
+             [(glyph? o) 'glyph]
+             [(layer? o) 'layer]
+             [(anchor? o) 'anchor]
+             [(advance? o) 'advance]
+             [(component? o) 'component]
+             [(contour? o) 'contour]
+             [(point? o) 'point]
+             [(vec? o) 'vec]
+             [(trans-mat? o) 'trans-mat]
+             [(guideline? o) 'guideline]
+             [(image? o) 'image])
+       "-"
+       f)))
 
 #;
 (define-syntax build-accessor 
@@ -1294,3 +1286,5 @@
          (with-syntax ([ac (id "~a-~a" )])
                        #'ac))]))
 
+
+         

@@ -326,7 +326,7 @@
 
 ; Font String (String -> ...) (String -> ...) -> UfoWriter
 ; produce a writer for the ufo file in path
-(define (writer font path [proc-data #f] [proc-images #f])
+(define (writer f path [proc-data #f] [proc-images #f])
   (define (make-ufo-path file)
     (build-path path file))
   (define (write-on-plist dict path)
@@ -344,7 +344,7 @@
           (write-string text o)))))
   (define (write-groups)
     (write-on-plist (make-immutable-hash
-                     (hash-map (font-groups font)
+                     (hash-map (font-groups f)
                                (lambda (name content)
                                  (cons name (map symbol->string content)))))
                     (make-ufo-path "groups.plist")))
@@ -361,7 +361,7 @@
                                 (aux (cons (cons l name) acc)
                                      rest-layers
                                      (cons name names)))]))])                
-      (reverse (aux '() (font-layers font) '()))))
+      (reverse (aux '() (font-layers f) '()))))
   
   (define layers-names (get-layers-names))
   (define (write-glyphs glyphs glyphsdir)
@@ -381,7 +381,7 @@
   (define (write-layers)
     (let ((layers-hash (make-immutable-hash 
                         (map (lambda (l) (cons (layer-name l) l))
-                            (font-layers font)))))
+                            (font-layers f)))))
       (for-each (lambda (l)
                   (begin
                     (let ([dir (make-ufo-path (cdr l))]
@@ -399,39 +399,39 @@
      (make-ufo-path "layercontents.plist")))
   (let ([s (list 
             (cons 'meta (lambda () 
-                          (write-on-plist (hash 'creator (font-creator font)
-                                                'formatVersion (font-format font))
+                          (write-on-plist (hash 'creator (font-creator f)
+                                                'formatVersion (font-format f))
                                           (make-ufo-path "metainfo.plist"))))
             (cons 'info (lambda () 
-                          (write-on-plist (font-fontinfo font) 
+                          (write-on-plist (font-fontinfo f) 
                                           (make-ufo-path "fontinfo.plist"))))
             (cons 'groups write-groups)
-            (cons 'kerning (lambda () (write-on-plist (font-kerning font) 
+            (cons 'kerning (lambda () (write-on-plist (font-kerning f) 
                                                       (make-ufo-path "kerning.plist"))))
-            (cons 'features (lambda () (write-on-text-file (font-features font)
+            (cons 'features (lambda () (write-on-text-file (font-features f)
                                                            (make-ufo-path "features.fea"))))
-            (cons 'lib (lambda () (write-on-plist (font-lib font) 
+            (cons 'lib (lambda () (write-on-plist (font-lib f) 
                                                   (make-ufo-path "lib.plist"))))
             (cons 'layers write-layers)
             (cons 'layercontents write-layercontents)
-            (cons 'data (lambda () (write-directory (font-data font) (make-ufo-path "data") proc-data)))
-            (cons 'images (lambda () (write-directory (font-images font) (make-ufo-path "images") proc-images))))])
+            (cons 'data (lambda () (write-directory (font-data f) (make-ufo-path "data") proc-data)))
+            (cons 'images (lambda () (write-directory (font-images f) (make-ufo-path "images") proc-images))))])
     (lambda (k) (dict-ref s k))))
 
 ; Font String [Boolean] (String -> ...) (String -> ...) -> side effects
 ; write the UFO to the given path
 (define (write-ufo f path #:overwrite [overwrite #t] #:proc-data [proc-data #f] #:proc-images [proc-images #f])
-  (let ([format (font-format font)]
-        [f (if (= format 3) (font->ufo3 f) (font->ufo2 f))] 
-        [writer (writer font path proc-data proc-images)])
+  (let* ([ff (font-format f)]
+         [f (if (= ff 3) (font->ufo3 f) (font->ufo2 f))] 
+         [writer (writer f path proc-data proc-images)])
     (if (and (directory-exists? path) (not overwrite))
         #f
         (begin
           (when (directory-exists? path)
             (delete-directory/files path))
           (make-directory path)
-          (cond [(= format 2) (write-ufo2 writer)]
-                [(= format 3) (write-ufo3 writer)]
+          (cond [(= ff 2) (write-ufo2 writer)]
+                [(= ff 3) (write-ufo3 writer)]
                 [#t (error "I can only write Ufo 2 and Ufo 3 files")])))))
 
 ; ufoWriter -> side effects
