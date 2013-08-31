@@ -549,6 +549,40 @@
         g)))
 
 
+; Font -> Number
+; produce the value of lowercase stems from n
+(define (lowercase-stems f)
+  (let ([xh/2 (* 0.5
+                 (dict-ref (font-fontinfo f) 
+                           'xHeight
+                           (/ (dict-ref (font-fontinfo f) 
+                                        'ascender)
+                              0.67)))])
+    (if (hash-has-key? (seq f) 'n)
+        (let ([inters (intersections-at f (seq f 'n) xh/2)])
+          (if (> (length inters) 2)
+              (vec-length (vec- (second inters)
+                                (first inters)))
+              (error "Sorry I can't determine stems witdth")))
+        (error "The font has no \"n\" glyph"))))
+
+; Font -> Number
+; produce the value of uppercase stems from H
+(define (uppercase-stems f)
+  (let ([xh/2 (* 0.5
+                 (dict-ref (font-fontinfo f) 
+                           'xHeight
+                           (/ (dict-ref (font-fontinfo f) 
+                                        'ascender)
+                              0.67)))])
+    (if (hash-has-key? (seq f) 'H)
+        (let ([inters (intersections-at f (seq f 'H) xh/2)])
+          (if (> (length inters) 2)
+              (vec-length (vec- (second inters)
+                                (first inters)))
+              (error "Sorry I can't determine stems witdth")))
+        (error "The font has no \"H\" glyph"))))
+
 ; Font -> Font
 ; produces a new font with contour in the correct direction
 (define (correct-directions f)
