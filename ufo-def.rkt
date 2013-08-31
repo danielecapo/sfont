@@ -1209,7 +1209,10 @@
      (cond [(symbol? a)
             (hash-ref (seq ob) a)]
            [(number? a)
-            (sequence-ref (seq ob) a)])]            
+            (let ([or (seq ob)])
+              (if (> a (- (sequence-length or) 1))
+                  (error "index out of bounds")
+                  (sequence-ref (seq ob) a)))])]            
     [(seq ob)
      (let ([o ob])
        (cond [(font? o) (layer-glyphs (get-layer o 'public.default))]
