@@ -194,6 +194,15 @@
            (for-each (lambda (g) (pictf:draw-glyph dc g)) glyphs-to-display )))
       1300 (* *size* 2))))
 
+
+(define (draw-glyph-dc dc g f x-min y-max)
+  (begin
+    (send dc set-brush "black" 'solid)
+    (send dc set-pen *pen*)
+    (send dc scale f (- f))
+    (send dc translate (- x-min) (- y-max))
+    (pictf:draw-glyph dc g)))
+  
 ; Glyph BoundingBox (Number or False) (Number or False) -> pict
 ; Draw the glyph
 (define (pictf:glyph g bb [ascender #f] [upm #f])
@@ -209,12 +218,6 @@
                   [(> h 0) (/ 400 h)]
                   [else 1])])
     (dc
-     (lambda (dc dx dy)
-       (begin
-         (send dc set-brush "black" 'solid)
-         (send dc set-pen *pen*)
-         (send dc scale f (- f))
-           (send dc translate (- x-min) (- y-max))
-           (pictf:draw-glyph dc g)))
+     (lambda (dc dx dy) (draw-glyph-dc dc g f x-min y-max))
        (* f w) (* f (if upm upm h)))))
       
