@@ -140,29 +140,33 @@
     
 (define (calculate-length glyphs)
   (foldr + 0 (map advance glyphs)))
-     
-; Number Number (listOf DrawableGlyph) ((Symbol Symbol) -> Number) -> void
+
+; DC Number Number Number (listOf DrawableGlyph) ((Symbol Symbol) -> Number) -> void
+; draw the font in the drawing context     
+(define (draw-font-dc dc ascender descender leading glyphs [kerning (lambda (p) 0)])
+  (let ([f (/  *size* (+ ascender (- descender)))])
+    (begin
+      (send dc set-brush "black" 'solid)
+      (send dc set-pen *pen*)
+      (send dc scale f (- f))
+      (send dc translate 0 (- (/ (* *size* -0.5) f) ascender))                      
+      (for-each (lambda (l) 
+                  (begin
+                    (pictf:draw-line dc l (- (/ (* *size* leading) f)) glyphs 
+                                     (if *show-kerning* kerning (lambda (p) 0)))
+                    (let ([current-x (vector-ref (vector-ref (send dc get-transformation) 0) 4)])
+                      (send dc translate (/ (- current-x) f) 0))))
+                *text*))))
+
+; Number Number (listOf DrawableGlyph) ((Symbol Symbol) -> Number) -> pict
 ; draw the current *text*
 (define (pictf:font ascender descender glyphs [kerning (lambda (p) 0)])
-   (let* ([t *text*]
-          [leading 1.2]
-          [n-lines (lines t)]
-          [f (/  *size* (+ ascender (- descender)))]  
+   (let* ([leading 1.2]
+          [n-lines (lines *text*)] 
           [area-height (* *size* (+ 1 n-lines (* (- leading 1) (- n-lines 1))))])
      (dc
       (lambda (dc dx dy)
-         (begin
-           (send dc set-brush "black" 'solid)
-           (send dc set-pen *pen*)
-           (send dc scale f (- f))
-           (send dc translate 0 (- (/ (* *size* -0.5) f) ascender))                      
-           (for-each (lambda (l) 
-                       (begin
-                         (pictf:draw-line dc l (- (/ (* *size* leading) f)) glyphs 
-                                          (if *show-kerning* kerning (lambda (p) 0)))
-                         (let ([current-x (vector-ref (vector-ref (send dc get-transformation) 0) 4)])
-                           (send dc translate (/ (- current-x) f) 0))))
-                     t)))
+        (draw-font-dc dc ascender descender leading glyphs kerning))
       1300 area-height)))
 
 ; DC Line Number (listOf DrawableGlyph) ((Symbol Symbol) -> Number) -> void
@@ -190,6 +194,8 @@
            (for-each (lambda (g) (pictf:draw-glyph dc g)) glyphs-to-display )))
       1300 (* *size* 2))))
 
+; Glyph BoundingBox (Number or False) (Number or False) -> pict
+; Draw the glyph
 (define (pictf:glyph g bb [ascender #f] [upm #f])
   (let* ([vbb (vec- (cdr bb) (car bb))]
          [w (vec-x vbb)]
