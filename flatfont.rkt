@@ -227,7 +227,7 @@
   (struct-copy font (ffont-ufo f)
                [fontinfo (ufo-infos f)]
                [kerning (if (null? (ffont-kerning f))
-                            #f
+                            (make-immutable-hash)
                             (make-immutable-hash
                              (map (lambda (p) (cons (car p) (make-immutable-hash (cdr p))))
                                   (ffont-kerning f))))]
