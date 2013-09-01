@@ -897,7 +897,8 @@
                                            #:name (anchor-name a)
                                            #:type 'move))))
 
-
+; (listOf Point) -> (listOf Point) 
+; produce a list of points where the first element is always an on-curve point
 (define (ensure-first-on-curve pts)
   (match pts
     [(list-rest (point _ 'move _ _ _) pr) pts]
@@ -907,7 +908,40 @@
     [(list-rest (point _ 'offcurve _ _ _) pr) 
      (ensure-first-on-curve (append pr (list (car pts))))]))
            
-
+; Contour -> Contour
+; produce a contour with the 'smooth' field when needed
+(define (auto-smooth c)
+  (letrec ([aux 
+            (lambda (pts)
+              (match pts 
+                [(list-rest (point _ 'offcurve _ _ _)
+                            (point _ 'offcurve _ _ _)
+                            _)
+                 (cons (cadr pts) (aux (cdr pts)))]
+                [(list-rest (point _ _ _ _ _)
+                            (point _ 'offcurve _ _ _)
+                            _)
+                 (cons (cadr pts) (aux (cdr pts)))]
+                [(list-rest (point v1 _ _ _ _)
+                            (point v2 t s n i)
+                            (point v3 _ _ _ _)
+                            _)
+                 (cons (if (aligned? v1 v2 v3)
+                           (point v2 t #t n i)
+                           (point v2 t #f n i))
+                       (aux (cdr pts)))]
+                [(list (point _ _ _ _ _) (point _ _ _ _ _))
+                 '()]))])
+    (let* ([pts (contour-points c)]
+           [fp (first pts)]
+           [sp (second pts)]
+           [new-pts (if (contour-open? c)
+                        (append (cons fp (aux pts))
+                                (list (last pts)))
+                        (let [(r (aux (append pts (list fp sp))))]
+                          (cons (last r) (drop-right r 1))))])
+      (struct-copy contour c [points new-pts]))))
+                      
 ; Contour -> Bezier
 ; Transform a contour in a cubic bezier curve (i.e. all segments are made by 4 points)
 (define (contour->bezier c)
@@ -990,12 +1024,13 @@
                 [(list) null]))))
     (let* ((first-pt (car b))
            (ufo-pts (aux first-pt (cdr b) null)))
-      (make-contour #:points 
-                        (if (closed? b) (cons (last ufo-pts) (drop-right ufo-pts 1))
-                            (cons (make-point #:x (vec-x first-pt)
-                                              #:y (vec-y first-pt)
-                                              #:type 'move)
-                                  ufo-pts))))))
+      (auto-smooth
+       (make-contour #:points 
+                     (if (closed? b) (cons (last ufo-pts) (drop-right ufo-pts 1))
+                         (cons (make-point #:x (vec-x first-pt)
+                                           #:y (vec-y first-pt)
+                                           #:type 'move)
+                               ufo-pts)))))))
   
 
 ;;;; WRITE THIS LATER!
