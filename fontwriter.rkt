@@ -37,57 +37,65 @@
                      [reflect-x* reflect-x]
                      [reflect-y* reflect-y]))
 
+;(define-syntax ~
+;    (syntax-rules (insert cycle)
+;      [(~ (o ...) ())
+;       (path o ...)]
+;      [(~ ((x y) p ...) (o cycle))
+;       (~ ((x y) p ... o (x y)) ())]
+;      [(~ (p ...) (insert . r))
+;       (path p ... (insert . r))]
+;      [(~ (p ...) (o . r))
+;       (~ (p ... o) r)]
+;      [(~ (x y) . r)
+;       (~ ((x y)) r)]))
+
+
 (define-syntax ~
-    (syntax-rules (cycle)
-      [(~ (o ...) ())
-       (path o ...)]
-      [(~ ((x y) p ...) (o cycle))
-       (~ ((x y) p ... o (x y)) ())]
-      [(~ (p ...) (o . r))
-       (~ (p ... o) r)]
-      [(~ (x y) . r)
-       (~ ((x y)) r)]))
-
-
-(define-syntax path
-  (syntax-rules (-- insert @)
-    [(path) '()]     
-    [(path (x y) (@ insert vlist) . r)
-     (path (x y) (insert (translate* vlist x y)) . r)]
-    [(path (x y) (insert vlist) (@ x1 y1) . r)
+  (syntax-rules (-- insert @ cycle)
+    [(~ (insert vlist) c ... cycle)
+     (let ([fp (car vlist)])
+       (~ (insert vlist) c ... ((vec-x fp) (vec-y fp))))]
+    [(~ (x y) c ... cycle)
+     (~ (x y) c ... (x y))]
+    [(~) '()]     
+    [(~ (x y) (@ insert vlist) . r)
+     (~ (x y) (insert (translate* vlist x y)) . r)]
+    [(~ (x y) (insert vlist) (@ x1 y1) . r)
      (let ([lasti (last vlist)])
-       (path (x y) 
+       (~ (x y) 
           (insert vlist) 
           ((+ (vec-x lasti) x1)
            (+ (vec-y lasti) y1))
           . r))]
-    [(path (x y) (insert vlist) . r)
+    [(~ (x y) (insert vlist) . r)
      (join-subpaths (list (vec x y))
-                    (path (insert vlist) . r))]
-    [(path (insert vlist) . r)
-     (join-subpaths vlist (path . r))]
-    [(path (x y)) (list (vec x y))]
-    [(path (x y) -- (x1 y1) . r)
+                    (~ (insert vlist) . r))]
+    [(~ (insert vlist) . r)
+     (join-subpaths vlist (~ . r))]
+    [(~ (x y)) (list (vec x y))]
+    [(~ (x y) -- (x1 y1) . r)
      (append (list (vec x y) (vec x y) (vec x1 y1))
-             (path (x1 y1) . r))]
-    [(path (x y) -- (@ x1 y1) . r)
-     (path (x y) -- ((+ x1 x) (+ y1 y)) . r)]
-    [(path (x y) (@ x1 y1 . a) . r)
-     (path (x y) ((+ x1 x) (+ y1 y) . a) . r)]
-    [(path (x y) (x1 y1 . a) (@ x2 y2 . a2) . r)
-     (path (x y) (x1 y1 . a) ((+ x2 x1) (+ y2 y1) . a2) . r)]
-    [(path (x y) (x1 y1 . a) (x2 y2 . a2) (@ x3 y3 . a3) . r)
-     (path (x y) (x1 y1 . a) (x2 y2 . a2) ((+ x3 x2) (+ y3 y2) . a3) . r)]
-    [(path (x y) (cx cy) (cx1 cy1) (x1 y1) . r)
+             (~ (x1 y1) . r))]
+    [(~ (x y) -- (@ x1 y1) . r)
+     (~ (x y) -- ((+ x1 x) (+ y1 y)) . r)]
+    [(~ (x y) (@ x1 y1 . a) . r)
+     (~ (x y) ((+ x1 x) (+ y1 y) . a) . r)]
+    [(~ (x y) (x1 y1 . a) (@ x2 y2 . a2) . r)
+     (~ (x y) (x1 y1 . a) ((+ x2 x1) (+ y2 y1) . a2) . r)]
+    [(~ (x y) (x1 y1 . a) (x2 y2 . a2) (@ x3 y3 . a3) . r)
+     (~ (x y) (x1 y1 . a) (x2 y2 . a2) ((+ x3 x2) (+ y3 y2) . a3) . r)]
+    [(~ (x y) (cx cy) (cx1 cy1) (x1 y1) . r)
      (append (list (vec x y) (vec cx cy) (vec cx1 cy1))
-             (path (x1 y1) . r))]
-    [(path (x y) (cx cy t) (x1 y1) . r)
-     (path (x y) (cx cy t t) (x1 y1) . r)]
-    [(path (x y) (cx cy t t1) (x1 y1) . r)
+             (~ (x1 y1) . r))]
+    [(~ (x y) (cx cy t) (x1 y1) . r)
+     (~ (x y) (cx cy t t) (x1 y1) . r)]
+    [(~ (x y) (cx cy t t1) (x1 y1) . r)
      (append (list (vec x y) 
                    (vec+ (vec x y) (vec* (vec- (vec cx cy) (vec x y)) t)) 
                    (vec+ (vec x1 y1) (vec* (vec- (vec cx cy) (vec x1 y1)) t1)))
-             (path (x1 y1) . r))]))
+             (~ (x1 y1) . r))]))
+
 
 
 ; Bezier, Bezier -> Bezier
@@ -102,10 +110,7 @@
              (append (list p p (car p2)) p2)))]
         [else (cons (car p1) (join-subpaths (cdr p1) p2))]))
 
-    
-
-
-
+ 
 
 ; Number, Number, Number, Number -> Bezier
 ; produce a rectangle (as a bezier curve) with lower left corner in (x, y) with width w and height h
