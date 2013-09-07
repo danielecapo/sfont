@@ -339,7 +339,7 @@
 (define (map-glyphs proc o [l 'public.default] #:sorted [sorted #f])
   (let ([la (cond [(font? o) (get-layer o l)]
                   [(layer? o ) o]
-                  [else (error "map-glyphs: first argument should be a layer or a font")])])
+                  [else (error "map-glyphs: the second argument should be a layer or a font")])])
     (if la
         (map proc (if sorted
                       (sort-glyph-list (hash-values (layer-glyphs la)))
@@ -353,7 +353,7 @@
 (define (for-each-glyph proc o [layer 'public.default] #:sorted [sorted #f])
   (let ([l (cond [(font? o) (get-layer o layer)]
                  [(layer? o ) o]
-                 [else (error "for-each-glyphs: first argument should be a layer or a font")])])
+                 [else (error "for-each-glyphs: the second  argument should be a layer or a font")])])
     (if l
         (for-each proc (if sorted
                            (sort-glyph-list (hash-values (layer-glyphs l)))
@@ -914,6 +914,8 @@
   (letrec ([aux 
             (lambda (pts)
               (match pts 
+                [(list (point _ _ _ _ _) (point _ _ _ _ _))
+                 '()]
                 [(list-rest (point _ 'offcurve _ _ _)
                             (point _ 'offcurve _ _ _)
                             _)
@@ -929,9 +931,7 @@
                  (cons (if (aligned? v1 v2 v3)
                            (point v2 t #t n i)
                            (point v2 t #f n i))
-                       (aux (cdr pts)))]
-                [(list (point _ _ _ _ _) (point _ _ _ _ _))
-                 '()]))])
+                       (aux (cdr pts)))]))])
     (let* ([pts (contour-points c)]
            [fp (first pts)]
            [sp (second pts)]

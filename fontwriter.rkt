@@ -59,6 +59,13 @@
     [(~ (x y) c ... cycle)
      (~ (x y) c ... (x y))]
     [(~) '()]     
+    [(~ (insert vlist) (@ insert vlist2) . r)
+     (let ([sb vlist])
+       (join-subpaths vlist
+                      (~ (insert (translate* vlist2 
+                                             (vec-x (last vlist)) 
+                                             (vec-y (last vlist))))
+                         . r)))]
     [(~ (x y) (@ insert vlist) . r)
      (~ (x y) (insert (translate* vlist x y)) . r)]
     [(~ (x y) (insert vlist) (@ x1 y1) . r)
@@ -75,8 +82,10 @@
      (join-subpaths vlist (~ . r))]
     [(~ (x y)) (list (vec x y))]
     [(~ (x y) -- (x1 y1) . r)
-     (append (list (vec x y) (vec x y) (vec x1 y1))
-             (~ (x1 y1) . r))]
+     (let ([v (vec x y)]
+           [v1 (vec x1 y1)])
+       (append (list v v v1)
+             (~ ((vec-x v1) (vec-y v1)) . r)))]
     [(~ (x y) -- (@ x1 y1) . r)
      (~ (x y) -- ((+ x1 x) (+ y1 y)) . r)]
     [(~ (x y) (@ x1 y1 . a) . r)

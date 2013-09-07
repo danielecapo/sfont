@@ -5,6 +5,8 @@
          "writepfa.rkt"
          "utilities.rkt")
 
+(provide ufo->pfa)
+
 (define (get-or-default k d)
   (lambda (i)
     (hash-ref i k d)))
@@ -74,11 +76,11 @@
 
 (define (ufo->pfa f [fbbox #f])
   (let* ([l (decompose-layer f)]
-         [charstrings (map-glyphs l ufoglyph->pfa)]
+         [charstrings (map-glyphs ufoglyph->pfa l)]
          [gbs (filter (lambda (b) (not (null? b))) (map cddr charstrings))]
          [info (font-fontinfo f)]
          [fname (string->symbol ((get-or-default 'postscriptFontName "Untitled") info))]
-         [s (/ 1.0 ((get-or-default 'unitesPerEm 1000) info))]
+         [s (/ 1.0 ((get-or-default 'unitsPerEm 1000) info))]
          [mat (list s 0 0 s 0 0)]
          [fontinfo (ufoinfo->pfa info)]
          [pvt (ufoprivate->pfa info)]
