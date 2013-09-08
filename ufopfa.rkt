@@ -19,7 +19,10 @@
                                        "1.000"))))
                       (Notice ,(get-or-default 'copyright ""))
                       (Copyright ,(get-or-default 'copyright ""))
-                      (FullName ,(get-or-default 'postscriptFullName "Untitled"))
+                      (FullName ,(lambda (i)
+                                   (hash-ref i 'postscriptFullName
+                                             (~a (hash-ref i 'familyName "Untitled") " "
+                                                 (hash-ref i 'postscriptWeightName "Regular")))))                           
                       (FamilyName ,(get-or-default 'familyName "Untitled"))
                       (Weight ,(get-or-default 'postscriptWeightName "Regular"))
                       (ItalicAngle ,(get-or-default 'italicAngle 0))
@@ -75,7 +78,8 @@
     (map contour->bezier (glyph-contours g)))))
 
 (define (ufo->pfa f [fbbox #f])
-  (let* ([l (decompose-layer f)]
+  (let* ([f (with-precision (1) (font-round f))]
+         [l (decompose-layer f)]
          [charstrings (map-glyphs ufoglyph->pfa l)]
          [gbs (filter (lambda (b) (not (null? b))) (map cddr charstrings))]
          [info (font-fontinfo f)]
