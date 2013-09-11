@@ -5,11 +5,13 @@ The goal of this project is to produce a library to work with fonts in Racket.
 The idea is that using the ability of DrRacket to draw images in the REPL a similar software can be used for teaching and making experiment with 'parametric' definitions of fonts in an interective environment.
 Beware that this project is far from being 'stable' and (at least, I hope) will change in the future.
 
-You can see two screencasts here:
+You can see three screencasts here:
 
 https://vimeo.com/69951725
 
 https://vimeo.com/70019868
+
+http://vimeo.com/73070195
 
 At the moment it can be used to read and write fonts in the UFO format. It can (but it is not tested in a serious way) read from UFO 2 and UFO 3, covert UFO 2 to UFO 3 and UFO 3 to UFO 2.
 
