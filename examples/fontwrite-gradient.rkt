@@ -173,5 +173,5 @@ sh
                                                     'postscriptOtherBlues '(-250 -240)
                                                     'postscriptStemSnapH '(23 45 57)
                                                     'postscriptStemSnapV '(23 45 57)))]))
-(write-type1 (ufo->pfa sh1 (cons (vec -150 -250) (vec 1150 750))) "gradients.txt")
+;(write-type1 (ufo->pfa sh1 (cons (vec -150 -250) (vec 1150 750))) "gradients.txt")
 

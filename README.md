@@ -3,6 +3,7 @@
 
 The goal of this project is to produce a library to work with fonts in Racket.
 The idea is that using the ability of DrRacket to draw images in the REPL a similar software can be used for teaching and making experiment with 'parametric' definitions of fonts in an interective environment.
+Beware that this project is far from being 'stable' and (at least, I hope) will change in the future.
 
 You can see two screencasts here:
 
@@ -37,13 +38,11 @@ Every comment, suggestion and critique is welcome.
 Everything here is or should be immutable (at least, I tried to make everything immutable).
 This means that operations like converting to UFO3 etc., will actually return a NEW font.
 
-Read and write UFOs
+### Read and write UFOs
 
 ```
 (require "ufo.rkt")
 ```
-
-### Read and write UFOs
 
 To read a UFO:
 
@@ -193,6 +192,14 @@ The function is called with the font, the height of capitals, the space applied 
 ```
 (upper-tracy f 700 140 70 11) 
 ```
+
+### Macros for defining fonts
+
+In fontwriter.rkt I've defined macros that can be used to produce fonts. You can browse the example directory to learn about them (in particular the file examples/fontwrite-square.rkt is commented and can be used as a guide).
+
+My idea is that a parametric font should be represented as a function that relates an input (the *parameters*) to an output (the resulting font). In this way when we call the font-function we have a new font output and, if we can display the resulting font, we can easily explore our 'design space'.
+
+The font macro comes in two format, you can use it without parameters and it will simply output a single font or you can define it with parameters and it will produce a procedure that can be called as explained above.
 
 
 
