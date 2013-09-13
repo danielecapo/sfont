@@ -43,10 +43,6 @@
 
 (define (double n) (* n 2))
 
-(define (degree->rad angle)
-  (* pi (/ angle 180.0)))
-
-
 ; Number -> Number
 ; convert from degree to radians
 (define (° d)

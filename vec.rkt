@@ -271,10 +271,7 @@
 ; produces the area of the triangle formed by two vectors using the cross product
 ; the area as a sign: when positive it means the triangle is 'counter-clockwise'
 (define (signed-area v1 v2)
-  (*
-   (- (* (vec-x v1) (vec-y v2))
-      (* (vec-x v2) (vec-y v1)))
-  0.5))
+  (/ (cross-prod-2d v1 v2) 2))
 
 
 ; (listof Vec) -> Number
@@ -306,14 +303,14 @@
                       [pr (vec nn (approx (* nn (/ (vec-y v12) (vec-x v12)))))])
                  (vec+ pr v1))]))
 
-; Number Vec Vec -> Vec
+; Number Vec Vec -> Boolean
 ; check if the horizontal line y=n pass through the segment v1-v2
 (define (pass-through-hor? n v1 v2)
   (or (<= (vec-y v1) n (vec-y v2))
       (>= (vec-y v1) n (vec-y v2))))
 
 
-; Number Vec Vec -> Vec
+; Number Vec Vec -> Boolean
 ; check if the vertical line x=n pass through the segment v1-v2
 (define (pass-through-vert? n v1 v2)
   (or (<= (vec-x v1) n (vec-x v2))
