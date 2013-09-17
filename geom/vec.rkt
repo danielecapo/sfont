@@ -1,12 +1,14 @@
 #lang racket
 
-(require (planet wmfarr/plt-linalg:1:13/vector)
+(require "geometric-generic.rkt"
+         (planet wmfarr/plt-linalg:1:13/vector)
          (planet wmfarr/plt-linalg:1:13/matrix)
          "../properties.rkt"
          "../utilities.rkt"
          racket/generic)
 
 (provide 
+ (all-from-out "geometric-generic.rkt")
  with-precision
  (contract-out
   [*precision* real?]
@@ -44,28 +46,11 @@
   [intersect-hor (-> real? vec? vec? (or/c vec? #f))]
   [intersect-vert (-> real? vec? vec? (or/c vec? #f))]
   [pass-through-hor? (-> real? vec? vec? boolean?)]
-  [pass-through-vert? (-> real? vec? vec? boolean?)]
-  [transform (-> any/c trans-mat? any/c)]
-  [translate (-> any/c real? real? any/c)]
-  [scale (->* (any/c real?) (real?) any/c)]
-  [rotate (-> any/c real? any/c)]
-  [skew-x (-> any/c real? any/c)]
-  [skew-y (-> any/c real? any/c)]
-  [reflect-x (-> any/c any/c)]
-  [reflect-y (-> any/c any/c)])
+  [pass-through-vert? (-> real? vec? vec? boolean?)])
  )
   
 
-;;; Generic interface for geometric transformations
-(define-generics geometric
-  (transform geometric m)
-  (translate geometric x y)
-  (scale geometric fx [fy])
-  (rotate geometric a)
-  (skew-x geometric a)
-  (skew-y geometric a)
-  (reflect-x geometric)
-  (reflect-y geometric))
+
 
 ;;; DEFINITIONS 
 ;;; *precision* is a variable used to approximate numbers

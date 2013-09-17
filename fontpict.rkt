@@ -2,8 +2,7 @@
 
 
 (require racket/draw
-         "vec.rkt"
-         "bezier.rkt"
+         "geometry.rkt"
          "utilities.rkt")
 
 (provide *size*

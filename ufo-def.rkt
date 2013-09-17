@@ -1,7 +1,6 @@
 #lang racket
 
-(require "bezier.rkt"
-         "vec.rkt"
+(require "geometry.rkt"
          "properties.rkt"
          "fontpict.rkt"
          racket/generic
