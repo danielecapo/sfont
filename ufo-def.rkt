@@ -8,13 +8,87 @@
          slideshow/pict-convert)
 
 (provide 
+ 
+ (contract-out
+  [name/c (-> any/c boolean?)]
+  [kerning/c (-> any/c boolean?)]
+  [groups/c (-> any/c boolean?)]
+  [lib/c (-> any/c boolean?)]
+  [fontinfo/c (-> any/c boolean?)]
+  [features/c (-> any/c boolean?)]
+  [images/c (-> any/c boolean?)]
+  [data/c (-> any/c boolean?)]
+  [layerinfo/c (-> any/c boolean?)]
+  [color/c (-> any/c boolean?)]
+  [struct font  
+  ((format natural-number/c) 
+   (creator name/c) 
+   (fontinfo fontinfo/c) 
+   (groups groups/c) 
+   (kerning kerning/c)
+   (features features/c) 
+   (layers (listof layer?)) 
+   (lib lib/c) 
+   (data data/c) 
+   (images images/c))]
+  [struct layer 
+    ((name name/c) 
+     (info layerinfo/c)
+     (glyphs (hash/c name/c glyph? #:immutable #t)))]
+  [struct glyph 
+    ((format natural-number/c)
+     (name name/c) 
+     (advance advance?)
+     (unicodes (listof natural-number/c))
+     (note (or/c string? #f))
+     (image (or/c image? #f))
+     (guidelines (listof guideline?))
+     (anchors (listof anchor?))
+     (contours (listof contour?))
+     (components (listof component?))
+     (lib lib/c))]
+  [struct advance
+    ((width real?)
+     (height real?))]
+  [struct image 
+    ((filename string?)
+     (matrix trans-mat?) 
+     (color color/c))] 
+  [struct guideline 
+    ((pos vec?) 
+     (angle real?) 
+     (name string?)
+     (color color/c) 
+     (identifier symbol?))]
+  [struct anchor 
+    ((pos vec?)
+     (name string?) 
+     (color color/c)
+     (identifier symbol?))]
+  [struct contour ((identifier symbol?) (points (listof point?)))]
+  [struct component ((base name/c) (matrix trans-mat?) (identifier symbol?))]
+  [struct point 
+    ((pos vec?)
+     (type (one-of/c 'move 'line 'offcurve 'curve 'qcurve))
+     (smooth boolean?)
+     (name string?)
+     (identifier symbol?))]
+  
+  [get-layer (->* (font?) (name/c) (or/c layer? #f))]
+  )
+ 
+ glyphlist->hashglyphs
+ hashglyphs->glyphlist
+ 
+ #;
  (except-out (all-defined-out)
              position-based-trans
              matrix-based-trans
              compound-based-trans
              clean-arg
              geometric-struct
-             apply-glyph-trans))
+             apply-glyph-trans)
+ )
             ; build-accessor 
              ;accessor))
              
@@ -74,9 +148,60 @@
   
 ;;;
 ;;; DATA DEFINITIONS
+
+;;; Names
+;;; font glyph and groups names are symbol
+(define name/c (flat-named-contract 'fontname/c symbol?))
+
+
+;;; Kerning
+;;; kernings are represented in an immutable hashtable 
+;;; (hashtable (Symbol . (hashtable (Symbol . Real))))
+(define kerning/c (flat-named-contract 
+                   'kerning/c 
+                   (hash/c name/c (hash/c name/c real? #:immutable #t) #:immutable #t #:flat? #t)))
+
+;;; Groups
+;;; Groups are represented in an immutable hashtable
+;;; (hashtable (Symbol . (listof Symbol)))
+(define groups/c (flat-named-contract
+                  'groups/c
+                  (hash/c name/c (listof symbol?) #:immutable #t #:flat? #t)))
+
+;;; Lib
+;;; 
+(define lib/c (flat-named-contract 
+                    'lib/c
+                    (hash/c name/c any/c #:immutable #t #:flat? #t)))      
+
+;;; Fontinfo
+;;; fontinfo should be defined better
+(define fontinfo/c (flat-named-contract 
+                    'fontinfo/c
+                    (hash/c name/c any/c #:immutable #t #:flat? #t)))      
+
+
+;;; Features
+;;; fontinfo should be defined better
+(define features/c (flat-named-contract 'features/c string?))
+
+;;; Data
+;;; fontinfo should be defined better
+(define data/c (flat-named-contract 'data/c any/c))
+
+;;; Images
+;;; fontinfo should be defined better
+(define images/c (flat-named-contract 'images/c any/c))
+
+;;; LayerInfo
+;;; change this
+(define layerinfo/c (flat-named-contract  'layerinfo/c lib/c))
+                 
+
+                 
+
 ;;; Font
 ;;; (font Number String HashTable HashTable HashTable String (listOf Layer) HashTable ... ...)
-
 (struct font 
   (format creator fontinfo groups kerning features layers lib data images)
   #:transparent
@@ -92,7 +217,6 @@
 ;;; Layer
 ;;; (layer Symbol HashTable HashTable)
 ;;; Layer can be build from a list of Glyphs or from an HashTable (Name . Glyph)
-
 (struct layer (name info glyphs) 
   #:transparent
   #:guard (lambda (name info glyphs tn)
@@ -108,8 +232,6 @@
 ;;; Glyph
 ;;; (glyph Natural Symbol Advance (listOf Unicode) String Image (listOf Guideline) 
 ;;;        (listOf Anchor) (listOf Contour) (listOf Component) HashTable)
-
-
 (struct glyph (format name advance unicodes note image
                          guidelines anchors contours components lib) 
   #:transparent
@@ -159,7 +281,6 @@
 ;;; Advance
 ;;; (advance Number Number)
 ;;; represent the advance width and height of a glyph
-
 (struct advance (width height) #:transparent)
 
 ;;; Image
@@ -236,12 +357,16 @@
 (define (color r g b a)
   (list r g b a))
 
+(define color/c (flat-named-contract 
+                 'color/c 
+                 (list/c (real-in 0 1) (real-in 0 1) (real-in 0 1) (real-in 0 1))))
+
 ;;; Unicode
 ;;; Unicode is a Number
 
 
 
-; (listOf Glyphs) -> (hashTableOf Glyphs)
+; (listOf Glyphs) -> (hashTable Symbol Glyph)
 ; produce an immutable hashtable where keys are the names of glyphs and values are the glyphs
 (define (glyphlist->hashglyphs gs)
   (make-immutable-hash 
