@@ -2,8 +2,8 @@
 
 (require (planet wmfarr/plt-linalg:1:13/vector)
          (planet wmfarr/plt-linalg:1:13/matrix)
-         "properties.rkt"
-         "utilities.rkt"
+         "../properties.rkt"
+         "../utilities.rkt"
          racket/generic)
 
 (provide 

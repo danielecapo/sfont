@@ -4,9 +4,11 @@
          (prefix-in pict: slideshow/pict)
          "vec.rkt"
          "bounding-box.rkt"
-         "utilities.rkt")
+         "../utilities.rkt")
 
 (provide 
+ print-beziers
+ bezier->path
  (contract-out
   [bezier/c (-> any/c boolean?)]
   [segment/c (-> any/c boolean?)]
