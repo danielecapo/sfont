@@ -6,7 +6,46 @@
          "utilities.rkt"
          racket/generic)
 
-(provide (all-defined-out))
+(provide 
+ with-precision
+ (contract-out
+  [*precision* real?]
+  [set-precision! (-> real? any/c)]
+  [approx (-> real? real?)]
+  [struct vec ((x real?)
+               (y real?))]
+  [struct trans-mat ((x real?) 
+                     (xy real?) 
+                     (yx real?)
+                     (y real?)
+                     (x-offset real?)
+                     (y-offset real?))]
+  [vec= (-> vec? vec? boolean?)]
+  [vec-approx= (-> vec? vec? boolean?)]
+  [list->vec (-> (list/c real? real?) vec?)]
+  [vec->list (-> vec? (list/c real? real?))]
+  [vec-length (-> vec? (and/c real? positive?))]
+  [vec-angle (-> vec? real?)]
+  [vec+ (-> vec? vec? vec?)]
+  [vec- (-> vec? vec? vec?)]
+  [vec* (-> vec? real? vec?)]
+  [vec/ (-> vec? real? vec?)]
+  [aligned? (-> vec? vec? vec? boolean?)]
+  [translation-matrix (-> real? real? trans-mat?)]
+  [rotation-matrix (-> real? trans-mat?)]
+  [scale-matrix (->* (real?) (real?) trans-mat?)]
+  [shear-matrix (-> real? real? trans-mat?)]
+  [trans-mat* (-> trans-mat? trans-mat? trans-mat?)]
+  [dot-prod (-> vec? vec? real?)]
+  [cross-prod-2d (-> vec? vec? real?)]
+  [segment-intersection (-> vec? vec? vec? vec? (or/c vec? #f))]
+  [signed-area (-> vec? vec? real?)]
+  [signed-polygonal-area (-> (listof vec?) real?)]
+  [intersect-hor (-> real? vec? vec? (or/c vec? #f))]
+  [intersect-vert (-> real? vec? vec? (or/c vec? #f))]
+  [pass-through-hor? (-> real? vec? vec? boolean?)]
+  [pass-through-vert? (-> real? vec? vec? boolean?)])
+ )
   
 
 ;;; Generic interface for geometric transformations
@@ -35,13 +74,15 @@
                (set-precision! old-precision)
                result)))))
 
-; Number -> Number
+; Real -> Real
 ; approximae number using the global variable *precision*
 
-(define (approx n) (* (exact-round (/ n *precision*)) *precision*))
+(define (approx n) 
+  (if (integer? n) n
+      (* (exact-round (/ n *precision*)) *precision*)))
 
 ;;; Vec
-;;; (vec Number Number)
+;;; (vec Real Real)
 ;;; examples
 ;;; (vec 10 0)
 ;;; (vec 10.1 2)
@@ -83,8 +124,9 @@
   (define (reflect-y v)
     (vec (vec-x v) (- (vec-y v))))])
 
+
 ;;; TransformationMatrix
-;;; (trans-mat Number Number Number Number Number Number)
+;;; (trans-mat Real Real Real Real Real Real)
 (struct trans-mat (x xy yx y x-offset y-offset)
   #:transparent
   #:guard (lambda (x xy yx y x-offset y-offset tn)
@@ -133,23 +175,23 @@
        (= (approx (vec-y v1))
           (approx (vec-y v2)))))
 
-; (listof Number) -> Vec
+; (list Real Real) -> Vec
 ; produce a vector from a two elements list
 (define (list->vec l)
   (vec (car l) (cadr l)))
 
-; Vec -> (listof Number)
+; Vec -> (list Real Real)
 ; produce a list of two numbers from a vector
 (define (vec->list v)
   (list (vec-x v) (vec-y v)))
 
-; Vec -> Number
+; Vec -> Real
 ; produce the vector's length
 (define (vec-length v) 
   (sqrt (+ (square (vec-x v))
            (square (vec-y v)))))
 
-; Vec -> Number
+; Vec -> Real
 ; produce the vector's angle (counterclockwise)
 (define (vec-angle v)
   (match v
@@ -169,11 +211,17 @@
 (define (vec- v1 v2)
   (vec+ v1 (vec* v2 -1)))
 
-; Vec Number -> Vec
+; Vec Real -> Vec
 ; produce a new vector multiplying the coord. of the vector by the number
 (define (vec* v n)
   (vec (* (vec-x v) n)
        (* (vec-y v) n)))
+
+; Vec Real -> Vec
+; produce a new vector dividing the coord. of the vector by the number
+(define (vec/ v n)
+  (vec (/ (vec-x v) n)
+       (/ (vec-y v) n)))
 
 ; Vec Vec Vec -> Boolean
 ; true if the positions defined by the three vectors are aligned
@@ -188,36 +236,23 @@
                 (vec* vb (/ 1 lb))))))
 
 
-;(define (translation-matrix x y)
-;  (matrix 3 3 1 0 0 0 1 0 x y 1))
-;
-;(define (rotation-matrix angle)
-;  (matrix 3 3 (cos angle) (sin angle) 0 
-;          (- (sin angle)) (cos angle) 0
-;          0 0 1))
-;
-;(define (scale-matrix sx sy)
-;  (matrix 3 3 sx 0 0 0 sy 0 0 0 1))
-;
-;(define (shear-matrix sx sy)
-;  (matrix 3 3 1 sy 0 sx 1 0 0 0 1))
 
-; Number Number -> TransformationMatrix
+; Real Real -> TransformationMatrix
 ; produce a Translation Matrix
 (define (translation-matrix x y)
   (trans-mat 1 0 0 1 x y))
 
-; Number -> TransformationMatrix
+; Real -> TransformationMatrix
 ; produce a Rotation Matrix
 (define (rotation-matrix angle)
   (trans-mat (cos angle) (- (sin angle)) (sin angle) (cos angle) 0 0))
 
-; Number [Number] -> TransformationMatrix
+; Real [Real] -> TransformationMatrix
 ; produce a Scale Matrix
 (define (scale-matrix fx [fy fx])
   (trans-mat fx 0 0 fy 0 0))
 
-; Number Number -> TransformationMatrix
+; Real Real -> TransformationMatrix
 ; produce a Shear Matrix
 (define (shear-matrix fx fy)
   (trans-mat 1 fx fy 1 0 0))
@@ -242,13 +277,20 @@
    (matrix-mul (trans-mat->matrix m1)
                (trans-mat->matrix m2))))
 
-; Vec Vec -> Number
+
+; Vec Vec -> Real 
+; dot product
+(define (dot-prod v1 v2)
+  (+ (* (vec-x v1) (vec-x v2))
+     (* (vec-y v1) (vec-y v2))))
+
+; Vec Vec -> Real
 ; 2D cross product
 (define (cross-prod-2d v1 v2)
   (- (* (vec-x v1) (vec-y v2))
      (* (vec-y v1) (vec-x v2))))
 
-; Vec Vec Vec Vec -> Vec
+; Vec Vec Vec Vec -> Vec or False
 ; intersection between PB and QD 
 ; see http://stackoverflow.com/questions/563198/how-do-you-detect-where-two-line-segments-intersect
 (define (segment-intersection p b q d)
@@ -267,14 +309,14 @@
               (vec+ p (vec* r t)))))))
 
 
-; Vec Vec -> Number
+; Vec Vec -> Real
 ; produces the area of the triangle formed by two vectors using the cross product
 ; the area as a sign: when positive it means the triangle is 'counter-clockwise'
 (define (signed-area v1 v2)
   (/ (cross-prod-2d v1 v2) 2))
 
 
-; (listof Vec) -> Number
+; (listof Vec) -> Real
 ; produce the signed area (see above) of the polygon whose points are defined by the position vectors
 ; passed to the function
 (define (signed-polygonal-area lv)
@@ -282,10 +324,11 @@
 
 
   
-; Number Vec Vec -> Vec
+; Real Vec Vec -> Vec or False
 ; produce the intersection of the line defined by v1 and v2 with the horizontal line y=n
 (define (intersect-hor n v1 v2)
-  (cond [(= (vec-y v1) (vec-y v2)) v1]
+  (cond [(= (vec-y v1) (vec-y v2) n) v1]
+        [(= (vec-y v1) (vec-y v2)) #f]
         [(= (vec-x v1) (vec-x v2)) (vec (vec-x v1) n)]
         [else (let* ([v12 (vec- v1 v2)]
                      [nn (- n (vec-y v1))]
@@ -293,24 +336,25 @@
                 (vec+ pr v1))]))
 
 
-; Number Vec Vec -> Vec
+; Real Vec Vec -> Vec or False
 ; produce the intersection of the line defined by v1 and v2 with the vertical line x=n
 (define (intersect-vert n v1 v2)
-  (cond  [(= (vec-x v1) (vec-x v2)) v1]
+  (cond  [(= (vec-x v1) (vec-x v2) n) v1]
+         [(= (vec-x v1) (vec-x v2)) #f]
          [(= (vec-y v1) (vec-y v2)) (vec n (vec-y v1))]
          [else (let* ([v12 (vec- v1 v2)]
                       [nn (- n (vec-x v1))]
                       [pr (vec nn (approx (* nn (/ (vec-y v12) (vec-x v12)))))])
                  (vec+ pr v1))]))
 
-; Number Vec Vec -> Boolean
+; Real Vec Vec -> Boolean
 ; check if the horizontal line y=n pass through the segment v1-v2
 (define (pass-through-hor? n v1 v2)
   (or (<= (vec-y v1) n (vec-y v2))
       (>= (vec-y v1) n (vec-y v2))))
 
 
-; Number Vec Vec -> Boolean
+; Real Vec Vec -> Boolean
 ; check if the vertical line x=n pass through the segment v1-v2
 (define (pass-through-vert? n v1 v2)
   (or (<= (vec-x v1) n (vec-x v2))
