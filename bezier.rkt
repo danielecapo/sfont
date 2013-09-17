@@ -5,7 +5,48 @@
          "vec.rkt"
          "utilities.rkt")
 
-(provide (all-defined-out))
+(provide 
+ (contract-out
+  [bezier/c (-> any/c boolean?)]
+  [segment/c (-> any/c boolean?)]
+  [cubic-segment/c (-> any/c boolean?)]
+  [cubic-bezier/c (-> any/c boolean?)]
+  [bounding-box/c (-> any/c boolean?)]
+  [closed-bezier/c (-> any/c boolean?)]
+  [closed? (-> bezier/c boolean?)]
+  [segments (->* (bezier/c) (natural-number/c) (listof bezier/c))]
+  [on-curve-nodes (->* (bezier/c) (natural-number/c) (listof vec?))]
+  [end-points (-> bezier/c (cons/c vec? vec?))]
+  [off-curve-points (-> segment/c (listof vec?))]
+  [line-segment? (-> bezier/c boolean?)]
+  [canonical-line-segment (-> cubic-segment/c cubic-segment/c)]
+  [split (-> segment/c (real-in 0 1) (values segment/c segment/c))]
+  [join-beziers (->* (bezier/c) () #:rest (listof bezier/c) bezier/c)]
+  [point-at (-> segment/c (real-in 0 1) vec?)]
+  [polygonize-segment (-> segment/c natural-number/c (listof vec?))]
+  [line-bounding-box (-> (cons/c vec? vec?) bounding-box/c)]
+  [end-points-bounding-box (-> segment/c bounding-box/c)]
+  [inside-bounding-box? (-> vec? bounding-box/c boolean?)]
+  [end-points-at-extrema? (-> segment/c boolean?)]
+  [segment-bounding-box (-> segment/c bounding-box/c)]
+  [combine-bounding-boxes (->* (bounding-box/c) () #:rest (listof bounding-box/c) bounding-box/c)]
+  [overlap-bounding-boxes? (-> bounding-box/c bounding-box/c boolean?)]
+  [include-bounding-box? (-> bounding-box/c bounding-box/c boolean?)]
+  [bezier-bounding-box (->* (bezier/c) (natural-number/c) bounding-box/c)]
+  [bezier-signed-area (->* (bezier/c) (natural-number/c natural-number/c) real?)]
+  [bezier-area (->* (bezier/c) (natural-number/c natural-number/c) (and/c real? positive?))]
+  [clockwise? (-> bezier/c boolean?)]
+  [clockwise (-> closed-bezier/c closed-bezier/c)]
+  [cubic-bezier-intersections (-> cubic-bezier/c cubic-bezier/c (listof vec?))]
+  [cubic-segment-intersections (-> cubic-segment/c cubic-segment/c (listof vec?))]
+  [line-segment-intersections (-> segment/c segment/c (listof vec?))]
+  [segment-intersect-hor (-> real? segment/c (listof vec?))]
+  [segment-intersect-vert (-> real? segment/c (listof vec?))]
+  [bezier-intersect-hor (->* (real? bezier/c) (natural-number/c) (listof vec?))]
+  [bezier-intersect-vert (->* (real? bezier/c) (natural-number/c) (listof vec?))]
+  [bezier-boundaries-hor (->* (real? bezier/c) (natural-number/c) bounding-box/c)]
+  ))
+  
 
 ; Data Definition
 ; A Bezier is a list of vec, every vec represent the position of a node
@@ -24,14 +65,25 @@
 ; (cons (vec 0 0) (vec 40 20))
 
 
-(define bezier/c (flat-named-contract 'bezier/c (listof vec?))) 
+(define bezier/c (flat-named-contract 'bezier/c (listof vec?)))
 
+(define segment/c (flat-named-contract 'segment/c (listof vec?)))
+
+(define cubic-segment/c (flat-named-contract 'cubic-segment/c (list/c vec? vec? vec? vec?)))
+
+(define cubic-bezier/c (flat-named-contract 'cubic-bezier/c 
+                                            (and/c bezier/c 
+                                                   (lambda (b) 
+                                                     (= (remainder (- (length b) 1) 3) 0)))))
+
+(define bounding-box/c (flat-named-contract 'bounding-box/c (cons/c vec? vec?)))
 
 ; Bezier -> Boolean
-; check if the first and last node of the Bezier are equal
+; check if the first and last node of the Bezier vec=
 (define (closed? b)
-  (equal? (car b) (last b)))
+  (vec= (car b) (last b)))
 
+(define closed-bezier/c (flat-named-contract 'closed/c (and/c bezier/c closed?)))
 
 ; Bezier Natural -> list of Segments
 ; produce the list of Segments in which the gth order Bezier can be divided 
@@ -64,15 +116,14 @@
                       (andmap (lambda (i) (aligned? (car s) (cadr s) i))
                               (cddr s)))))
 
-; Segment -> Segment 
+; CubicSegment -> CubicSegment 
 ; If it is a line of a cubic segment place the offcurve points at the endpoints
 (define (canonical-line-segment s)
-  (if (and (= (length s) 4)
-           (line-segment? s))
+  (if (line-segment? s)
       (list (car s) (car s) (last s) (last s))
       s))
 
-; Segment Number [0, 1] -> (Segment or Null) (Segment or Null)
+; Segment Real [0, 1] -> (Segment or Null) (Segment or Null)
 ; Split a segment according to de Castlejau's rule at time t
 (define (split s t)
   (cond [(= t 0) (values null s)]
@@ -91,6 +142,10 @@
               (map car stages)
               (reverse (map last stages)))))]))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; WARNING: the following procedures should be rewritten and it's not provided
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 ; Segment Vec -> (Segment or Null) (Segment or Null)
 ; Split a segment at coordinates v
 (define (split-at-point s v)
@@ -99,7 +154,7 @@
 ;                  (print " ")
 ;                  (print end)
 ;                  (newline)
-                  (cond [(not (inside-bounding-box? v (bounding-box s1))) #f]
+                  (cond [(not (inside-bounding-box? v (segment-bounding-box s1))) #f]
                         [(vec-approx= (car s1) v) start]
                         [(vec-approx= (last s1) v) end]
                         [(= (approx start) (approx end)) start]
@@ -175,6 +230,11 @@
                                                   (list (car (car ak1)))))))
                     (error "bezier subtraction: something went wrong"))))))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
 ; Bezier ... -> Bezier
 ; produce a bezier joining beziers, if endpoints are equal
 (define (join-beziers s1 . ss)
@@ -185,7 +245,7 @@
           
          
 
-; Segment Number [0, 1] -> Vec
+; Segment Real [0, 1] -> Vec
 ; produce a Vec representing the point on the Bezier Segment at 'time' t
 (define (point-at s t)
   (cond [(= t 0) (car s)]
@@ -233,10 +293,12 @@
             (off-curve-points s))))
 
 
+; REMOVE?
+
 ; Segment Natural -> (list Vec Vec Vec Vec)
 ; Find the extremes for the Bezier Segment (in a very inelegant way)
 ; result are ordered in this way (minx miny maxx maxy)
-(define (extremes s n)
+(define (extremes s [n 3])
   (let ([points (polygonize-segment s n)])
     (list (car (sort points < #:key vec-x))
           (car (sort points < #:key vec-y))
@@ -246,12 +308,12 @@
 
 ; Segment -> BoundigBox
 ; produces the BoundigBox of the Segment
-(define (bounding-box s)
+(define (segment-bounding-box s)
   (if (end-points-at-extrema? s)
       (end-points-bounding-box s)
       (let-values ([(s1 s2) (split s 0.5)])
-        (combine-bounding-boxes (bounding-box s1)
-                                (bounding-box s2)))))
+        (combine-bounding-boxes (segment-bounding-box s1)
+                                (segment-bounding-box s2)))))
 
 ; BoundingBox ... -> BoundingBox
 ; produce the BoundingBox of BoundingBoxes
@@ -299,10 +361,10 @@
         [(= (length b) 1) (cons (car b) (car b))]
         [else 
          (let ([ss (segments b n)])
-           (apply combine-bounding-boxes (map bounding-box ss)))]))
+           (apply combine-bounding-boxes (map segment-bounding-box ss)))]))
 
 
-; Bezier Natural Natural -> Number
+; Bezier Natural Natural -> Real
 ; produce the 'signed' area of a bezier (positive if counter-clockwise) of nth order
 ; every segment of a bezier is reduced to a polygon of s sides
 (define (bezier-signed-area b [n 3] [s 200])
@@ -311,20 +373,25 @@
               (segments b n))))
 
 
-; Bezier Natural Natural -> Number
+; Bezier Natural Natural -> PositiveReal
 ; produce the area of a bezier (positive if counter-clockwise) of nth order
 ; every segment of a bezier is reduced to a polygon of s sides
 (define (bezier-area b [n 3] [s 200])
   (abs (bezier-signed-area b n s)))
 
 
-; Bezier Natural Natural -> Number
+; Bezier -> Boolean
 ; check if the orientation of a bezier of nth order is clockwise
 ; every segment of a bezier is reduced to a polygon of s sides
 (define (clockwise? b)
   (< (signed-polygonal-area b) 0))
 
-; Bezier Bezier -> (listOf Vec)
+; ClosedBezier -> ClosedBezier
+; produces a new clockwise bezier 
+(define (clockwise b)
+  (if (clockwise? b) b (reverse b)))
+
+; CubicBezier CubicBezier -> (listOf Vec)
 (define (cubic-bezier-intersections b1 b2)
   (let* ([ss1 (segments b1 3)]
          [ss2 (segments b2 3)]
@@ -337,11 +404,11 @@
      (flatten (map (lambda (c) (apply cubic-segment-intersections c))
                   cs)))))
 
-; Segment Segment -> (listOf Vec)
+; CubicSegment CubicSegment -> (listOf Vec)
 ; produce a list of intersections between two bezier segments
 (define (cubic-segment-intersections s1 s2)
-  (let ([bb1 (bounding-box s1)]
-        [bb2 (bounding-box s2)]
+  (let ([bb1 (segment-bounding-box s1)]
+        [bb2 (segment-bounding-box s2)]
         [ep1 (end-points s1)]
         [ep2 (end-points s2)])
     (if (not (overlap-bounding-boxes? bb1 bb2))
@@ -411,20 +478,20 @@
                             (- a)))
                   s)])
     (filter (lambda (v)
-              (and (>= (vec-x v) (vec-x (car (bounding-box l))))
-                   (<= (vec-x v) (vec-x (cdr (bounding-box l))))
-                   (>= (vec-y v) (vec-y (car (bounding-box l))))
-                   (<= (vec-y v) (vec-y (cdr (bounding-box l))))))
+              (and (>= (vec-x v) (vec-x (car (segment-bounding-box l))))
+                   (<= (vec-x v) (vec-x (cdr (segment-bounding-box l))))
+                   (>= (vec-y v) (vec-y (car (segment-bounding-box l))))
+                   (<= (vec-y v) (vec-y (cdr (segment-bounding-box l))))))
                (map (lambda (v) (translate (rotate v a) (vec-x f) (vec-y f)))
                     (segment-intersect-hor 0 ts)))))
     
 
 
-; Number Segment -> (listOf Vec)
+; Real Segment -> (listOf Vec)
 ; produce the list of intesection between the Bezier segment and the horizontal line y=h
 (define (segment-intersect-hor h s)
   (remove-duplicates
-   (let ([bb (bounding-box s)])
+   (let ([bb (segment-bounding-box s)])
      (if (or (< h (vec-y (car bb)))
              (> h (vec-y (cdr bb))))
          '()
@@ -443,7 +510,7 @@
 ; produce the list of intesection between the Bezier segment and the vertical line x=v
 (define (segment-intersect-vert v s)
   (remove-duplicates
-   (let ([bb (bounding-box s)])
+   (let ([bb (segment-bounding-box s)])
      (if (or (< v (vec-x (car bb)))
              (> v (vec-x (cdr bb))))
          '()
@@ -458,7 +525,7 @@
 
 
 
-; Number Bezier Natural -> (listOf Vec)
+; Real Bezier Natural -> (listOf Vec)
 ; produce the list of intesection between the Bezier curve (of nth order) and the horizontal line y=h
 (define (bezier-intersect-hor h b [n 3])
   (remove-duplicates
@@ -469,7 +536,7 @@
           vec=))
 
 
-; Number Bezier Natural -> (listOf Vec)
+; Real Bezier Natural -> (listOf Vec)
 ; produce the list of intesection between the Bezier curve (of nth order) and the vertical line x=v
 (define (bezier-intersect-vert v b [n 3])
   (remove-duplicates
@@ -480,12 +547,9 @@
           vec=))
 
 
-; bezier-boundaries-hor
 ; Number, Bezier, Natural -> BoundingBox
 ; produce the BoundingBox (of zero height) define by the min and max intersection of the bezier curve 
 ; with horizontal line y = h
-
-
 (define (bezier-boundaries-hor h b [n 3])
   (let ([sorted-intersections 
          (sort (bezier-intersect-hor h b n)
