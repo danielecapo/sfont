@@ -1,21 +1,24 @@
 #lang racket
 
-(provide n-groups
-         num->int
-         code+expr
-         square
-         double
-         °
-         pi/2
-         pi/3
-         pi/4
-         pi/6
-         2pi)
+(provide 
+ code+expr
+ (contract-out
+  [n-groups (-> (listof any/c) natural-number/c (listof (listof any/c)))]
+  [num->int (-> rational? integer?)]
+  [square (-> number? number?)]
+  [double (-> number? number?)]
+  [° (-> real? real?)]
+  [pi/2 real?]
+  [pi/3 real?]
+  [pi/4 real?]
+  [pi/6 real?]
+  [2pi real?]))
+
+
 ; n-groups
 ; List [Any], Natural -> List of List [Any]
 ; (n-groups '(a b c d e f) 2) -> '((a b) (b c) (c d) (d e) (e f))
 ; (n-groups '(a b c d e f g) 3) -> '((a b c) (c d e) (e f g))
-
 (define (n-groups lst n)
   (if (null? (cdr lst)) 
       null
@@ -23,9 +26,10 @@
         (cons (append f (list (car rest)))
               (n-groups rest n)))))
 
-
+; Rational -> Integer
+; convert a rational number to integer
 (define (num->int n)
-  (inexact->exact (floor n)))
+  (exact-round n))
 
 (define-syntax code+expr
   (syntax-rules ()
@@ -39,15 +43,18 @@
        (newline)
        expr)]))
 
+; Number -> Number
 (define (square n) (* n n))
 
+; Number -> Number 
 (define (double n) (* n 2))
 
-; Number -> Number
+; Real -> Real
 ; convert from degree to radians
 (define (° d)
   (* (/ d 180) pi))
 
+; common angles
 (define pi/2 (/ pi 2))
 (define pi/3 (/ pi 3))
 (define pi/4 (/ pi 4))
