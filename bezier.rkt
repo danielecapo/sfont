@@ -24,6 +24,8 @@
 ; (cons (vec 0 0) (vec 40 20))
 
 
+(define bezier/c (flat-named-contract 'bezier/c (listof vec?))) 
+
 
 ; Bezier -> Boolean
 ; check if the first and last node of the Bezier are equal

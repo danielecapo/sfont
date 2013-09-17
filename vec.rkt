@@ -44,7 +44,15 @@
   [intersect-hor (-> real? vec? vec? (or/c vec? #f))]
   [intersect-vert (-> real? vec? vec? (or/c vec? #f))]
   [pass-through-hor? (-> real? vec? vec? boolean?)]
-  [pass-through-vert? (-> real? vec? vec? boolean?)])
+  [pass-through-vert? (-> real? vec? vec? boolean?)]
+  [transform (-> any/c trans-mat? any/c)]
+  [translate (-> any/c real? real? any/c)]
+  [scale (->* (any/c real?) (real?) any/c)]
+  [rotate (-> any/c real? any/c)]
+  [skew-x (-> any/c real? any/c)]
+  [skew-y (-> any/c real? any/c)]
+  [reflect-x (-> any/c any/c)]
+  [reflect-y (-> any/c any/c)])
  )
   
 
