@@ -75,6 +75,36 @@
      (identifier symbol?))]
   
   [get-layer (->* (font?) (name/c) (or/c layer? #f))]
+  [map-layers (-> (-> layer? any/c) font? (listof any/c))]
+  [for-each-layer (-> (-> layer? any/c) font? any/c)]
+  [filter-glyphs (->* ((-> glyph? boolean?) (or/c font? layer?)) 
+                      (name/c) 
+                      (listof glyph?))]
+  [set-layer (-> font? layer? font?)]
+  [get-glyph (->* (font? name/c) (name/c) (or glyph? #f))]
+  [get-glyphs (->* (font? (listof name/c)) (name/c) (listof glyph?))]
+  [remove-glyph (->* (font? name/c) (name/c) font?)]
+  [insert-glyph (->* (font? name/c) (name/c) font?)]
+  [get-layers-glyph (-> font? name/c (listof (cons/c name/c (or/c glyph? #f))))]
+  [map-glyphs (->* ((-> glyph? any/c) (or/c font? layer?)) (name/c #:sorted boolean?) (listof any/c))]
+  [for-each-glyph (->* ((-> glyph? any/c) (or/c font? layer?)) (name/c #:sorted boolean?) any/c)]
+  [glyphs-in-font (-> font? (listof name/c))]
+  [sort-glyph-list (->* ((listof glyph?)) (#:key (-> glyph? any/c) #:pred (-> any/c any/c boolean?)) (listof glyph?))]
+  [map-kerning (-> (-> real? real?) kerning/c kerning/c)]
+  [font->ufo2 (-> font? font?)]
+  [font->ufo3 (-> font? font?)]
+  [decompose-glyph (->* (font? glyph?) (name/c) glyph?)]
+  [decompose-layer (->* (font?) (name/c) layer?)]
+  [glyph-bounding-box (->* (font? glyph?) (name/c boolean?) bounding-box/c)]
+  [font-bounding-box (->* (font?) (name/c boolean?) bounding-box/c)]
+  [get-sidebearings (->* (font? glyph?) (name/c) (or/c (cons/c real? real?) #f))]
+  [intersections-at (->* (font? glyph? real?) (name/c) (listof vec?))]
+  [get-sidebearings-at (->* (font? glyph? real?) (name/c) (or/c (cons/c real? real?) #f))]
+  [glyph-signed-area (->* (font? glyph?) (name/c) real?)]
+  [set-sidebearings (->* (font? glyph? real? real?) (name/c) glyph?)]
+  [set-sidebearings-at (->* (font? glyph? real? real? real?) (name/c) glyph?)]
+  [adjust-sidebearings (->* (font? glyph? real? real?) (name/c) glyph?)]
+  
   )
  
  glyphlist->hashglyphs
@@ -447,7 +477,7 @@
                                                 g)]))))
                      
 ; Font Symbol -> (listOf (Symbol . Glyph))
-; produce a list of pairs whose first member is the name of the layer
+; produce a list of pairs where the first member is the name of the layer
 ; and the second element is the glyph g in that layer
 (define (get-layers-glyph font g)
   (map-layers 
@@ -504,7 +534,7 @@
 
 
 
-; (Number -> Number) Kernings -> Kernings
+; (Number -> Number) Kerning -> Kerning
 ; apply the procedure to every kerning value, produce a new kerning table
 (define (map-kerning proc k)
   (make-immutable-hash
@@ -555,7 +585,7 @@
                                      (decompose-glyph f g ln))
                         f ln)]))
 
-; Font Glyph Symbol Boolean -> BoundingBox
+; Font Glyph [Symbol] [Boolean] -> BoundingBox
 ; produces the Bounding Box for the given glyph
 (define (glyph-bounding-box f g [ln 'public.default] [components #t])
   (let* ([g (if (and f components)
@@ -570,7 +600,7 @@
                     cs)))))
 
 
-; Font Symbol Boolean -> BoundingBox
+; Font [Symbol] [Boolean] -> BoundingBox
 ; produces the Bounding Box for the given font
 (define (font-bounding-box f [ln 'public.default] [components #t])
   (apply combine-bounding-boxes
@@ -579,9 +609,9 @@
 
 
  
-; Font Glyph Symbol -> (Number . Number)
+; Font Glyph Symbol -> (Real . Real) or False
 ; produce a pair representing the left and right sidebearings for the given glyph
-(define (sidebearings f g [ln 'public.default])
+(define (get-sidebearings f g [ln 'public.default])
   (let* ([bb (glyph-bounding-box f g ln)]
          [a (advance-width (glyph-advance g))])
     (if (not bb)
@@ -590,7 +620,7 @@
               (- a (vec-x (cdr bb)))))))
 
  
-; Font Glyph Number Symbol -> (listOf Vec)
+; Font Glyph Real [Symbol] -> (listOf Vec)
 ; produce a list of the intersections of outlines with the line y = h
 (define (intersections-at f g h [ln 'public.default])
   (let* ([g (if f (decompose-glyph f g ln) g)]
@@ -607,7 +637,7 @@
 
 ; Font Glyph Number Symbol -> (Number . Number)
 ; produce a pair representing sidebearings measured at y = h
-(define (sidebearings-at f g h [ln 'public.default])
+(define (get-sidebearings-at f g h [ln 'public.default])
   (let* ([is (intersections-at f g h)]
          [a (advance-width (glyph-advance g))])
     (if (null? is)
@@ -630,7 +660,7 @@
 ; Font Glyph (Number or False) (Number or False) Symbol -> Glyph
 ; set left and right sidebearings for the glyph 
 (define (set-sidebearings f g left right [ln 'public.default])
-  (let* ([os (sidebearings f g ln)]
+  (let* ([os (get-sidebearings f g ln)]
          [oa (advance-width (glyph-advance g))])     
     (if os
         (let* ([la (if left (- left (car os)) 0)]
@@ -647,7 +677,7 @@
 ; Font Glyph (Number or False) (Number or False) Number Symbol -> Glyph
 ; set left and right sidebearings (measured at y = h) for the glyph 
 (define (set-sidebearings-at f g left right h [ln 'public.default])
-  (let* ([os (sidebearings-at f g h ln)]
+  (let* ([os (get-sidebearings-at f g h ln)]
          [oa (advance-width (glyph-advance g))])     
     (if os
         (let* ([la (if left (- left (car os)) 0)]
@@ -663,7 +693,7 @@
 ; Font Glyph Number Number Symbol -> Glyph
 ; adjust left and right sidebearings for the glyph
 (define (adjust-sidebearings f g left right [ln 'public.default])
-  (let* ([os (sidebearings f g ln)])     
+  (let* ([os (get-sidebearings f g ln)])     
     (if os
         (set-sidebearings f 
                           g 
