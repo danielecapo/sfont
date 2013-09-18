@@ -1,10 +1,9 @@
 #lang racket
 
-(require "plists.rkt"
+(require "../plists.rkt"
          "ufo-def.rkt"
          "names.rkt"
-         "bezier.rkt"
-         "vec.rkt"
+         "../geometry.rkt"
          xml
          xml/path)
 

@@ -1,14 +1,13 @@
 #lang racket
 
-(require "geometry.rkt"
-         "properties.rkt"
-         "fontpict.rkt"
+(require "../geometry.rkt"
+         "../properties.rkt"
+         "../fontpict.rkt"
          racket/generic
          (planet wmfarr/plt-linalg:1:13/matrix)
          slideshow/pict-convert)
 
 (provide 
- 
  (contract-out
   [name/c (-> any/c boolean?)]
   [kerning/c (-> any/c boolean?)]
@@ -53,30 +52,30 @@
   [struct image 
     ((filename string?)
      (matrix trans-mat?) 
-     (color color/c))] 
+     (color (or/c color/c #f)))] 
   [struct guideline 
     ((pos vec?) 
      (angle real?) 
-     (name string?)
-     (color color/c) 
-     (identifier symbol?))]
+     (name (or/c string? #f))
+     (color (or/c color/c #f)) 
+     (identifier (or/c symbol? #f)))]
   [struct anchor 
     ((pos vec?)
      (name string?) 
-     (color color/c)
-     (identifier symbol?))]
-  [struct contour ((identifier symbol?) (points (listof point?)))]
-  [struct component ((base name/c) (matrix trans-mat?) (identifier symbol?))]
+     (color (or/c color/c #f))
+     (identifier (or/c symbol? #f)))]
+  [struct contour ((identifier (or/c symbol? #f)) (points (listof point?)))]
+  [struct component ((base name/c) (matrix trans-mat?) (identifier (or/c symbol? #f)))]
   [struct point 
     ((pos vec?)
      (type (one-of/c 'move 'line 'offcurve 'curve 'qcurve))
      (smooth boolean?)
-     (name string?)
-     (identifier symbol?))]
+     (name (or/c string? #f))
+     (identifier (or/c symbol? #f)))]
   
   [get-layer (->* (font?) (name/c) (or/c layer? #f))]
   [map-layers (-> (-> layer? any/c) font? (listof any/c))]
-  [for-each-layer (-> (-> layer? any/c) font? any/c)]
+  [for-each-layers (-> (-> layer? any/c) font? any/c)]
   [filter-glyphs (->* ((-> glyph? boolean?) (or/c font? layer?)) 
                       (name/c) 
                       (listof glyph?))]
@@ -87,7 +86,7 @@
   [insert-glyph (->* (font? name/c) (name/c) font?)]
   [get-layers-glyph (-> font? name/c (listof (cons/c name/c (or/c glyph? #f))))]
   [map-glyphs (->* ((-> glyph? any/c) (or/c font? layer?)) (name/c #:sorted boolean?) (listof any/c))]
-  [for-each-glyph (->* ((-> glyph? any/c) (or/c font? layer?)) (name/c #:sorted boolean?) any/c)]
+  [for-each-glyphs (->* ((-> glyph? any/c) (or/c font? layer?)) (name/c #:sorted boolean?) any/c)]
   [glyphs-in-font (-> font? (listof name/c))]
   [sort-glyph-list (->* ((listof glyph?)) (#:key (-> glyph? any/c) #:pred (-> any/c any/c boolean?)) (listof glyph?))]
   [map-kerning (-> (-> real? real?) kerning/c kerning/c)]
@@ -104,23 +103,85 @@
   [set-sidebearings (->* (font? glyph? real? real?) (name/c) glyph?)]
   [set-sidebearings-at (->* (font? glyph? real? real? real?) (name/c) glyph?)]
   [adjust-sidebearings (->* (font? glyph? real? real?) (name/c) glyph?)]
-  
+  [lowercase-stems (-> font? real?)]
+  [uppercase-stems (-> font? real?)]
+  [correct-directions (-> font? font?)]
+  [print-glyph (-> font? name/c any)]
+  [font-round (-> font? font?)]
+  [layer-round (-> layer? layer?)]
+  [kerning-round (-> kerning/c kerning/c)]
+  [glyph-round (-> glyph? glyph?)]
+  [advance-round (-> advance? advance?)]
+  [image-round (-> image? image?)]
+  [guideline-round (-> guideline? guideline?)]
+  [anchor-round (-> anchor? anchor?)]
+  [contour-round (-> contour? contour?)]
+  [component-round (-> component? component?)]
+  [point-round (-> point? point?)]
+  [ensure-number (-> (or/c string? real?) real?)]
+  [ensure-symbol (-> (or/c string? symbol?) symbol?)]
+  [ensure-smooth (-> (or/c string? boolean?) boolean?)]
+  [string->color (-> string? color/c)]
+  [color->string (-> color/c string?)]
+  [ensure-color (-> (or/c string? color/c) color/c)]
+  [string->unicode (-> string? natural-number/c)]
+  [unicode->string (-> natural-number/c string?)]
+  [make-advance (->* () (#:width real? #:height real?) advance?)]
+  [make-image (->* (#:fileName string?)
+                   (#:xScale real? #:xyScale real? 
+                    #:yxScale real? #:yScale real? #:xOffset real?
+                    #:yOffset real? #:color (or/c color/c #f))
+                   image?)]
+  [make-guideline (->* (#:x real? #:y real?  #:angle real?) 
+                       (#:name (or/c string? #f) #:color (or/c color/c #f) #:identifier (or/c symbol? #f))
+                       guideline?)]
+  [make-anchor (->* (#:x real? #:y real? #:name string?)
+                    (#:color (or/c color/c #f) #:identifier (or/c symbol? #f))
+                    anchor?)]
+  [make-component (->* (#:base name/c) 
+                       (#:xScale real? #:xyScale real? 
+                        #:yxScale real? #:yScale real? #:xOffset real?
+                        #:yOffset real? #:identifier (or/c symbol? #f))
+                       component?)]
+  [make-contour (->* () (#:identifier (or/c symbol? #f) #:points (listof point?))
+                     contour?)]
+  [make-point (->* (#:x real? #:y real?)
+                   (#:type (one-of/c 'move 'line 'offcurve 'curve 'qcurve) 
+                    #:smooth boolean? #:name (or/c string? #f) #:identifier (or/c symbol? #f))
+                   point?)]
+  [map-contours (-> (-> contour? any/c) glyph? (listof any/c))]
+  [for-each-contours (-> (-> contour? any) glyph? any)]
+  [map-components (-> (-> component? any/c) glyph? (listof any/c))]
+  [for-each-components (-> (-> component? any) glyph? any)]
+  [map-guidelines (-> (-> guideline? any/c) glyph? (listof any/c))]
+  [for-each-guidelines (-> (-> guideline? any) glyph? any)]
+  [map-anchors (-> (-> anchor? any/c) glyph? (listof any/c))]
+  [for-each-anchors (-> (-> anchor? any) glyph? any)]
+  [map-points (-> (-> point? any/c) glyph? (listof any/c))]
+  [for-each-points (-> (-> point? any) glyph? any)]
+  [glyph->glyph1 (-> glyph? glyph?)]
+  [glyph->glyph2 (-> glyph? glyph?)]
+  [anchor->contour (-> anchor? contour?)]
+  [contour->bezier (-> contour? bezier/c)]
+  [bezier->contour (-> bezier/c contour?)]
+  [component->outlines (-> component? glyph? (listof contour?))]
+  [contour-open? (-> contour? boolean?)]
+  [reverse-contour (-> contour? contour?)]
+  [glyph-reverse-directions (-> glyph? glyph?)]
+  [glyph-correct-directions (-> glyph? glyph?)]
+  [kern-groups2->3 (-> font? font?)]
+  [kerning-group-names (-> font? (cons/c (listof name/c) (listof name/c)))]
+  [valid-kerning-group-name? (-> name/c (or/c 'left 'right) boolean?)]
+  [update-kerning-group-name (-> name/c (or/c 'left 'right) name/c)]
+  [lookup-kerning-pair (-> font? name/c name/c (values real? boolean?))]
+  [kerning-value (-> font? name/c name/c real?)]
   )
- 
- glyphlist->hashglyphs
- hashglyphs->glyphlist
- 
- #;
- (except-out (all-defined-out)
-             position-based-trans
-             matrix-based-trans
-             compound-based-trans
-             clean-arg
-             geometric-struct
-             apply-glyph-trans)
- )
-            ; build-accessor 
-             ;accessor))
+ draw-glyph
+ draw-contour
+ draw-points
+ ==>
+ seq)
+
              
              
              
@@ -404,7 +465,7 @@
         gs)))
 
 
-; (hashTableOf Glyphs) -> (listOf Glyphs)
+; (hashTable Symbol Glyphs) -> (listOf Glyphs)
 ; produce a list of glyphs from hashtables of glyphs
 (define (hashglyphs->glyphlist gh)
   (hash-values gh))
@@ -421,7 +482,7 @@
 
 ; (Layer -> T) Font -> side effects
 ; apply the procedure to each layer
-(define (for-each-layer proc f)
+(define (for-each-layers proc f)
   (for-each proc (font-layers f)))
 
 ; (Glyph -> Boolean) (Font or Layer)-> (listOf Glyphs)
@@ -504,7 +565,7 @@
 ; apply the procedure to each glyph in the layer
 ; If o is a font, it will select the layer passed named
 ; If Sorted is true the function will be applied to a sorted (alphabetically) list of glyphs
-(define (for-each-glyph proc o [layer 'public.default] #:sorted [sorted #f])
+(define (for-each-glyphs proc o [layer 'public.default] #:sorted [sorted #f])
   (let ([l (cond [(font? o) (get-layer o layer)]
                  [(layer? o ) o]
                  [else (error "for-each-glyphs: the second  argument should be a layer or a font")])])
@@ -512,7 +573,7 @@
         (for-each proc (if sorted
                            (sort-glyph-list (hash-values (layer-glyphs l)))
                            (hash-values (layer-glyphs l))))
-        (error "for-each-glyph: layer does not exist"))))
+        (error "for-each-glyphs: layer does not exist"))))
 
 ; Font -> (listOf Symbol)
 ; produce a list of glyph names present in the font 
@@ -753,7 +814,7 @@
 
         
 
-; Font Symbol -> side effects
+; Font Symbol -> Any
 ; Print the glyph           
 (define (print-glyph f gn)
   (let ([gp (get-glyph f gn)])
@@ -864,7 +925,8 @@
     [#f #f]
     ["no" #f]
     [#t #t]
-    ["yes" #t]))
+    ["yes" #t]
+    [_ (error "invalid value for smooth")]))
 
 ; String -> Color
 ; produce a color from a string of the type "r,g,b,a"
@@ -898,7 +960,7 @@
 (define (make-advance #:width [width 0] #:height [height 0])
   (advance (ensure-number width) (ensure-number height)))
 
-(define (make-image #:fileName [filename #f] #:xScale [x-scale 1] #:xyScale [xy-scale 0] 
+(define (make-image #:fileName filename #:xScale [x-scale 1] #:xyScale [xy-scale 0] 
                         #:yxScale [yx-scale 0] #:yScale [y-scale 0] #:xOffset [x-offset 0]
                         #:yOffset [y-offset 0] #:color [color #f])
   (image filename (trans-mat (ensure-number x-scale) (ensure-number xy-scale) 
@@ -907,19 +969,19 @@
          (ensure-color color)))
 
 
-(define (make-guideline #:x [x #f] #:y [y #f]  #:angle [angle #f] 
+(define (make-guideline #:x x #:y y  #:angle angle 
                             #:name [name #f] #:color [color #f] 
                             #:identifier [identifier #f])
   (guideline (vec (ensure-number x) (ensure-number y)) (ensure-number angle) name (ensure-color color) (ensure-symbol identifier)))
 
-(define (make-anchor #:x [x #f] #:y [y #f] #:name [name #f] 
-                         #:color [color #f] #:identifier [identifier #f])
+(define (make-anchor #:x x #:y y #:name name
+                     #:color [color #f] #:identifier [identifier #f])
   (anchor (vec (ensure-number x) (ensure-number y)) name (ensure-color color) (ensure-symbol identifier)))
 
 (define (make-contour #:identifier [identifier #f] #:points [points null])
   (contour (ensure-symbol identifier) points))
 
-(define (make-component #:base [base #f]  #:xScale [x-scale 1] #:xyScale [xy-scale 0] 
+(define (make-component #:base base #:xScale [x-scale 1] #:xyScale [xy-scale 0] 
                         #:yxScale [yx-scale 0] #:yScale [y-scale 1] #:xOffset [x-offset 0]
                         #:yOffset [y-offset 0] #:identifier [identifier #f])
   (component (ensure-symbol base) 
@@ -928,7 +990,7 @@
                         (ensure-number x-offset) (ensure-number y-offset))
              (ensure-symbol identifier)))
 
-(define (make-point #:x [x #f] #:y [y #f] #:type [type 'offcurve] 
+(define (make-point #:x x #:y y #:type [type 'offcurve] 
                         #:smooth [smooth #f] #:name [name #f] #:identifier [identifier #f])
   (point (vec (ensure-number x) (ensure-number y)) (ensure-symbol type)
              (ensure-smooth smooth) name (ensure-symbol identifier)))
@@ -1269,23 +1331,10 @@
         g)))
 
 
-#;
-(define (glyph-correct-directions g)
-  (let* ([cs (map contour->bezier (glyph-contours g))]
-         [a (foldl (lambda (b acc) 
-                     (+ acc (bezier-signed-area b)))
-                   0 cs)])
-    (if (< a 0)
-        (struct-copy glyph g 
-                     [contours (map (lambda (c b)
-                                      (struct-copy contour c
-                                                   [points (contour-points (bezier->contour (reverse b)))]))
-                                    (glyph-contours g) cs)])
-        g)))
+
 
 ; Font -> Font
 ; convert kerning groups' names to UFO3 
-
 (define (kern-groups2->3 f)
   (let* ([gn (kerning-group-names f)]
          [ut (group-name-update-table (car gn) (cdr gn))])
@@ -1329,13 +1378,13 @@
     (foldl (lambda (n acc)
            (if (valid-kerning-group-name? n side)
                acc
-               (cons (cons n (update-group-name n side))
+               (cons (cons n (update-kerning-group-name n side))
                      acc)))
          '()
          gn))
   (make-immutable-hash (append (aux gl 'left) (aux gr 'right))))
 
-; Symbol Symbol -> Boolean
+; Symbol ('left or 'right) -> Boolean
 ; True if the group's name complies with UFO3 specs
 (define (valid-kerning-group-name? n side)
   (let ([ns (symbol->string n)])
@@ -1351,9 +1400,9 @@
       (string=? (substring s 0 (string-length pre)) pre)
       #f))
   
-; Symbol Symbol -> Symbol
-; produce an updated a kerning group name
-(define (update-group-name n side)
+; Symbol ('left or 'right) -> Symbol
+; produce an updated  kerning group name
+(define (update-kerning-group-name n side)
   (let ([ns (symbol->string n)])
     (string->symbol
      (cond [(eq? side 'left)
