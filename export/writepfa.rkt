@@ -1,10 +1,17 @@
 #lang racket
-(require "vec.rkt"
-         "bezier.rkt"
-         "utilities.rkt")
+(require "../geometry.rkt"
+         "../utilities.rkt")
 
-(provide write-type1
-         type1->string)
+(provide 
+ (contract-out 
+  [type1/c (-> any/c boolean?)]
+  [write-type1 (-> type1/c path-string? any)]
+  [type1->string (-> type1/c string?)]))
+
+;; write a better contract :)
+(define type1/c (flat-named-contract 'type1/c list?))
+
+;;;;  type1 example
 #;
 '(type1 (SourceSansPro-BlackIt 1.000)
        (fontdict
@@ -40,44 +47,54 @@
 
 
 
-
+; String Value -> String
 (define (psdef name value)
   (format "~a ~a def" (->name name) value))
 
+; Value -> String
 (define (dict-begin l)
   (format "~a dict dup begin" l))
-    
+
+; Symbol -> String
 (define (->name n)
   (string-append "/"(symbol->string n)))
 
+; Integer -> String
 (define (->int n)
-  (if (integer? n)
+  (if (exact-integer? n)
       (number->string n)
       (error "Required integer")))
 
+; Real -> String
 (define (->num n)
   (number->string n))
 
+; (Listof Number) -> String
 (define (->mat lst)
   (string-join (map ->num lst) " "
                #:before-first "["	 	 	 	 	 	 	 
                #:after-last "]"))
 
+; (Listof Number) -> String
 (define ->pvtarr ->mat)
 
+; (Listof Number) -> String
 (define (->bbox lst)
   (string-join (map ->num lst) " "
                #:before-first "{"	 	 	 	 	 	 	 
                #:after-last "}"))
 
+; String -> String
 (define (->string s)
   (format "(~a)" s))
 
+; Boolean -> String
 (define (->bool s)
  (if (boolean? s)
-             (if s "true" "false")
-             (error "Required boolean")))
+     (if s "true" "false")
+     (error "Required boolean")))
 
+; Symbol -> String
 (define (->enc e)
  (cond [(and (symbol? e) (eq? e 'StandardEncoding))
                 "StandardEncoding"]
@@ -85,7 +102,7 @@
                [else (error "invalid encoding")]))
 
 
-
+; Type1 -> String
 (define (type1->string t)
   (match t
     [(list 'type1
@@ -114,7 +131,7 @@ cleartomark
              (fontdict->string entries))]))
 
             
-         
+; T1FontDict -> String         
 (define (fontdict->string entries)
   (define (aux e)
     (match e
@@ -135,6 +152,7 @@ cleartomark
                  (string-join (map aux entries) "\n")
                  "\nend"))
 
+; T1FontInfo -> String
 (define (fontinfo->string entries)
   (define (aux e)
     (match e
@@ -152,6 +170,7 @@ cleartomark
                  (string-join (map aux entries) "\n")
                  "\nend"))
 
+; T1PrivateDict -> String
 (define (private->string entries)
   (define (aux e)
     (match e
@@ -206,12 +225,22 @@ cleartomark
                  "\n"
                  "put"))
 
+; T1CharStrings -> String
 (define (->charstrings cs)
   (format "dup /CharStrings\n~a\n~a\nend put"
           (dict-begin (length cs))
           (string-join (map char->string cs) "\n")))
 
 
+;;;;;;;;;;;;;;;
+; At the moment this function doesn't replace the last line segment
+; of a closed path with a closepath, but it use a zero-length closepath.
+; see Type1 Spec 4.3 Conciseness
+
+; T1CharString -> String
+;;; big warning
+;;; I can't simply round coordinates while I'm parsing points :(
+;;; this should be changed
 (define (char->string c)
   (define (seg->ps segment)
     (match segment
@@ -240,9 +269,10 @@ cleartomark
          "endchar } |-")
    " "))
   
-                
-(define (write-type1 f file)
-  (with-output-to-file file
+
+; Type1 Path -> Any
+(define (write-type1 f path)
+  (with-output-to-file path
     (lambda () (printf (type1->string f)))))
                         
       

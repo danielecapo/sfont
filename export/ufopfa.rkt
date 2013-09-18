@@ -1,9 +1,8 @@
 #lang racket
-(require "ufo.rkt"
-         "vec.rkt"
-         "bezier.rkt"
+(require "../ufo.rkt"
+         "../geometry.rkt"
          "writepfa.rkt"
-         "utilities.rkt")
+         "../utilities.rkt")
 
 (provide ufo->pfa)
 
@@ -70,12 +69,13 @@
 
 ; Glyph -> Charstring
 ; produce a glyph ready to be written in type1 format
+; warning: remove open paths
 (define (ufoglyph->pfa g)
   (cons
    (glyph-name g)
    (cons
     (advance-width (glyph-advance g))
-    (map contour->bezier (glyph-contours g)))))
+    (filter (lambda (b) (closed? b)) (map-contours contour->bezier g)))))
 
 (define (ufo->pfa f [fbbox #f])
   (let* ([f (with-precision (1) (font-round f))]
