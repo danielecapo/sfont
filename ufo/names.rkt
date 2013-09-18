@@ -1,7 +1,9 @@
 #lang racket
 
-(provide name->filename
-         namesymbol->filename)
+(provide 
+ (contract-out 
+  [name->filename (->* (string?) (string? string? (listof string?)) string?)]
+  [namesymbol->filename (->* (symbol?) (string? string? (listof string?)) string?)]))
 
 (define (purge-illegal-char s)
   (let ([charlist (string->list s)]
@@ -97,6 +99,8 @@
   (member (string-downcase name)
           (map string-downcase existing-names)))
 
+; String String String (listof String) -> String
+; produce a filename from a string name according to UFO3 specs
 (define (name->filename s [prefix ""] [suffix ".glif"] [existing-names '()])
   (let* ([max-length (- 255 (+ (string-length prefix)
                               (string-length suffix)))]
@@ -144,7 +148,8 @@
          
 
 
-
+; Symbol String String (listof String) -> String
+; produce a filename from a symbol name according to UFO3 specs
 (define (namesymbol->filename s [prefix ""] [suffix ".glif"] [existing-names '()])
   (name->filename (symbol->string s)
                   prefix suffix existing-names))

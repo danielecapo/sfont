@@ -4,9 +4,28 @@
          xml/path
          xml)
 
-(provide (all-defined-out))
+(provide
+ (contract-out
+  [dict-plist? (-> any/c boolean?)]
+  [plist->dict (-> plist-value? dict-plist?)]
+  [dict->plist (-> dict-plist? plist-value?)]
+  [dict->xexpr (-> dict-plist? xexpr/c)]
+  [xexpr->dict (-> xexpr/c dict-plist?)]
+  [write-dict (-> dict-plist? path-string? any)]
+  [read-dict (-> path-string? dict-plist?)]))
 
-  
+   
+   (define (dict-plist? d)
+  (or (hash? d)
+      (list? d)
+      (exact-integer? d)
+      (real? d)
+      (string? d)
+      (boolean? d)))
+
+
+; Plist -> HashtablePlist
+; produce an hashtable from the plist
 (define (plist->dict pl)
   (match pl
     [(list 'dict entries ...) (make-immutable-hash (map plist->dict entries))]
@@ -16,8 +35,11 @@
     [(? string? s) s]
     [(list 'false) #f]
     [(list 'true) #t]
-    [(list 'array elts ...) (map plist->dict elts)]))
+    [(list 'array elts ...) (map plist->dict elts)]
+    [_ (error (~a "plist->dict: " pl " is an invalid plist"))]))
 
+; DictPlist -> Plist
+; produce a plist from a dict plist
 (define (dict->plist d)
   (match d
     [(list) (list 'array)]
@@ -30,9 +52,11 @@
     [(? real? n) (list 'real n)]
     [(? string? s) s]
     [#f (list 'false)]
-    [#t (list 'true)]))
+    [#t (list 'true)]
+    [_ (error (~a "dict->plist: " d "can't be converted in a plist"))]))
 
-
+; DictPlist -> Xexpr
+; produce a xexpr representation of an dict plist
 (define (dict->xexpr d)
   (match d
     [(list) (list 'array null)]
@@ -49,8 +73,11 @@
     [(? real? n) (list 'real null (number->string n))]
     [(? string? s) (list 'string null s)]
     [#f (list 'false null)]
-    [#t (list 'true null)]))
+    [#t (list 'true null)]
+    [_ (error (~a "dict->xexpr: " d "can't be converted in a plist"))]))
 
+; Xexpr -> DictPlist
+; produce an dict plist from a xexpr
 (define (xexpr->dict x)
   (match x
     [(list 'dict null entries ...) (make-immutable-hash (xexpr->dict entries))]
@@ -64,27 +91,19 @@
     [(list 'false null) #f]
     [(list 'true null) #t]
     [(list 'array null elts ...) (map xexpr->dict elts)]
-    [null null]))
+    [null null]
+    [_ (error (~a "xexpr->dict: " x " is an invalid plist"))]))
 
-;
-;
-;
-;(define (dict-as-function d)
-;  (let ([h (dict->hashtable d)])
-;    (define (aux acc keys)
-;      (if (null? keys)
-;          acc
-;          (aux (hash-ref acc (car keys)) (cdr keys))))
-;    (lambda (k . keys) (aux h (cons k keys)))))
-;
-
-  
+; DictPlist Path -> Any
+; write the dict plist to file
 (define (write-dict d path)
   (call-with-output-file path
    (lambda (out) 
      (write-plist (dict->plist d) out))
     #:exists 'replace))
 
+; Path -> DictPlist
+; produce an dict plist reading from a file
 (define (read-dict path)
      (xexpr->dict
       (se-path* '(plist)
@@ -95,13 +114,4 @@
                   (document-element
                    (call-with-input-file path read-xml)))))))
   
-    
-    ;(plist->dict (call-with-input-file path read-plist)))
-
-
-;(define g (xml->xexpr 
-;   ((eliminate-whitespace '(glyph advance unicode image guideline anchor outline
-;                                  contour point component lib dict)
-;                          identity)
-;   (document-element
-;    (call-with-input-file "/Users/daniele/glif.glif" read-xml)))))
+ 
