@@ -21,7 +21,7 @@
   [color/c (-> any/c boolean?)]
   [struct font  
   ((format natural-number/c) 
-   (creator name/c) 
+   (creator string?) 
    (fontinfo fontinfo/c) 
    (groups groups/c) 
    (kerning kerning/c)
@@ -33,7 +33,7 @@
   [struct layer 
     ((name name/c) 
      (info layerinfo/c)
-     (glyphs (hash/c name/c glyph? #:immutable #t)))]
+     (glyphs (or/c (listof glyph?) (hash/c name/c glyph? #:immutable #t))))]
   [struct glyph 
     ((format natural-number/c)
      (name name/c) 
@@ -126,28 +126,29 @@
   [ensure-color (-> (or/c string? color/c) color/c)]
   [string->unicode (-> string? natural-number/c)]
   [unicode->string (-> natural-number/c string?)]
-  [make-advance (->* () (#:width real? #:height real?) advance?)]
+  [make-advance (->* () (#:width (or/c string? real?) #:height (or/c string? real?)) advance?)]
   [make-image (->* (#:fileName string?)
-                   (#:xScale real? #:xyScale real? 
-                    #:yxScale real? #:yScale real? #:xOffset real?
-                    #:yOffset real? #:color (or/c color/c #f))
+                   (#:xScale (or/c string? real?) #:xyScale (or/c string? real?) 
+                    #:yxScale (or/c string? real?) #:yScale (or/c string? real?) #:xOffset (or/c string? real?)
+                    #:yOffset (or/c string? real?) #:color (or/c color/c string? #f))
                    image?)]
-  [make-guideline (->* (#:x real? #:y real?  #:angle real?) 
-                       (#:name (or/c string? #f) #:color (or/c color/c #f) #:identifier (or/c symbol? #f))
+  [make-guideline (->* (#:x (or/c string? real?) #:y (or/c string? real?)  #:angle (or/c string? real?)) 
+                       (#:name (or/c string? string? #f) #:color (or/c color/c string? #f) 
+                        #:identifier (or/c symbol? string? #f))
                        guideline?)]
-  [make-anchor (->* (#:x real? #:y real? #:name string?)
-                    (#:color (or/c color/c #f) #:identifier (or/c symbol? #f))
+  [make-anchor (->* (#:x (or/c string? real?) #:y (or/c string? real?) #:name string?)
+                    (#:color (or/c color/c string? #f) #:identifier (or/c symbol? string? #f))
                     anchor?)]
-  [make-component (->* (#:base name/c) 
-                       (#:xScale real? #:xyScale real? 
-                        #:yxScale real? #:yScale real? #:xOffset real?
-                        #:yOffset real? #:identifier (or/c symbol? #f))
+  [make-component (->* (#:base (or/c string? name/c))
+                       (#:xScale (or/c string? real?) #:xyScale (or/c string? real?) 
+                        #:yxScale (or/c string? real?) #:yScale (or/c string? real?) #:xOffset (or/c string? real?)
+                        #:yOffset (or/c string? real?) #:identifier (or/c symbol? string? #f))
                        component?)]
   [make-contour (->* () (#:identifier (or/c symbol? #f) #:points (listof point?))
                      contour?)]
-  [make-point (->* (#:x real? #:y real?)
-                   (#:type (one-of/c 'move 'line 'offcurve 'curve 'qcurve) 
-                    #:smooth boolean? #:name (or/c string? #f) #:identifier (or/c symbol? #f))
+  [make-point (->* (#:x (or/c string? real?) #:y (or/c string? real?))
+                   (#:type (or/c string? (one-of/c 'move 'line 'offcurve 'curve 'qcurve))
+                    #:smooth (or/c boolean? string?) #:name (or/c string? #f) #:identifier (or/c symbol? string? #f))
                    point?)]
   [map-contours (-> (-> contour? any/c) glyph? (listof any/c))]
   [for-each-contours (-> (-> contour? any) glyph? any)]
@@ -242,7 +243,7 @@
 
 ;;; Names
 ;;; font glyph and groups names are symbol
-(define name/c (flat-named-contract 'fontname/c symbol?))
+(define name/c (flat-named-contract 'name/c symbol?))
 
 
 ;;; Kerning
@@ -274,7 +275,7 @@
 
 ;;; Features
 ;;; fontinfo should be defined better
-(define features/c (flat-named-contract 'features/c string?))
+(define features/c (flat-named-contract 'features/c (or/c #f string?)))
 
 ;;; Data
 ;;; fontinfo should be defined better
@@ -286,7 +287,7 @@
 
 ;;; LayerInfo
 ;;; change this
-(define layerinfo/c (flat-named-contract  'layerinfo/c lib/c))
+(define layerinfo/c (flat-named-contract 'layerinfo/c (or/c #f lib/c)))
                  
 
                  
@@ -972,7 +973,8 @@
 (define (make-guideline #:x x #:y y  #:angle angle 
                             #:name [name #f] #:color [color #f] 
                             #:identifier [identifier #f])
-  (guideline (vec (ensure-number x) (ensure-number y)) (ensure-number angle) name (ensure-color color) (ensure-symbol identifier)))
+  (guideline (vec (ensure-number x) (ensure-number y)) (ensure-number angle) name 
+             (ensure-color color) (ensure-symbol identifier)))
 
 (define (make-anchor #:x x #:y y #:name name
                      #:color [color #f] #:identifier [identifier #f])

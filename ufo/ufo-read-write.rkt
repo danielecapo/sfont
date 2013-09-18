@@ -1,14 +1,26 @@
 #lang racket
 
-(require "../plists.rkt"
+(require "plists.rkt"
          "ufo-def.rkt"
          "names.rkt"
          "../geometry.rkt"
          xml
          xml/path)
 
-(provide read-ufo
-         write-ufo)
+(provide 
+ (contract-out
+  [read-ufo (->* (path-string?) 
+                 (#:proc-data (-> any/c any) #:proc-images (-> any/c any))
+                 font?)]
+  [write-ufo (->* (font? path-string?) 
+                  (#:overwrite boolean? 
+                   #:proc-data (or/c #f (-> any/c any)) 
+                   #:proc-images (or/c #f (-> any/c any)))
+                  any)]
+  
+  [read-glif-file (->* (path-string?) ((or/c string? #f)) glyph?)]
+  [write-glif-file (-> glyph? path-string? any)]
+  ))
 
 ; (listOf (Symbol . T)) -> (listOf keyword)
 ; produce a list of keywords from a key-value pairs list
@@ -255,8 +267,8 @@
     (let ([layers (read-from-plist (make-ufo-path "layercontents.plist"))])
       (map (lambda (l) 
              (layer (string->symbol (car l))
-                        (read-layerinfo (cadr l)) 
-                        (read-glyphs (cadr l))))
+                    (read-layerinfo (cadr l)) 
+                    (read-glyphs (cadr l))))
            (if layers layers (list (list "public.default" "glyphs"))))))
           
   (define (read-glyphs glyphsdir)
@@ -337,10 +349,11 @@
           (proc path)
           (copy-directory/files dir path))))
   (define (write-on-text-file text path)
-    (when text 
-      (call-with-output-file path 
-        (lambda (o)
-          (write-string text o)))))
+    (let ([text (string-trim text)])
+      (when (and text (string? text) (not (string=? "" text)))
+        (call-with-output-file path 
+          (lambda (o)
+            (write-string text o))))))
   (define (write-groups)
     (write-on-plist (make-immutable-hash
                      (hash-map (font-groups f)
