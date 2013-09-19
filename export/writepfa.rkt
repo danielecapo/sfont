@@ -239,31 +239,54 @@ cleartomark
 
 ; T1CharString -> String
 ;;; big warning
-;;; I can't simply round coordinates while I'm parsing points :(
-;;; this should be changed
+;;; I don't round coordinates
+
 (define (char->string c)
   (define (seg->ps segment)
     (match segment
       [(list (vec x y) (vec x y) (vec x2 y2) (vec x2 y2))
-       (format "~a ~a rlineto" (num->int (- x2 x)) (num->int (- y2 y)))]
+       (format "~a ~a rlineto" (- x2 x) (- y2 y))]
       [(list (vec x y) (vec xc1 yc1) (vec xc2 yc2) (vec x2 y2))
        (format "~a ~a ~a ~a ~a ~a rrcurveto" 
-               (num->int (- xc1 x)) (num->int (- yc1 y)) (num->int (- xc2 xc1)) 
-               (num->int (- yc2 yc1)) (num->int (- x2 xc2)) (num->int (- y2 yc2)))]))
+               (- xc1 x) (- yc1 y) (- xc2 xc1)
+               (- yc2 yc1) (- x2 xc2) (- y2 yc2))]))
+  
+  (define (segs->ps segments s)
+    (match segments
+      [(list (list (vec x y) (vec x y) (vec x2 y2) (vec x2 y2)))
+       (cons (string-append s "\n" "closepath") (vec x y))]
+      [(list (list (vec x y) (vec xc1 yc1) (vec xc2 yc2) (vec x2 y2)))
+       (cons (string-append s "\n" 
+                            (format "~a ~a ~a ~a ~a ~a rrcurveto closepath" 
+                                    (- xc1 x) (- yc1 y) (- xc2 xc1)
+                                    (- yc2 yc1) (- x2 xc2) (- y2 yc2)))
+             (vec x2 y2))]
+      [(list-rest (list (vec x y) (vec x y) (vec x2 y2) (vec x2 y2)) r)
+       (segs->ps r (string-append s "\n" (format "~a ~a rlineto" (- x2 x) (- y2 y))))]
+      [(list-rest (list (vec x y) (vec xc1 yc1) (vec xc2 yc2) (vec x2 y2)) r)
+       (segs->ps r (string-append s "\n" 
+                                 (format "~a ~a ~a ~a ~a ~a rrcurveto" 
+                                         (- xc1 x) (- yc1 y) (- xc2 xc1)
+                                         (- yc2 yc1) (- x2 xc2) (- y2 yc2))))]
+      ))
   (define (bez->ps b zero)
     (let ([move (vec- (car b) zero)])
-      (string-join
-       (cons (format "~a ~a rmoveto" (num->int (vec-x move)) (num->int (vec-y move)))
-             (append (map seg->ps (segments b 3)) '("closepath")))
-       " ")))
+      (segs->ps (segments b 3)
+                (format "~a ~a rmoveto" (vec-x move) (vec-y move)))))
+                
   (string-join 
    (list (->name (car c))
          "## -| {"
-         (format "0 ~a hsbw" (num->int (cadr c)))
+         (if (= (cdadr c) 0)
+             (format "0 ~a hsbw" (num->int (caadr c)))
+             (format "0 0 ~a ~a sbw" 
+                    (num->int (caadr c))
+                    (num->int (cdadr c))))
          (cdr 
           (foldl (lambda (b acc)
-                   (cons (last b)
-                         (string-append (cdr acc) "\n" (bez->ps b (car acc)))))
+                   (let ([r (bez->ps b (car acc))])
+                     (cons (cdr r)
+                         (string-append (cdr acc) "\n" (car r)))))
                  (cons (vec 0 0) "")
                  (cddr c)))
          "endchar } |-")

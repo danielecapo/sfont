@@ -4,7 +4,9 @@
          "writepfa.rkt"
          "../utilities.rkt")
 
-(provide ufo->pfa)
+(provide 
+ (contract-out 
+  [ufo->type1 (-> font? type1/c)]))
 
 (define (get-or-default k d)
   (lambda (i)
@@ -53,33 +55,36 @@
     (list (car d) ((cadr d) h))))
 
 
-; Info -> PfaFontInfo
+; Info -> T1FontInfo
 (define (ufoinfo->pfa info)
   (cons 'FontInfo 
         (filter (lambda (o) (not (equal? "" (cadr o))))
                 (map (convert info) INFODEFAULT))))
 
 
-; Info -> PfaFontPrivate
+; Info -> T1PrivateDict
 (define (ufoprivate->pfa info)
   (cons 'Private
         (filter (lambda (o) (not (null? (cadr o))))
                 (map (convert info) PRIVATEDEAFULT))))
 
 
-; Glyph -> Charstring
+; Glyph -> T1CharString
 ; produce a glyph ready to be written in type1 format
 ; warning: remove open paths
 (define (ufoglyph->pfa g)
   (cons
    (glyph-name g)
    (cons
-    (advance-width (glyph-advance g))
+    (cons (advance-width (glyph-advance g))
+          (advance-height (glyph-advance g)))
     (filter (lambda (b) (closed? b)) (map-contours contour->bezier g)))))
 
-(define (ufo->pfa f [fbbox #f])
-  (let* ([f (with-precision (1) (font-round f))]
-         [l (decompose-layer f)]
+; Font -> Type1
+(define (ufo->type1 f [fbbox #f])
+  (let* ([f (let ([f1 (decompose-font f)])
+              (with-precision (1) (font-round f1)))]
+         [l (get-layer f)]
          [charstrings (map-glyphs ufoglyph->pfa l)]
          [gbs (filter (lambda (b) (not (null? b))) (map cddr charstrings))]
          [info (font-fontinfo f)]

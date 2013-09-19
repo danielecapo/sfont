@@ -94,6 +94,7 @@
   [font->ufo3 (-> font? font?)]
   [decompose-glyph (->* (font? glyph?) (name/c) glyph?)]
   [decompose-layer (->* (font?) (name/c) layer?)]
+  [decompose-font (-> font? font?)]
   [glyph-bounding-box (->* (font? glyph?) (name/c boolean?) bounding-box/c)]
   [font-bounding-box (->* (font?) (name/c boolean?) bounding-box/c)]
   [get-sidebearings (->* (font? glyph?) (name/c) (or/c (cons/c real? real?) #f))]
@@ -646,6 +647,13 @@
                [glyphs (map-glyphs (lambda (g) 
                                      (decompose-glyph f g ln))
                         f ln)]))
+
+; Font -> Font
+; produces a new font with all layers decomposed
+(define (decompose-font f)
+  (struct-copy font f
+               [layers (map-layers (lambda (l) (decompose-layer f (layer-name l)))
+                                   f)]))
 
 ; Font Glyph [Symbol] [Boolean] -> BoundingBox
 ; produces the Bounding Box for the given glyph
