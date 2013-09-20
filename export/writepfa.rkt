@@ -5,7 +5,7 @@
 (provide 
  (contract-out 
   [type1/c (-> any/c boolean?)]
-  [write-type1 (-> type1/c path-string? any)]
+  [write-type1 (->* (type1/c path-string?) (boolean?) any)]
   [type1->string (-> type1/c string?)]))
 
 ;; write a better contract :)
@@ -232,70 +232,59 @@ cleartomark
           (string-join (map char->string cs) "\n")))
 
 
-;;;;;;;;;;;;;;;
-; At the moment this function doesn't replace the last line segment
-; of a closed path with a closepath, but it use a zero-length closepath.
-; see Type1 Spec 4.3 Conciseness
 
 ; T1CharString -> String
-;;; big warning
-;;; I don't round coordinates
+;;; BIG WARNING
+;;; the coordinates should be rounded BEFORE calling this procedure
+;;; open beziers aren't output
 
 (define (char->string c)
-  (define (seg->ps segment)
-    (match segment
-      [(list (vec x y) (vec x y) (vec x2 y2) (vec x2 y2))
-       (format "~a ~a rlineto" (- x2 x) (- y2 y))]
-      [(list (vec x y) (vec xc1 yc1) (vec xc2 yc2) (vec x2 y2))
-       (format "~a ~a ~a ~a ~a ~a rrcurveto" 
-               (- xc1 x) (- yc1 y) (- xc2 xc1)
-               (- yc2 yc1) (- x2 xc2) (- y2 yc2))]))
-  
-  (define (segs->ps segments s)
-    (match segments
-      [(list (list (vec x y) (vec x y) (vec x2 y2) (vec x2 y2)))
-       (cons (string-append s "\n" "closepath") (vec x y))]
-      [(list (list (vec x y) (vec xc1 yc1) (vec xc2 yc2) (vec x2 y2)))
-       (cons (string-append s "\n" 
-                            (format "~a ~a ~a ~a ~a ~a rrcurveto closepath" 
-                                    (- xc1 x) (- yc1 y) (- xc2 xc1)
-                                    (- yc2 yc1) (- x2 xc2) (- y2 yc2)))
-             (vec x2 y2))]
-      [(list-rest (list (vec x y) (vec x y) (vec x2 y2) (vec x2 y2)) r)
-       (segs->ps r (string-append s "\n" (format "~a ~a rlineto" (- x2 x) (- y2 y))))]
-      [(list-rest (list (vec x y) (vec xc1 yc1) (vec xc2 yc2) (vec x2 y2)) r)
-       (segs->ps r (string-append s "\n" 
-                                 (format "~a ~a ~a ~a ~a ~a rrcurveto" 
-                                         (- xc1 x) (- yc1 y) (- xc2 xc1)
-                                         (- yc2 yc1) (- x2 xc2) (- y2 yc2))))]
-      ))
-  (define (bez->ps b zero)
-    (let ([move (vec- (car b) zero)])
-      (segs->ps (segments b 3)
-                (format "~a ~a rmoveto" (vec-x move) (vec-y move)))))
-                
-  (string-join 
-   (list (->name (car c))
-         "## -| {"
-         (if (= (cdadr c) 0)
-             (format "0 ~a hsbw" (num->int (caadr c)))
-             (format "0 0 ~a ~a sbw" 
-                    (num->int (caadr c))
-                    (num->int (cdadr c))))
-         (cdr 
-          (foldl (lambda (b acc)
-                   (let ([r (bez->ps b (car acc))])
-                     (cons (cdr r)
-                         (string-append (cdr acc) "\n" (car r)))))
-                 (cons (vec 0 0) "")
-                 (cddr c)))
-         "endchar } |-")
-   " "))
+   (letrec ([segs->ps 
+             ; (listof BezierSegment) String -> (String . Vec)
+             (lambda (segments s)
+               (match segments
+                 [(list (list (vec x y) (vec x y) (vec x2 y2) (vec x2 y2)))
+                  (cons (string-append s "\n" "closepath") (vec x y))]
+                 [(list (list (vec x y) (vec xc1 yc1) (vec xc2 yc2) (vec x2 y2)))
+                  (cons (string-append s "\n" 
+                                       (format "~a ~a ~a ~a ~a ~a rrcurveto closepath" 
+                                               (- xc1 x) (- yc1 y) (- xc2 xc1)
+                                               (- yc2 yc1) (- x2 xc2) (- y2 yc2)))
+                        (vec x2 y2))]
+                 [(list-rest (list (vec x y) (vec x y) (vec x2 y2) (vec x2 y2)) r)
+                  (segs->ps r (string-append s "\n" (format "~a ~a rlineto" (- x2 x) (- y2 y))))]
+                 [(list-rest (list (vec x y) (vec xc1 yc1) (vec xc2 yc2) (vec x2 y2)) r)
+                  (segs->ps r (string-append s "\n" 
+                                             (format "~a ~a ~a ~a ~a ~a rrcurveto" 
+                                                     (- xc1 x) (- yc1 y) (- xc2 xc1)
+                                                     (- yc2 yc1) (- x2 xc2) (- y2 yc2))))]))]
+            [bez->ps (lambda (b zero)
+                       (let ([move (vec- (car b) zero)])
+                         (segs->ps (segments b 3)
+                                   (format "~a ~a rmoveto" (vec-x move) (vec-y move)))))])                
+     (string-join 
+      (list (->name (car c))
+            "## -| {"
+            (if (= (cdadr c) 0)
+                (format "0 ~a hsbw" (num->int (caadr c)))
+                (format "0 0 ~a ~a sbw" 
+                        (num->int (caadr c))
+                        (num->int (cdadr c))))
+            (cdr 
+             (foldl (lambda (b acc)
+                      (let ([r (bez->ps b (car acc))])
+                        (cons (cdr r)
+                              (string-append (cdr acc) "\n" (car r)))))
+                    (cons (vec 0 0) "")
+                    (filter closed? (cddr c))))
+            "endchar } |-")
+      " ")))
   
 
 ; Type1 Path -> Any
-(define (write-type1 f path)
+(define (write-type1 f path [overwrite #t])
   (with-output-to-file path
-    (lambda () (printf (type1->string f)))))
+    (lambda () (printf (type1->string f)))
+    #:exists (if overwrite 'replace 'error)))
                         
       

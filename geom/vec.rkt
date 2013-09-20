@@ -28,6 +28,7 @@
   [vec->list (-> vec? (list/c real? real?))]
   [vec-length (-> vec? (and/c real? positive?))]
   [vec-angle (-> vec? real?)]
+  [vec-round (-> vec? vec?)]
   [vec+ (-> vec? vec? vec?)]
   [vec- (-> vec? vec? vec?)]
   [vec* (-> vec? real? vec?)]
@@ -193,6 +194,13 @@
     [(vec x 0) (if (> x 0) 0 pi)]
     [(vec 0 y) (* (/ pi 2) (if (> y 0) 1 3))]
     [_ (atan (/ (vec-y v) (vec-x v)))]))
+
+; Vec -> Vec
+; round to exact integer the vector
+(define (vec-round v)
+  (with-precision 
+   (1)
+   (struct-copy vec v)))
 
 ; Vec Vec -> Vec
 ; produce a new vector summing the coord. of the vectors

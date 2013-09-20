@@ -56,14 +56,14 @@
 
 
 ; Info -> T1FontInfo
-(define (ufoinfo->pfa info)
+(define (ufoinfo->t1fontinfo info)
   (cons 'FontInfo 
         (filter (lambda (o) (not (equal? "" (cadr o))))
                 (map (convert info) INFODEFAULT))))
 
 
 ; Info -> T1PrivateDict
-(define (ufoprivate->pfa info)
+(define (ufoprivate->t1privatedict info)
   (cons 'Private
         (filter (lambda (o) (not (null? (cadr o))))
                 (map (convert info) PRIVATEDEAFULT))))
@@ -72,27 +72,27 @@
 ; Glyph -> T1CharString
 ; produce a glyph ready to be written in type1 format
 ; warning: remove open paths
-(define (ufoglyph->pfa g)
+(define (ufoglyph->t1charstring g)
   (cons
    (glyph-name g)
    (cons
     (cons (advance-width (glyph-advance g))
           (advance-height (glyph-advance g)))
-    (filter (lambda (b) (closed? b)) (map-contours contour->bezier g)))))
+    (filter (lambda (b) (closed? b)) 
+            (map-contours 
+             (compose contour->bezier contour-round) g)))))
 
 ; Font -> Type1
 (define (ufo->type1 f [fbbox #f])
-  (let* ([f (let ([f1 (decompose-font f)])
-              (with-precision (1) (font-round f1)))]
-         [l (get-layer f)]
-         [charstrings (map-glyphs ufoglyph->pfa l)]
+  (let* ([l (decompose-layer f 'public.default)]
+         [charstrings (map-glyphs ufoglyph->t1charstring l)]
          [gbs (filter (lambda (b) (not (null? b))) (map cddr charstrings))]
          [info (font-fontinfo f)]
          [fname (string->symbol ((get-or-default 'postscriptFontName "Untitled") info))]
          [s (/ 1.0 ((get-or-default 'unitsPerEm 1000) info))]
          [mat (list s 0 0 s 0 0)]
-         [fontinfo (ufoinfo->pfa info)]
-         [pvt (ufoprivate->pfa info)]
+         [fontinfo (ufoinfo->t1fontinfo info)]
+         [pvt (ufoprivate->t1privatedict info)]
          [version (car (dict-ref (cdr fontinfo) 'version))]
          [bbox (if fbbox fbbox 
                    (apply combine-bounding-boxes 

@@ -3,6 +3,7 @@
 (require "../geometry.rkt"
          "../properties.rkt"
          "../fontpict.rkt"
+         "../utilities.rkt"
          racket/generic
          (planet wmfarr/plt-linalg:1:13/matrix)
          slideshow/pict-convert)
@@ -840,25 +841,25 @@
           (pictf:glyph (draw-glyph g) bb ascender upm)))))
                      
 ; Font -> Font
-; Round the coordinates of the font using the current *precision* factor
+; Round the coordinates of the font 
 (define (font-round f)
   (struct-copy font f
                [layers (map-layers layer-round f)]
                [kerning (kerning-round (font-kerning f))]))
 
 ; Layer -> Layer
-; Round the coordinates of the layer using the current *precision* factor
+; Round the coordinates of the layer 
 (define (layer-round l)
   (struct-copy layer l
                [glyphs (map-glyphs glyph-round l)]))
 
 ; kerning -> kerning
-; Round the kerning values using the current *precision* factor
+; Round the kerning values 
 (define (kerning-round k)
-  (map-kerning approx k))
+  (map-kerning num->int k))
 
 ; Glyph -> Glyph
-; Round the coordinates of the glyph using the current *precision* factor
+; Round the coordinates of the glyph 
 (define (glyph-round g)
   (struct-copy glyph g
                [advance (advance-round (glyph-advance g))]
@@ -871,47 +872,51 @@
                [components (map component-round (glyph-components g))]))
 
 ; Advance -> Advance
-; Round the coordinates of the advance using the current *precision* factor
+; Round the coordinates of the advance 
 (define (advance-round a)
   (struct-copy advance a 
-               [width (approx (advance-width a))]
-               [height (approx (advance-height a))]))
+               [width (num->int (advance-width a))]
+               [height (num->int (advance-height a))]))
 
 ; Image -> Image
-; Round the coordinates of the image using the current *precision* factor
+; Round the coordinates of the image 
 (define (image-round i)
-  (struct-copy image i
-               [matrix (struct-copy trans-mat (image-matrix i))]))
+  (with-precision 
+   (1)
+   (struct-copy image i
+                [matrix (struct-copy trans-mat (image-matrix i))])))
                        
 ; Guideline -> Guideline
-; Round the coordinates of the guideline using the current *precision* factor
+; Round the coordinates of the guideline 
 (define (guideline-round g)
   (struct-copy guideline g 
-               [pos (struct-copy vec (guideline-pos g))]))
+               [pos (vec-round (guideline-pos g))]))
 
 ; Anchor -> Anchor
-; Round the coordinates of the anchor using the current *precision* factor
+; Round the coordinates of the anchor 
 (define (anchor-round a)
   (struct-copy anchor a 
                [pos (struct-copy vec (anchor-pos a))]))
 
 ; Contour -> Contour
-; Round the coordinates of the contour using the current *precision* factor
+; Round the coordinates of the contour 
 (define (contour-round c)
   (struct-copy contour c 
                [points (map point-round (contour-points c))]))
 
 ; Component -> Component
-; Round the coordinates of the component using the current *precision* factor
+; Round the coordinates of the component 
 (define (component-round c)
-  (struct-copy component c 
-               [matrix (struct-copy trans-mat (component-matrix c))]))
+  (with-precision 
+   (1)
+   (struct-copy component c 
+                [matrix (struct-copy trans-mat (component-matrix c))])))
 
 ; Point -> Point
-; Round the coordinates of the point using the current *precision* factor
+; Round the coordinates of the point
 (define (point-round p)
   (struct-copy point p 
-               [pos (struct-copy vec (point-pos p))]))
+               [pos (vec-round (point-pos p))]))
 
 ; (String or Number) -> Number
 ; produce a number from a string or return the number
