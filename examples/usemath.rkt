@@ -18,7 +18,8 @@
 ;trasformed in the format used for interpolations, then 
 ;outlines are processed to minimize non compatible glyphs.
 ;Glyphs that can't be interpolated are then automatically discarded.
-;Adjust the paths so that they point the files in your computer
+
+;Adjust the paths so that they point to the files in your computer
 
 
 (define-fonts (light bold) ("/Users/daniele/Downloads/source-sans-pro-master/RomanMM/SourceSansPro_0.ufo"
@@ -226,7 +227,7 @@ bold
              (+ (* 0.6 s1-bold-wide)
                 (* 0.2 s1-light))))
             
-;Then you can write it with the procedure provided by ufo.rkt 
+;Then you can write it with write-ufo (provided by ufo.rkt)
 
 
 
