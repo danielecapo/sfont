@@ -1,11 +1,10 @@
 #lang racket
-(require "vec.rkt"
-         "bezier.rkt"
-         (prefix-in ufo: "ufo.rkt")
-         "utilities.rkt"
-         "fontpict.rkt"
-         "glyphlist.rkt"
-         "spacer.rkt")
+(require "../geometry.rkt"
+         "../ufo.rkt"
+         "../utilities.rkt"
+         "../fontpict.rkt"
+         "../glyphlist.rkt"
+         "../spacing/space.rkt")
 
 (set-sample-size! 150)
 
@@ -13,15 +12,13 @@
          rect
          ellipse
          arc
-         glyph
+         glyph.
          alg
          ovs
          ovs-height
-         font
+         font.
          from
-         (all-from-out "ufo.rkt")
-         (all-from-out "bezier.rkt")
-         (except-out (all-from-out "vec.rkt")
+         (except-out (all-from-out "../geometry.rkt")
                      translate
                      rotate
                      scale
@@ -205,44 +202,45 @@
 (define (unicode name)
   (hash-ref adobe-glyph-list name '()))
 
-(define-syntax glyph
+(define-syntax glyph.
   (syntax-rules (metrics contours locals)
-    [(glyph name 
+    [(glyph. name 
             (metrics metric-form ...)
             [contours contour ...])
-     (glyph name (locals)
+     (glyph. name (locals)
             (metrics metric-form ...)
             [contours contour ...])]
-    [(glyph name (locals [s v] ...)
+    [(glyph. name (locals [s v] ...)
             (metrics metric-form ...)
             [contours contour ...])
      (let* ([s v] ...)
        (space-glyph
         #f
-        (ufo:glyph 1 name (ufo:advance 0 0) (unicode name) #f #f '() '() 
-                   (map ufo:bezier->contour (build-contour-list contour ...)) '() #f)
+        (glyph 1 name (advance 0 0) (unicode name) #f #f '() '() 
+                   (map bezier->contour (build-contour-list contour ...)) '() #f)
          metric-form ...))]))
 
+;remove?
 ;(glyph-metric
-;         (ufo:glyph 1 name (ufo:advance 0 0) (unicode name) #f #f '() '() 
-;                    (map ufo:bezier->contour (build-contour-list contour ...)) '() #f)
+;         (glyph 1 name (advance 0 0) (unicode name) #f #f '() '() 
+;                    (map bezier->contour (build-contour-list contour ...)) '() #f)
 ;         metric-form ...))]))
 
 (define-syntax glyph-metric
   (syntax-rules (/--/ /<- ->/)
     [(glyph-metric g (/--/ a))
-     (struct-copy ufo:glyph g
-                  [advance (ufo:advance a 0)])]
+     (struct-copy glyph g
+                  [advance (advance a 0)])]
     [(glyph-metric g (/<- l) (->/ r))
      (glyph-metric 
       (glyph-metric g (/<- l))
       (->/ r))]
     [(glyph-metric g (/<- l))
-     (let ([sr (cdr (ufo:sidebearings #f g))])
-       (ufo:set-sidebearings #f g l sr))]
+     (let ([sr (cdr (get-sidebearings #f g))])
+       (set-sidebearings #f g l sr))]
     [(glyph-metric g (->/ r))
-     (let ([sl (car (ufo:sidebearings #f g))])
-       (ufo:set-sidebearings #f g sl r))]
+     (let ([sl (car (get-sidebearings #f g))])
+       (set-sidebearings #f g sl r))]
     [(glyph-metric g (/<- l lm) (->/ r rm))
      (glyph-metric 
       (glyph-metric g (/<- l lm))
@@ -256,22 +254,22 @@
       (glyph-metric g (/<- l lm))
       (->/ r))]
     [(glyph-metric g (/<- l lm))
-     (let ([sr (cdr (ufo:sidebearings-at #f g lm))])
-       (ufo:set-sidebearings-at #f g l sr lm))]
+     (let ([sr (cdr (get-sidebearings-at #f g lm))])
+       (set-sidebearings-at #f g l sr lm))]
     [(glyph-metric g (->/ r rm))
-     (let ([sl (car (ufo:sidebearings-at #f g rm))])
-       (ufo:set-sidebearings-at #f g sl r rm))]
+     (let ([sl (car (get-sidebearings-at #f g rm))])
+       (set-sidebearings-at #f g sl r rm))]
     [(glyph-metric g (/<- l) (/--/ a))
-     (glyph-metric (ufo:set-sidebearings #f g l 0) (/--/ a))]
+     (glyph-metric (set-sidebearings #f g l 0) (/--/ a))]
     [(glyph-metric g (/<- l lm) (/--/ a))
-     (glyph-metric (ufo:set-sidebearings-at #f g l 0 lm) (/--/ a))]
+     (glyph-metric (set-sidebearings-at #f g l 0 lm) (/--/ a))]
     [(glyph-metric g (/--/ a) (->/ r))
-     (let* ([sb (ufo:sidebearings #f g)]
+     (let* ([sb (get-sidebearings #f g)]
             [sl (car sb)]
             [sr (cdr sb)])
        (glyph-metric g (/<- (+ a sl sr (- r))) (/--/ a)))]
     [(glyph-metric g (/--/ a) (->/ r rm))
-     (let* ([sb (ufo:sidebearings-at #f g rm)]
+     (let* ([sb (get-sidebearings-at #f g rm)]
             [sl (car sb)]
             [sr (cdr sb)])
        (glyph-metric g (/<- (+ a sl sr (- r)) rm) (/--/ a)))]))
@@ -321,7 +319,7 @@
                      glyph ...)
      
        (let* (v ...)
-         (ufo:font 2 "ufo-rkt"
+         (font 2 "ufo-rkt"
                    (make-immutable-hash
                     (list (cons 'unitsPerEm (+ (alg ascender-id) (- (alg descender-id))))
                           (cons 'ascender (alg ascender-id))
@@ -334,7 +332,7 @@
                    (make-immutable-hash) 
                    #f
                    (list 
-                    (ufo:layer 'public.default #f
+                    (layer 'public.default #f
                                (build-glyphs-list glyph ...)))
                    (make-immutable-hash)
                    #f #f))]))
@@ -359,11 +357,11 @@
                        (kw . ([n v] . kwargs))
                        font-form))]))
 
-(define-syntax font 
+(define-syntax font. 
   (syntax-rules (alignments variables glyphs)
-    [(font (name params ...) . rest)
+    [(font. (name params ...) . rest)
      (kw-args-lambda (params ...) () (font name . rest))]
-    [(font name
+    [(font. name
        (alignments als ...)
        (variables v ...)
        (glyphs glyph ...))
@@ -373,7 +371,7 @@
                                     (find-descender (als ...)) 
                                     (v ...) 
                                     glyph ...))]
-    [(font name
+    [(font. name
        (alignments als ...)
        glyph ...)
      (let-alignment (als ...)
