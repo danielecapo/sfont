@@ -26,7 +26,7 @@
   [vec-approx= (-> vec? vec? boolean?)]
   [list->vec (-> (list/c real? real?) vec?)]
   [vec->list (-> vec? (list/c real? real?))]
-  [vec-length (-> vec? (and/c real? positive?))]
+  [vec-length (-> vec? (and/c real? (not/c negative?)))]
   [vec-angle (-> vec? real?)]
   [vec-round (-> vec? vec?)]
   [vec+ (-> vec? vec? vec?)]

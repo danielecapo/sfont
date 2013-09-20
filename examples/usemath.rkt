@@ -1,6 +1,8 @@
 #lang racket
 
-(require "../math.rkt")
+(require "../math.rkt"
+         "../ufo.rkt"
+         "../utilities.rkt")
 
 ;To run the code in this page download the Source Sans Pro Fonts from
 ;https://github.com/adobe/source-sans-pro
@@ -218,20 +220,13 @@ bold
  )
 
 ;Once you have done you can write your fonts to ufo
-;uncomment the following lines and fill the path with the correct 
-;path on your computer.
-;The default setting is to export to UFO2, you can pass
-;the keyword argument #:format 3 to convert to UFO3 
-;(or to avoid conversion to the UFO2 format).
-;If you want to ensure that the coordinates of points, anchors, etc.
-;are rounded to integers pass the keyword argument #:round-coord #t,
-;the default value is #f.
+;You have to get a ufo from the inyterpolable font we are using
 
-(write-font (s1 
+(get-ufo (s1 
              (+ (* 0.6 s1-bold-wide)
-                (* 0.2 s1-light)))
-            "export.ufo"
-            #:round-coord #t)
+                (* 0.2 s1-light))))
+            
+;Then you can write it with the procedure provided by ufo.rkt 
 
 
 

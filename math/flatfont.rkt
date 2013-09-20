@@ -60,15 +60,15 @@
 ;;; FKERNING
 ;;; Kerning data are stored in an association list
 ;;;'((left1
-;;;   (right1 value)
-;;;   (right2 value))
+;;;   (right1 . value)
+;;;   (right2 . value))
 ;;;  (left2
-;;;   (... ...)
-;;;   (... ...)))
+;;;   (... . ...)
+;;;   (... . ...)))
  
 (define fkerning/c 
   (flat-named-contract 'fkerning/c 
-                       (listof (cons/c name/c (listof (list/c name/c real?))))))
+                       (listof (cons/c name/c (listof (cons/c name/c real?))))))
 
 ;;; FINFO
 ;;; Font Info are stored in an association list
@@ -411,8 +411,8 @@
 
 ; FContour (FPoint Args ... -> FPoint) Args ... -> FContour
 (define (apply-fcontour-trans c proc . args)
-  (struct-copy fcontour c [points (map (lambda (p) (apply proc c args))
-                                       (contour-points c))]))
+  (struct-copy fcontour c [points (map (lambda (p) (apply proc p args))
+                                       (fcontour-points c))]))
 
 (struct fcontour (identifier points)
   #:transparent
@@ -469,7 +469,7 @@
 ; FContour -> Bezier
 ; produce a Bezier curve from an FContour
 (define (fcontour->bezier c)
-  (contour-points c))
+  (fcontour-points c))
 
 ; Glyph -> FGlyph
 ; produce a glyph from a ufo's glyph
@@ -527,8 +527,8 @@
 ; FContour -> Contour
 ; produces a ufo:contour from a FlatContour
 (define (contour->ufo fc)
-  (contour (contour-identifier fc) 
-           (fcontour-points (bezier->contour (fcontour-points fc)))))
+  (contour (fcontour-identifier fc) 
+           (contour-points (bezier->contour (fcontour-points fc)))))
  
 
 ; FComponent, FComponent -> FComponent
@@ -579,7 +579,7 @@
 ; produce a list of "on curve" points 
 ; (remove the control points)
 (define (on-curve-points c)
-  (on-curve-nodes (fcontour-points)))
+  (on-curve-nodes (fcontour-points c)))
 
 ; FPoint -> FPoint
 ; True if x1 < x2, if x coord. are equal true if y1 < y2

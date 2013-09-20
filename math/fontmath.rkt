@@ -28,10 +28,10 @@
          (contract-out
           [fontmath-object/c (-> any/c boolean?)]
           [font-object/c (-> any/c boolean?)]
-          [rename prod * (->* (fontmath-object/c) () #:rest fontmath-object/c fontmath-object/c)]
-          [rename add  + (->* (fontmath-object/c) () #:rest fontmath-object/c fontmath-object/c)]
-          [rename sub  - (->* (fontmath-object/c) () #:rest fontmath-object/c fontmath-object/c)]
-          [rename div  / (->* (fontmath-object/c) () #:rest fontmath-object/c fontmath-object/c)]
+          [rename prod * (->* (fontmath-object/c) () #:rest (listof fontmath-object/c) fontmath-object/c)]
+          [rename add  + (->* (fontmath-object/c) () #:rest (listof fontmath-object/c) fontmath-object/c)]
+          [rename sub  - (->* (fontmath-object/c) () #:rest (listof fontmath-object/c) fontmath-object/c)]
+          [rename div  / (->* (fontmath-object/c) () #:rest (listof fontmath-object/c) fontmath-object/c)]
           [x-> (-> font-object/c font-object/c)]
           [y-> (-> font-object/c font-object/c)]
           [fix-components (-> ffont? ffont? ffont?)])
@@ -52,12 +52,12 @@
 
 ; FContour ... -> FContour
 (define (contour+ c1 . cs)
-  (struct-copy contour c1
+  (struct-copy fcontour c1
                [points (apply map 
                               (lambda (p1 . ps)
                                 (foldl vec+ (vec 0 0) (cons p1 ps)))
-                              (contour-points c1)
-                              (map contour-points cs))]))
+                              (fcontour-points c1)
+                              (map fcontour-points cs))]))
 
 ; Fcomponent ... -> Fcomponent
 (define (component+ c1 . cs)
