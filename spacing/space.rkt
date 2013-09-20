@@ -1,24 +1,31 @@
 #lang racket
-(require "ufo.rkt"
-         "vec.rkt"
-         "fontpict.rkt")
+(require "../ufo.rkt"
+         "../geometry.rkt")
 
 (provide
- get-spacing
+ (contract-out 
+  [spacer/c (-> any/c boolean?)]
+  [get-spacing (-> font? (listof spacer/c) (listof (list/c name/c real? real?)))]
+  [lowercase-tracy (->* (font? real? real? real? real?) (real? real?) font?)]
+  [uppercase-tracy (-> font? real? real? real? real? font?)])
  space 
  kern
  space-glyph
  add-kern
- lowercase-tracy
- uppercase-tracy)
+ )
  
 ; Spacer
 ; (list Symbol (Number or False) (Number or False))
 
+(define spacer/c 
+  (flat-named-contract 
+   'spacer/c 
+   (list/c name/c (or/c real? #f) (or/c real? #f))))
+
 ; Adjustment
 ; (list Symbol Number Number)
 
-; Font (Listof Spacer) -> Font
+; Font (Listof Spacer) -> (listof (list Symbol Real Real))
 ; produces a list of sidebearings for given glyphs
 (define (get-spacing f s)
   (map (lambda (s)
@@ -27,16 +34,17 @@
                 [sright (caddr s)])
            (cons name
                  (cons (if sleft
-                           (car (sidebearings-at f name sleft))
-                           (car (sidebearings f name)))
+                           (car (get-sidebearings-at f name sleft))
+                           (car (get-sidebearings f name)))
                        (if sright
-                           (cdr (sidebearings-at f name sright))
-                           (cdr (sidebearings f name)))))))
+                           (cdr (get-sidebearings-at f name sright))
+                           (cdr (get-sidebearings f name)))))))
        s))
                        
                          
 ; spacing
 ; Font (Listof spacer) -> Font
+; REMOVE?
 (define (spacing f s)
   (define (set-space s f)
     (let* ([g (get-glyph f (car s))]
@@ -44,16 +52,16 @@
            [sright (caddr s)]
            [sb (if (or (list? sleft)
                        (list? sright))
-                   (sidebearings f g)
+                   (get-sidebearings f g)
                    #f)]
            [nleft (if (number? sleft)
                       sleft;(- sleft (car (sidebearings f name)))
                       (+ (car sb) 
-                         (- (car sleft) (car (sidebearings-at f g (cadr sleft))))))]
+                         (- (car sleft) (car (get-sidebearings-at f g (cadr sleft))))))]
            [nright (if (number? sright)
                        sright ;(- sright (cdr (sidebearings f name)))
                        (+ (cdr sb)
-                          (- (car sright) (cdr (sidebearings-at f g (cadr sright))))))])
+                          (- (car sright) (cdr (get-sidebearings-at f g (cadr sright))))))])
       (insert-glyph f (set-sidebearings f g nleft nright))))
   (foldl set-space f s))
 
@@ -183,70 +191,6 @@
              (hash-set! k l (make-hash (list (cons r v)))))    
          k)]))
 
- 
-; Font (listOf Adjustment) -> Font
-; adjust the spacing
-(define (adjust-spacing f s)
-  (define (set-space s f) 
-      (insert-glyph f (adjust-sidebearings f (get-glyph f (car s)) (cadr s) (caddr s))))
-  (foldl set-space f s))
-
-
-; Font (listOf Sidebearings) (listOf Symbol) (listOf Symbol) Number -> font
-; apply the spacing to the selected sides
-(define (set-spacing-sides f sp left right v)
-  (adjust-spacing f (append (map (lambda (g) (list g (- v (car (dict-ref sp g))) 0)) left)
-                            (map (lambda (g) (list g 0 (- v (cdr (dict-ref sp g))))) right))))
-
-
-; Font (listOf Sidebearings) (listOf Symbol) (listOf Symbol) Number Number Number -> (listOf Font)
-; produce a list of fonts with different spacing
-(define (samples f sp left right min max n)
-  (let* ([step (/ (- max min) (- n 1))]
-         [steps (map (lambda (n) (floor (+ min (* n step))))
-                     (range n))])
-    (map (lambda (s) 
-           (cons s
-                 (set-spacing-sides f sp left right s)))
-           steps)))
-
-          
-    
-(define (sample-choice samples n history text size)
-  (let ([random-samples (shuffle samples)])
-    (begin
-      (with-sample-text [text size]
-                        (for-each (lambda (s) 
-                                    (print (cdr s))
-                                    (newline)) 
-                                  (take random-samples n)))
-      (newline)
-      (let ([c (read)])
-        (cond [(= c 0) (floor (/ (foldl + 0 history) (length history)))]
-              [(or (> c n) (< c 0)) (begin (display "invalid number")
-                                           (newline)
-                                           (sample-choice random-samples n history text size))]
-              [else (sample-choice random-samples n
-                                   (cons (car (list-ref random-samples (- c 1)))
-                                         history) text size)])))))
-
-
-(define (play-spacing f sp left right min max n n-show text size)
-  (let* ([spc (get-spacing f sp)]
-         [s (samples f spc left right min max n)]
-         [r (sample-choice s n-show '() text size)])
-    (begin
-      (newline)
-      (display r)
-      (set-spacing-sides f spc left right r))))
-
-(define (random-variations f left right v n)
-  (map (lambda (x)
-         (adjust-spacing f (append (map (lambda (g) (list g (- (random (* 2 v)) v) 0)) left)
-                                   (map (lambda (g) (list g 0 (- (random (* 2 v)) v))) right))))
-       
-       (range n)))
-
 
 
 ; define-spacing-rule
@@ -262,7 +206,7 @@
      (define-spacing-rule name (variable ...) (binding ...) () rule ...)]))
 
 
-; Font Number Number Number Number -> Font
+; Font Real Real Real Real [Real] [Real] -> Font
 ; produce a font by applying the method described in W. Tracy's Letters of Credit
 (define-spacing-rule
   lowercase-tracy 
@@ -338,8 +282,74 @@
   Z / c c)
 
 
+;;;;;;;;;;;
+; The following procedure were part of a silly idea 
+; of spacing by examples
+; it should be developed, meanwhile I don't provide them
 
 
+; Font (listOf Adjustment) -> Font
+; adjust the spacing
+(define (adjust-spacing f s)
+  (define (set-space s f) 
+      (insert-glyph f (adjust-sidebearings f (get-glyph f (car s)) (cadr s) (caddr s))))
+  (foldl set-space f s))
+
+
+; Font (listOf Sidebearings) (listOf Symbol) (listOf Symbol) Number -> font
+; apply the spacing to the selected sides
+(define (set-spacing-sides f sp left right v)
+  (adjust-spacing f (append (map (lambda (g) (list g (- v (car (dict-ref sp g))) 0)) left)
+                            (map (lambda (g) (list g 0 (- v (cdr (dict-ref sp g))))) right))))
+
+
+; Font (listOf Sidebearings) (listOf Symbol) (listOf Symbol) Number Number Number -> (listOf Font)
+; produce a list of fonts with different spacing
+(define (samples f sp left right min max n)
+  (let* ([step (/ (- max min) (- n 1))]
+         [steps (map (lambda (n) (floor (+ min (* n step))))
+                     (range n))])
+    (map (lambda (s) 
+           (cons s
+                 (set-spacing-sides f sp left right s)))
+           steps)))
+
+          
+    
+(define (sample-choice samples n history text size)
+  (let ([random-samples (shuffle samples)])
+    (begin
+      (with-sample-text [text size]
+                        (for-each (lambda (s) 
+                                    (print (cdr s))
+                                    (newline)) 
+                                  (take random-samples n)))
+      (newline)
+      (let ([c (read)])
+        (cond [(= c 0) (floor (/ (foldl + 0 history) (length history)))]
+              [(or (> c n) (< c 0)) (begin (display "invalid number")
+                                           (newline)
+                                           (sample-choice random-samples n history text size))]
+              [else (sample-choice random-samples n
+                                   (cons (car (list-ref random-samples (- c 1)))
+                                         history) text size)])))))
+
+
+(define (play-spacing f sp left right min max n n-show text size)
+  (let* ([spc (get-spacing f sp)]
+         [s (samples f spc left right min max n)]
+         [r (sample-choice s n-show '() text size)])
+    (begin
+      (newline)
+      (display r)
+      (set-spacing-sides f spc left right r))))
+
+(define (random-variations f left right v n)
+  (map (lambda (x)
+         (adjust-spacing f (append (map (lambda (g) (list g (- (random (* 2 v)) v) 0)) left)
+                                   (map (lambda (g) (list g 0 (- (random (* 2 v)) v))) right))))
+       
+       (range n)))
 
 
 ;(define fo (read-ufo "/Users/daniele/Downloads/source-sans-pro-master/RomanMM/SourceSansPro_1.ufo"))
