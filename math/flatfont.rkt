@@ -3,21 +3,59 @@
 ;; This file borrows concepts from fontMath by Tal Leming (https://github.com/typesupply/fontMath)
 ;; in particular I have used its list of 'interpolable' Fontinfos 
 
-(require "ufo.rkt"
-         "vec.rkt"
-         "fontpict.rkt"
-         (prefix-in bz: "bezier.rkt")
+(require "../ufo.rkt"
+         "../fontpict.rkt"
+         "../geometry.rkt"
          slideshow/pict-convert
          racket/generic)
 
 (provide 
+ (contract-out
+  [fkerning/c (-> any/c boolean?)]
+  [finfo/c (-> any/c boolean?)]
+  [fanchor/c (-> any/c boolean?)]
+  [fcomponent/c (-> any/c boolean?)]
+  [struct ffont ((ufo font?)
+                 (info finfo/c)
+                 (kerning fkerning/c)
+                 (glyphs (listof fglyph?)))]
+  [struct fglyph ((name name/c)
+                  (advance (list/c real? real?))
+                  (contours (listof fcontour?))
+                  (components (listof fcomponent/c))
+                  (anchors (listof fanchor/c)))]
+  [struct fcontour ((identifier (or/c symbol? #f)) (points (listof vec?)))]
+  [ffont-scale (->* (ffont? real?) (real?) ffont?)]
+  [ffont-scale-glyphs (->* (ffont? real?) (real?) ffont?)]
+  [info-scale (->* (finfo/c real?) (real?) finfo/c)]
+  [kerning-scale (-> fkerning/c real? fkerning/c)]
+  [fget-glyphs (-> ffont? (listof name/c) (listof fglyph?))]
+  [ufo->ffont (-> font? ffont?)]
+  [ffont->ufo (-> ffont? font?)]
+  [fglyph-scale (->* (fglyph? real?) (real?) fglyph?)]
+  [prepare-for-interpolation (->* (ffont?) (boolean?) ffont?)]
+  [prepare-glyph (->* (fglyph?) (boolean?) fglyph?)]
+  [compatible-fonts (-> ffont? ffont? (values ffont? ffont?))]
+  [compatible-glyphs (-> fglyph? fglyph? (or/c (cons/c fglyph? fglyph?) #f))]
+  [compatible-kerning (-> fkerning/c fkerning/c (cons/c fkerning/c fkerning/c))]
+  [compatible-infos (-> finfo/c finfo/c (cons/c finfo/c finfo/c))]
+  [compatible-components (-> (listof fcomponent/c) (listof fcomponent/c) 
+                             (values (listof fcomponent/c) (listof fcomponent/c)))]
+  [compatible-anchors (-> (listof fanchor/c) (listof fanchor/c)
+                          (values (listof fanchor/c) (listof fanchor/c)))]
+  [match-glyphs-contours (-> fglyph? fglyph? fglyph?)]
+  [match-fonts-contours (-> ffont? ffont? ffont?)]
+  [import-component-scale (-> fcomponent/c fcomponent/c fcomponent/c)]
+  ))
+ 
+ #;
  (except-out (all-defined-out)
              sort-by-key
              ->int
              ->float
              ->intlist
              ->widthclass
-             filter-common))
+             filter-common)
 
 ;;; FKERNING
 ;;; Kerning data are stored in an association list
@@ -27,10 +65,22 @@
 ;;;  (left2
 ;;;   (... ...)
 ;;;   (... ...)))
-
+ 
+(define fkerning/c 
+  (flat-named-contract 'fkerning/c 
+                       (listof (cons/c name/c (listof (list/c name/c real?))))))
 
 ;;; FINFO
 ;;; Font Info are stored in an association list
+
+(define finfo/c 
+  (flat-named-contract 'finfo/c
+                       (listof (cons/c symbol? any/c))))
+
+(define fcomponent/c (flat-named-contract 'fcomponent/c component?))
+(define fanchor/c (flat-named-contract 'fanchor/c anchor?))
+
+
 
 ;;; FFONT
 ;;; (font Font FInfo FKerning (listOf FGlyph))
@@ -330,7 +380,7 @@
 
 
 ;;; FGLYPH
-;;; (glyph Symbol Number (listOf FContours) (listOf FComponents) (listOf FAnchors))
+;;; (glyph Symbol (list Real Real) (listOf FContours) (listOf FComponents) (listOf FAnchors))
 (struct fglyph (name advance contours components anchors)
   #:transparent
   #:methods gen:geometric
@@ -344,20 +394,53 @@
    (define/generic super-reflect-y reflect-y)
    (define (transform g m)
      (apply-fglyph-trans g super-transform m))
-  (define (translate g x y)
-    (apply-fglyph-trans g super-translate x y))
-  (define (scale g fx [fy fx])
-    (fglyph-scale g fx fy))
-  (define (rotate g a)
-    (apply-fglyph-trans g super-rotate a))
-  (define (skew-x g a)
-    (apply-fglyph-trans g super-skew-x a))
-  (define (skew-y g a)
+   (define (translate g x y)
+     (apply-fglyph-trans g super-translate x y))
+   (define (scale g fx [fy fx])
+     (fglyph-scale g fx fy))
+   (define (rotate g a)
+     (apply-fglyph-trans g super-rotate a))
+   (define (skew-x g a)
+     (apply-fglyph-trans g super-skew-x a))
+   (define (skew-y g a)
     (apply-fglyph-trans g super-skew-y a))
-  (define (reflect-x g)
-    (apply-fglyph-trans g super-reflect-x))
-  (define (reflect-y g)
-    (apply-fglyph-trans g super-reflect-y))])
+   (define (reflect-x g)
+     (apply-fglyph-trans g super-reflect-x))
+   (define (reflect-y g)
+     (apply-fglyph-trans g super-reflect-y))])
+
+; FContour (FPoint Args ... -> FPoint) Args ... -> FContour
+(define (apply-fcontour-trans c proc . args)
+  (struct-copy fcontour c [points (map (lambda (p) (apply proc c args))
+                                       (contour-points c))]))
+
+(struct fcontour (identifier points)
+  #:transparent
+  #:methods gen:geometric
+  [(define/generic super-transform transform)
+   (define/generic super-translate translate)
+   (define/generic super-scale scale)
+   (define/generic super-rotate rotate)
+   (define/generic super-skew-x skew-x)
+   (define/generic super-skew-y skew-y)
+   (define/generic super-reflect-x reflect-x)
+   (define/generic super-reflect-y reflect-y)
+   (define (transform c m)
+     (apply-fcontour-trans c super-transform m))
+   (define (translate c x y)
+     (apply-fcontour-trans c super-translate x y))
+   (define (scale c fx [fy fx])
+     (apply-fcontour-trans c super-scale fx fy))
+   (define (rotate c a)
+     (apply-fcontour-trans c super-rotate a))
+   (define (skew-x c a)
+     (apply-fcontour-trans c super-skew-x a))
+   (define (skew-y c a)
+    (apply-fcontour-trans c super-skew-y a))
+   (define (reflect-x c)
+     (apply-fcontour-trans c super-reflect-x))
+   (define (reflect-y c)
+     (apply-fcontour-trans c super-reflect-y))])
 
 ; FGlyph  (T . ... -> T) . ... -> FGlyph
 ; apply a geometric transformations to a glyph
@@ -402,7 +485,7 @@
 ; Contour -> FContour
 ; produce a contour from a ufo contour
 (define (ufo->contour c)
-  (struct-copy contour c [points (contour->bezier c)]))
+  (fcontour (contour-identifier c) (contour->bezier c)))
 
 ; Anchor -> FAnchor
 ; produce an anchor froma a ufo anchor
@@ -444,8 +527,9 @@
 ; FContour -> Contour
 ; produces a ufo:contour from a FlatContour
 (define (contour->ufo fc)
-  (struct-copy contour fc
-               [points (contour-points (bezier->contour (contour-points fc)))]))
+  (contour (contour-identifier fc) 
+           (fcontour-points (bezier->contour (fcontour-points fc)))))
+ 
 
 ; FComponent, FComponent -> FComponent
 ; produce a new component with scale fields imported from another component
@@ -477,28 +561,25 @@
 ; or if the first point of the first contours is nearer the origin
 ; than the first point of the second contour
 (define (contour<? c1 c2)
-  (let ([l1 (length (contour-points c1))]
-        [l2 (length (contour-points c2))])
+  (let ([l1 (length (fcontour-points c1))]
+        [l2 (length (fcontour-points c2))])
     (or (< l1 l2)
         (and (= l1 l2)
-             (< (vec-length (car (contour-points c1)))
-                (vec-length (car (contour-points c2))))))))
+             (< (vec-length (car (fcontour-points c1)))
+                (vec-length (car (fcontour-points c2))))))))
              
 ; FContour -> Boolean 
 ; True if the last point is equal to the first point 
 ; (and the contour has more than one point)
-(define (closed? c)
-  (let ([cp (contour-points c)])
-    (and (> (length cp) 1) (equal? (first cp) (last cp)))))
+(define (fcontour-closed? c)
+  (let ([cp (fcontour-points c)])
+    (and (> (length cp) 1) (closed? cp))))
 
 ; FContour -> (listOf Points)
 ; produce a list of "on curve" points 
 ; (remove the control points)
 (define (on-curve-points c)
-  (letrec ([aux (lambda (c)
-                  (if (null? (cdr c)) c
-                      (cons (car c) (aux (cdddr c)))))])
-    (aux (contour-points c))))
+  (on-curve-nodes (fcontour-points)))
 
 ; FPoint -> FPoint
 ; True if x1 < x2, if x coord. are equal true if y1 < y2
@@ -510,18 +591,18 @@
 ; FContour -> FContour
 ; Rotate the point list by removing the first 'segment' and appeding it to the end of contour
 (define (cycle-points c)
-  (let ([cp (contour-points c)])
-    (struct-copy contour c
+  (let ([cp (fcontour-points c)])
+    (struct-copy fcontour c
                  [points (append (cdddr (take cp (- (length cp) 1)))
                                  (take cp 4))])))
 
 ; FContour -> FContour
 ; Rearrange the contour so that the first point is the mimimum (using point<) of all points
 (define (canonical-start-point c)
-  (if (closed? c)
+  (if (fcontour-closed? c)
       (let ((min-pt (car (sort (on-curve-points c) point<?))))
         (letrec ((aux (lambda (c)
-                        (let ([pts (contour-points c)])
+                        (let ([pts (fcontour-points c)])
                           (if (equal? (car pts) min-pt) c
                               (aux (cycle-points c)))))))
           (aux c)))
@@ -530,7 +611,7 @@
 ; FContour -> FContour
 ; reverse the contour
 (define (freverse-contour c)
-  (struct-copy contour c [points (reverse (contour-points c))]))
+  (struct-copy fcontour c [points (reverse (fcontour-points c))]))
 
 ; FGlyph -> FGlyph
 ; produce a new glyph trying to fix the directions of contours
@@ -669,7 +750,7 @@
   (let ((c1 (fglyph-contours g1))
         (c2 (fglyph-contours g2)))
     (if (and (= (length c1) (length c2))
-             (andmap (lambda (a b) (= (length (contour-points a)) (length (contour-points b))))
+             (andmap (lambda (a b) (= (length (fcontour-points a)) (length (fcontour-points b))))
                      c1 c2))
         (let-values (((c1 c2) (compatible-components (fglyph-components g1)
                                                      (fglyph-components g2)))
@@ -686,7 +767,7 @@
   (define (contour-distance c1 c2)
     (foldl (lambda (p1 p2 d)
              (+ d (vec-length (vec- p2 p1))))
-           0 (contour-points c1) (contour-points c2)))
+           0 (fcontour-points c1) (fcontour-points c2)))
   (reverse
    (cdr 
     (foldl (lambda (cm acc)
@@ -695,7 +776,7 @@
                     [m (car (argmin cdr (filter (lambda (i) (identity (cdr i)))
                                                 (map (lambda (c)
                                                        (cons c
-                                                             (if (= (length (contour-points c)) (length (contour-points cm)))
+                                                             (if (= (length (fcontour-points c)) (length (fcontour-points cm)))
                                                                     (contour-distance cm c)
                                                                     #f)))
                                                      cs))))])

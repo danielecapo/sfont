@@ -1,17 +1,12 @@
 #lang racket
 (require "flatfont.rkt"
-         "ufo.rkt"
-         "vec.rkt"
-         "properties.rkt"
-         "fontpict.rkt"
-         "utilities.rkt")
+         "../ufo.rkt"
+         "../geometry.rkt"
+         "../properties.rkt"
+         "../utilities.rkt")
 
 (provide (except-out (all-from-out racket) + - * /)
-         (rename-out [prod *]
-                     [add +]
-                     [sub -]
-                     [div /]
-                     [transform transform]
+         (rename-out [transform transform]
                      [translate translate]
                      [rotate rotate]
                      [scale scale]
@@ -19,10 +14,9 @@
                      [skew-y skew-y]
                      [reflect-x reflect-x]
                      [reflect-y reflect-y]
-                     [ffont->ufo flatfont->ufo]
+                     [ffont->ufo get-ufo]
                      [ffont-scale-glyphs glyphs-scale])
-         (all-from-out "fontpict.rkt")
-         (except-out (all-from-out "vec.rkt")
+         (except-out (all-from-out "../geometry.rkt")
                      transform
                      translate
                      rotate
@@ -31,15 +25,32 @@
                      skew-y
                      reflect-x
                      reflect-y)
-         x->
-         y->
+         (contract-out
+          [fontmath-object/c (-> any/c boolean?)]
+          [font-object/c (-> any/c boolean?)]
+          [rename prod * (->* (fontmath-object/c) () #:rest fontmath-object/c fontmath-object/c)]
+          [rename add  + (->* (fontmath-object/c) () #:rest fontmath-object/c fontmath-object/c)]
+          [rename sub  - (->* (fontmath-object/c) () #:rest fontmath-object/c fontmath-object/c)]
+          [rename div  / (->* (fontmath-object/c) () #:rest fontmath-object/c fontmath-object/c)]
+          [x-> (-> font-object/c font-object/c)]
+          [y-> (-> font-object/c font-object/c)]
+          [fix-components (-> ffont? ffont? ffont?)])
          define-fonts
          define-space
-         code+expr
-         write-font
-         fix-components)
+         )
+         
+         
+(define fontmath-object/c
+  (flat-named-contract 
+   'fontmath-object/c
+   (or/c vec? real? ffont? bezier/c)))
 
+(define font-object/c
+  (flat-named-contract 
+   'font-object/c
+   (or/c vec? ffont? fglyph? fcontour? fanchor/c fcomponent/c finfo/c fkerning/c)))
 
+; FContour ... -> FContour
 (define (contour+ c1 . cs)
   (struct-copy contour c1
                [points (apply map 
@@ -48,6 +59,7 @@
                               (contour-points c1)
                               (map contour-points cs))]))
 
+; Fcomponent ... -> Fcomponent
 (define (component+ c1 . cs)
   (struct-copy component c1
         [matrix (foldl (lambda (cc1 cc2) 
@@ -59,11 +71,13 @@
                        (get-matrix c1)
                        (map get-matrix cs))]))
 
+; FAnchor ... -> FAnchor
 (define (anchor+ a1 . as)
   (struct-copy anchor a1
                [pos (foldl vec+ (get-position a1)
                            (map get-position as))]))
 
+; FGlyph ... -> FGlyph
 (define (glyph+ g1 . gs)
   (let [(gss (cons g1 gs))]
     (struct-copy fglyph g1
@@ -82,6 +96,7 @@
                   (apply map anchor+ (map fglyph-anchors gss))])))
 
 
+; FFont ... -> FFont
 (define (font+ f1 . fs)
   (let [(fonts (cons f1 fs))]
   (struct-copy ffont f1
@@ -89,6 +104,7 @@
                [kerning (apply kerning+ (map ffont-kerning fonts))]
                [glyphs (apply map glyph+ (map ffont-glyphs fonts))])))
 
+; FInfo ... -> FInfo
 (define (info+ i1 . is)
   (letrec [(aux (lambda (i1 i2)
                   (dict-map i1
@@ -97,10 +113,11 @@
                                 (cons key
                                       (match value
                                         [(list _ ...) (map + value v2)]
-                                        [(? number? value) (+ value v2)]
+                                        [(? real? value) (+ value v2)]
                                         [_ (error "cannot add info")])))))))]
     (foldl aux i1 is)))
 
+; FKerning ... -> FKerning
 (define (kerning+ k1 . ks)
   (letrec [(aux (lambda (k1 k2)
                   (map (lambda (kl1 kl2)
@@ -112,9 +129,11 @@
                        k1 k2)))]
     (foldl aux k1 ks)))
 
+; FFont Real ... -> FFont
 (define (font:* f s1 . ss)
   (scale f (apply * (cons s1 ss))))
 
+; FontObject ... -> FontObject
 (define (font:+ o1 . os)
   (apply (match o1
            [(ffont _ _ _ _) font+]
@@ -124,71 +143,85 @@
            [(component _ _ _) component+])
          (cons o1 os)))
 
+; FontObject ... -> FontObject
 (define (font:- o1 . os)
   (apply font:+ (cons o1 (map (lambda (o) (font:* o -1))
                                   os))))
 
+; FontObject Real ... -> FontObject
 (define (font:/ o s1 . ss)
   (font:* o (apply * (map (lambda (s) 
                                 (/ 1 s)) 
                               (cons s1 ss)))))
 
-
+; FontMathObject ... -> FontMathObject
 (define (add a . as)
   (match (cons a as)
     [(list (? ffont? _) ...)
      (apply font:+ a as)]
-    [(list (? number? _) ...)
+    [(list (? real? _) ...)
      (apply + a as)]
     [(list (? vec? _) ...)
      (foldl vec+ a as)]
+    [(list (? bezier/c _) ...)
+     (foldl (lambda (a b) (map vec+ a b)) a as)]
     [_ (error "Invalid operands for product for addition")]))
 
+; FontMathObject -> FontMathObject
 (define (sub a . as)
   (match (cons a as)
     [(list (? ffont? _) ...)
      (apply font:+ a (map (lambda (i) (prod i -1)) as))]
-    [(list (? number? _) ...)
+    [(list (? real? _) ...)
      (apply - a as)]
     [(list (? vec? _) ...)
-     (foldl vec+ a (map (lambda (i) (prod i -1)) as))]
+     (foldl vec- a as)]
+    [(list (? bezier/c _) ...)
+     (foldl (lambda (a b) (map vec- a b)) a as)]
     [_ (error "Invalid operands for product for addition")]))
 
-
+; FontMathObject ... -> FontMathObject
 (define (prod a . as)
   (match (cons a as)
-    [(list-no-order (? ffont? f) (? number? s) ...)
+    [(list-no-order (? ffont? f) (? real? s) ...)
      (apply font:* f s)]
-    [(list-no-order (? vec? v) (? number? s) ...)
+    [(list-no-order (? vec? v) (? real? s) ...)
      (vec* v (apply * s))]
-    [(list (? number? x) ...)
+    [(list-no-order (? bezier/c b) (? real? s) ...)
+     (let ([f (apply * s)])
+       (map (lambda (v) (vec* v f)) b ))]
+    [(list (? real? x) ...)
      (apply * x)]
     [_ (error "Invalid operands for product")]))
 
+; FontMathObject Real ... -> FontMathObject
 (define (div a . as)
   (match (cons a as)
-    [(list-no-order (? ffont? f) (? number? s) ...)
+    [(list (? ffont? f) (? real? s) ...)
      (apply font:* f (map (lambda (n) (/ 1.0 n)) s))]
-    [(list-no-order (? vec? v) (? number? s) ...)
+    [(list (? vec? v) (? real? s) ...)
      (vec* v (apply * (map (lambda (n) (/ 1.0 n)) s)))]
-    [(list (? number? x) ...)
+    [(list (? bezier/c b) (? real? s) ...)
+     (let ([f (apply * (map (lambda (n) (/ 1.0 n)) s))])
+       (map (lambda (v) (vec* v f)) b ))]
+    [(list (? real? x) ...)
      (apply / x)]
     [_ (error "Invalid operands for product")]))
 
 
 ;; PROJECTIONS
 
-; T -> T
+; FontObject -> FontObject
 ; project the object on the x axis (set every y coord. to zero)
 (define (x-> o)
   (scale o 1 0))
 
-; T -> T
+; FontObject -> FontObject
 ; project the object on the y axis (set every x coord. to zero)
 (define (y-> o)
   (scale o 0 1))  
 
-
+; FFont ... -> (listof FFont)
 (define (interpolables f . fs)
   (let ([f0 (foldl (lambda (f acc)
                      (let-values ([(a b) (compatible-fonts acc f)])
@@ -245,14 +278,3 @@
                             (ffont-glyphs f2))]))
                                                       
 
-
-(define (write-font f path #:round-coord [round-coord #f] #:format [format 2])
-  (let ([rf (if round-coord 
-                (with-precision (1) (font-round (ffont->ufo f)))
-                (ffont->ufo f))])
-    (write-ufo ((if (= format 2)
-                        font->ufo2
-                        font->ufo3)
-                    rf)
-                   path)))
-  
