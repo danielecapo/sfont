@@ -8,31 +8,34 @@
 
 (set-sample-size! 150)
 
-(provide ~
-         rect
-         ellipse
-         arc
-         glyph.
-         alg
-         ovs
-         ovs-height
-         font.
-         from
-         (except-out (all-from-out "../geometry.rkt")
-                     translate
-                     rotate
-                     scale
-                     skew-x
-                     skew-y
-                     reflect-x
-                     reflect-y)
-         (rename-out [translate* translate]
-                     [rotate* rotate]
-                     [scale* scale]
-                     [skew-x* skew-x]
-                     [skew-y* skew-y]
-                     [reflect-x* reflect-x]
-                     [reflect-y* reflect-y]))
+(provide 
+ (contract-out
+  [alignment/c (-> any/c boolean?)]
+  [rect (-> real? real? real? real? bezier/c)]
+  [ellipse (-> real? real? real? real? bezier/c)]
+  [arc (-> real? real? real? real? bezier/c)]
+  [alg (-> alignment/c real?)]
+  [ovs (-> alignment/c real?)]
+  [ovs-height (-> alignment/c real?)])
+ glyph.
+ font.
+ from
+ ~
+ (except-out (all-from-out "../geometry.rkt")
+             translate
+             rotate
+             scale
+             skew-x
+             skew-y
+             reflect-x
+             reflect-y)
+ (rename-out [translate* translate]
+             [rotate* rotate]
+             [scale* scale]
+             [skew-x* skew-x]
+             [skew-y* skew-y]
+             [reflect-x* reflect-x]
+             [reflect-y* reflect-y]))
 
 ;(define-syntax ~
 ;    (syntax-rules (insert cycle)
@@ -49,13 +52,14 @@
 
 
 (define-syntax ~
-  (syntax-rules (-- insert @ cycle)
+  (syntax-rules (-- insert @ cycle @<)
     [(~ (insert vlist) c ... cycle)
      (let ([fp (car vlist)])
        (~ (insert vlist) c ... ((vec-x fp) (vec-y fp))))]
     [(~ (x y) c ... cycle)
      (~ (x y) c ... (x y))]
     [(~) '()]     
+    
     [(~ (insert vlist) (@ insert vlist2) . r)
      (let ([sb vlist])
        (join-subpaths vlist
@@ -118,7 +122,7 @@
 
  
 
-; Number, Number, Number, Number -> Bezier
+; Real, Real, Real, Real -> Bezier
 ; produce a rectangle (as a bezier curve) with lower left corner in (x, y) with width w and height h
 (define (rect x y w h)
   (let ([x2 (+ x w)]
@@ -126,7 +130,7 @@
     (~ (x y) -- (x2 y) -- (x2 y2) -- (x y2) -- (x y))))
 
 
-; Number, Number, Number, Number -> Bezier
+; Real, Real, Real, Real -> Bezier
 ; produce an ellipse (as a bezier curve) with lower left corner (of the bounding box) in (x, y) with width w and height h
 (define (ellipse x y w h)
   (let* ([x2 (+ x w)]
@@ -140,7 +144,7 @@
        (x2 y t) (x2 ym))))
 
 
-; Number Number Number Number -> Bezier
+; Real Real Real Real -> Bezier
 ; produce an arc with center (cx cy) radius r and angle a
 (define (arc cx cy r a)
   (let* ([x1 (+ cx r)]
@@ -197,7 +201,7 @@
 ;
 
 
-; Symbol -> Number
+; Symbol -> Real
 ; produce the unicode code of the glyph using adobe glyph list
 (define (unicode name)
   (hash-ref adobe-glyph-list name '()))
@@ -291,22 +295,22 @@
 
        
 ; Alignemnt is a pair, the first element is the position, the second represents the height of overshoot
+(define alignment/c (flat-named-contract 'alignment/c (cons/c real? real?)))
 
-
-; Alignment -> Number
+; Alignment -> Real
 ; return the position of alignment
 (define (alg al)
   (car al))
 
 
 
-; Alignment -> Number
+; Alignment -> Real
 ; return the position of overshoot for Alignment
 (define (ovs al)
   (+ (alg al) (ovs-height al)))
 
 
-; Alignment -> Number
+; Alignment -> Real
 ; return the height of overshoot for Alignment
 (define (ovs-height al)
   (cadr al))
