@@ -114,7 +114,7 @@
                     (<-> (- delta)) (<-> delta)))]
     [(space-glyph f g (/--/ a) r)
      (let* ([gt (space-glyph f g -- r)]
-            [l (car (sidebearings f g))]
+            [l (car (get-sidebearings f g))]
             [at (advance-width (glyph-advance gt))]
             [delta (- a at)])
        (space-glyph f gt (<-> delta) --))]

@@ -64,17 +64,21 @@
 
 
 (define-syntax parse-curves
-  (syntax-rules (@ cycle insert)
+  (syntax-rules (@ cycle insert @°)
     [(_ (insert i) c ... cycle)
      (let* ([b i]
             [n (car b)])
        (parse-curves (insert b) c ... ((vec-x n) (vec-y n))))]
     [(_ (x y) (insert i) . r)
      (join-subpaths (list (vec x y)) (parse-curves  (insert i) . r))]
-    [(_ (insert i) . r)
+    [(_ (insert i) (@ insert o) . r)
      (let* ([b i]
             [n (car b)]
             [l (last b)])
+       (join-subpaths b (parse-curves (insert (translate* o (vec-x l) (vec-y l))) . r)))]
+    [(_ (insert i) . r)
+     (let* ([b i]
+            [n (car b)])
        (join-subpaths b (parse-curves . r)))]
     [(_ (x y) (@ insert o) . r)
      (let ([n (vec x y)])
@@ -88,6 +92,15 @@
        (parse-curves ((vec-x n) (vec-y n))
             ((vec-x nc) (vec-y nc) . t)
             . r))]
+    [(_ (x y) (@° a l . t) . r)
+     (let ([n (vec x y)]
+           [angle a]
+           [len l])
+       (parse-curves (x y) 
+                     (@ (* len (cos angle))
+                        (* len (sin angle))
+                        . t)
+                     . r))]
     [(_ (x y) (cx cy t) . r)
      (let ([tension t])
        (parse-curves (x y) (cx cy tension tension) . r))]
@@ -102,6 +115,14 @@
             [n (vec+ nt (vec x1 y1))])
        (parse-curves ((vec-x nt) (vec-y nt) t)
             ((vec-x n) (vec-y n)) . r))]
+    [(_ (cx cy t) (@° a l) . r)
+     (let ([nt (vec cx cy)]
+           [angle a]
+           [len l])
+       (parse-curves (cx cy t) 
+                     (@ (* len (cos angle))
+                        (* len (sin angle)))
+                     . r))]
     [(_ (cx cy t) (x1 y1) . r)
      (let ([n (vec x1 y1)]
            [nt (vec cx cy)])
@@ -226,10 +247,11 @@
 ;
 
 
-; Symbol -> Real
+; Symbol -> (listof Real)
 ; produce the unicode code of the glyph using adobe glyph list
 (define (unicode name)
-  (hash-ref adobe-glyph-list name '()))
+  (let ([u (hash-ref adobe-glyph-list name #f)])
+    (if u (list u) '())))
 
 (define-syntax glyph.
   (syntax-rules (metrics contours locals)
@@ -246,7 +268,7 @@
        (space-glyph
         #f
         (glyph 1 name (advance 0 0) (unicode name) #f #f '() '() 
-                   (map bezier->contour (build-contour-list contour ...)) '() #f)
+                   (map bezier->contour (build-contour-list contour ...)) '() (make-immutable-hash))
          metric-form ...))]))
 
 ;remove?
@@ -319,8 +341,8 @@
 
 
        
-; Alignemnt is a pair, the first element is the position, the second represents the height of overshoot
-(define alignment/c (flat-named-contract 'alignment/c (cons/c real? real?)))
+; Alignemnt is a list of two elements, the first element is the position, the second represents the height of overshoot
+(define alignment/c (flat-named-contract 'alignment/c (list/c real? real?)))
 
 ; Alignment -> Real
 ; return the position of alignment
@@ -389,7 +411,7 @@
 (define-syntax font. 
   (syntax-rules (alignments variables glyphs)
     [(font. (name params ...) . rest)
-     (kw-args-lambda (params ...) () (font name . rest))]
+     (kw-args-lambda (params ...) () (font. name . rest))]
     [(font. name
        (alignments als ...)
        (variables v ...)

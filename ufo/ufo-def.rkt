@@ -96,15 +96,15 @@
   [decompose-glyph (->* (font? glyph?) (name/c) glyph?)]
   [decompose-layer (->* (font?) (name/c) layer?)]
   [decompose-font (-> font? font?)]
-  [glyph-bounding-box (->* (font? glyph?) (name/c boolean?) bounding-box/c)]
+  [glyph-bounding-box (->* ((or/c font? #f) glyph?) (name/c boolean?) bounding-box/c)]
   [font-bounding-box (->* (font?) (name/c boolean?) bounding-box/c)]
-  [get-sidebearings (->* (font? glyph?) (name/c) (or/c (cons/c real? real?) #f))]
-  [intersections-at (->* (font? glyph? real?) (name/c) (listof vec?))]
-  [get-sidebearings-at (->* (font? glyph? real?) (name/c) (or/c (cons/c real? real?) #f))]
+  [get-sidebearings (->* ((or/c font? #f) glyph?) (name/c) (or/c (cons/c real? real?) #f))]
+  [intersections-at (->* ((or/c font? #f) glyph? real?) (name/c) (listof vec?))]
+  [get-sidebearings-at (->* ((or/c font? #f) glyph? real?) (name/c) (or/c (cons/c real? real?) #f))]
   [glyph-signed-area (->* (font? glyph?) (name/c) real?)]
-  [set-sidebearings (->* (font? glyph? real? real?) (name/c) glyph?)]
-  [set-sidebearings-at (->* (font? glyph? real? real? real?) (name/c) glyph?)]
-  [adjust-sidebearings (->* (font? glyph? real? real?) (name/c) glyph?)]
+  [set-sidebearings (->* ((or/c font? #f) glyph? (or/c real? #f) (or/c real? #f)) (name/c) glyph?)]
+  [set-sidebearings-at (->* ((or/c font? #f) glyph? (or/c real? #f) (or/c real? #f) real?) (name/c) glyph?)]
+  [adjust-sidebearings (->* ((or/c font? #f) glyph? (or/c real? #f) (or/c real? #f)) (name/c) glyph?)]
   [lowercase-stems (-> font? real?)]
   [uppercase-stems (-> font? real?)]
   [correct-directions (-> font? font?)]
@@ -761,7 +761,7 @@
         #f)))
 
 
-; Font Glyph Number Number Symbol -> Glyph
+; Font Glyph (Number or False) (Number or False) Symbol -> Glyph
 ; adjust left and right sidebearings for the glyph
 (define (adjust-sidebearings f g left right [ln 'public.default])
   (let* ([os (get-sidebearings f g ln)])     

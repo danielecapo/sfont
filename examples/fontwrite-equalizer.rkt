@@ -1,5 +1,5 @@
 #lang racket
-(require "../fontwriter.rkt"
+(require "../parametric/fontwriter.rkt"
          "../utilities.rkt"
          "../fontpict.rkt")
 
@@ -15,7 +15,7 @@
 ; Symbol Number Number Number Number -> Ufo:Glyph
 ; produce a glyph with n lines 
 (define (eq-glyph name n s sp w sb)
-  (glyph name
+  (glyph. name
    (metrics sb sb)
    [contours 
     (map (lambda (p)
@@ -23,7 +23,7 @@
          (range n))]))
 
 (define equalizer
-  (font (equalizer [width 300] [sb 20] [s 5])
+  (font. (equalizer [width 300] [sb 20] [s 5])
         (alignments
          [base 0 0]
          [ascender 750 0 :use-as-ascender]
@@ -31,7 +31,7 @@
         (variables
          [space 28])
         (glyphs
-         (glyph 'space
+         (glyph. 'space
                 (metrics -- (/--/ (+ width sb sb)))
                 [contours #f])
          (map (lambda (name n)

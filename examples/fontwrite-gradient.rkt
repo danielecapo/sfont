@@ -1,9 +1,8 @@
 #lang racket
-(require "../fontwriter.rkt"
+(require "../parametric/fontwriter.rkt"
          "../utilities.rkt"
-         "../fontpict.rkt"
-         "../ufopfa.rkt"
-         "../writepfa.rkt")
+         "../ufo.rkt"
+         "../export/type1.rkt")
 
 
 (define alphabet-lc '(a b c d e f g h i j k l m n o p q r s t u v w x y z))
@@ -60,7 +59,7 @@
 ; produce a square glyph with circles of radius r
 (define (dots-glyph name n r)
   (let ([s (num->int (/ 1000 n))])
-    (glyph name
+    (glyph. name
            [metrics -- (/--/ 1000)]
            [contours 
             (foldl append '()
@@ -74,7 +73,7 @@
 ; produce a square glyph with vertical stripes 
 (define (vstripes-glyph name n r)
   (let ([s (num->int (/ 1000 n))])
-    (glyph name
+    (glyph. name
            [metrics -- (/--/ 1000)]
            [contours 
             (map (lambda (p)
@@ -85,7 +84,7 @@
 ; produce a square glyph with diagonal stripes 
 (define (dstripes-glyph name n r a)
   (let ([s (num->int (/ 1000 n))])
-    (glyph name
+    (glyph. name
            [metrics -- (/--/ 1000)]
            [contours 
             (map (lambda (p)
@@ -96,7 +95,7 @@
 ; produce a square glyph with horizontal stripes 
 (define (hstripes-glyph name n r)
   (let ([s (num->int (/ 1000 n))])
-    (glyph name
+    (glyph. name
            [metrics -- (/--/ 1000)]
            [contours 
             (map (lambda (p)
@@ -107,7 +106,7 @@
 ; produce a square glyph with rings
 (define (rings-glyph name n r)
   (let ([s (num->int (/ 1000 n))])
-    (glyph name
+    (glyph. name
            [metrics -- (/--/ 1000)]
            [contours 
             (foldl append '()
@@ -116,17 +115,17 @@
                  (range (/ n 2))))])))
 
 (define gradients
-  (font (gradients [n 20])
+  (font. (gradients [n 20])
         (alignments
          [base 0 0]
          [ascender 750 0 :use-as-ascender]
          [descender -250 0 :use-as-descender])
         (variables)
         (glyphs
-         (glyph 'space
+         (glyph. 'space
                 (metrics -- (/--/ 1000))
                 [contours #f])
-         (glyph '.notdef
+         (glyph. '.notdef
                 (metrics -- (/--/ 0))
                 [contours #f])
          (map (lambda (name r)
@@ -166,7 +165,7 @@
 (define sh (gradients #:n 8))
 sh
 (define sh1
-    (struct-copy ufo:font sh [fontinfo (let ([i (ufo:font-fontinfo sh)])
+    (struct-copy font sh [fontinfo (let ([i (font-fontinfo sh)])
                                          (hash-set* i 
                                                     'postscriptIsFixedPitch #t
                                                     'postscriptBlueValues '(-10 0 740 750)

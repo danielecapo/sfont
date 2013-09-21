@@ -1,6 +1,6 @@
 #lang racket
 
-(require "../fontwriter.rkt")
+(require "../parametric/fontwriter.rkt")
 
 ;An example of the fontwriter 'language'
 ;the font macro can be used in two ways:
@@ -17,7 +17,7 @@
 
 
 (define sq 
-  (font (squarefont  [x-height 500] [width 0.5] [weight 0.5]) 
+  (font. (squarefont  [x-height 500] [width 0.5] [weight 0.5]) 
         ;; here we define a font named squarefont with parameters
         ;; x-height, width and weight
         ;; the parameters need a default value
@@ -60,7 +60,7 @@
      (glyphs
       ;; Glyphs follow the variables section.
       ;; We can also provide a list of glyphs here.
-        (glyph 'a
+        (glyph. 'a
                ; every glyph has a name 
                (metrics space space)
                ; an advance form
@@ -68,14 +68,14 @@
                ;inside the contours section we can insert contours 
                ;or list of contours
                )
-        (glyph 'b
+        (glyph. 'b
                (metrics space (/--/ (+ gw space space)))
                [contours
                 (rect x1 y1 v-stem (alg ascender))
                 (rect x1 y1 gw x-height)
                 (reverse (rect (+ x1 v-stem) (+ y1 h-stem) 
                                (- gw (* 2 v-stem)) (- x-height (* 2 h-stem))))])
-        (glyph 'c
+        (glyph. 'c
                (locals [term ym])
                ; local variables can be defined inside a glyph
                (metrics (/--/ (+ gw space space)) space)
@@ -84,20 +84,20 @@
                 (rect x1 (- x-height h-stem) gw h-stem)
                 (rect x1 y1 gw h-stem)
                 (rect (+ x1 gw (- v-stem)) (- x-height term) v-stem term)])
-        (glyph 'd
+        (glyph. 'd
                (metrics -- (/--/ (+ gw space space)))
                [contours
                 (rect x1 y1 gw x-height)
                 (reverse (rect (+ x1 v-stem) (+ y1 h-stem) 
                                (- gw (* 2 v-stem)) (- x-height (* 2 h-stem))))
                 (rect (+ x1 gw (- v-stem)) y1 v-stem (alg ascender))])
-        (glyph 'e
+        (glyph. 'e
                (metrics space (/--/ (+ gw space space)))
                [contours
                 (map (lambda (c) (from ((+ space (/ gw 2)) (/ x-height 2))
                                        (rotate c pi)))
                      a-cnt)])
-        (glyph 'o
+        (glyph. 'o
                (metrics space space)
                [contours
                 (rect x1 y1 gw x-height)

@@ -1,6 +1,6 @@
 #lang racket
 
-(require "../fontwriter.rkt")
+(require "../parametric/fontwriter.rkt")
 (require "../fontpict.rkt")
 
 (define (slice cx cy radius angle)
@@ -15,7 +15,7 @@
             (* pos un))))
 
 (define chartme
-  (font (chart [pos 0] [angle 1])
+  (font. (chart [pos 0] [angle 1])
         (alignments
          [base 0 -10]
          [xh 550 10]
@@ -28,7 +28,7 @@
          [radius (+ mid-v (ovs-height xh) (abs (ovs-height base)))]
          [slicer (chart-slicer mid-h mid-v radius (/ pi 5))])
         (glyphs
-         (glyph 'a
+         (glyph. 'a
                 (metrics -- (/--/ width))
                 [contours
                  (slicer pos angle)]))))
@@ -37,7 +37,7 @@
 (define-syntax chart-font
   (syntax-rules (->)
     [(chart-font divider (g -> ampl) ...)
-     (font chart
+     (font. chart
            (alignments
             [base 0 -10]
             [xh 550 10]
@@ -50,10 +50,10 @@
             [radius (+ mid-v (ovs-height xh) (abs (ovs-height base)))]
             [slicer (chart-slicer mid-h mid-v radius (/ (* 2 pi) divider))])
            (glyphs
-            (glyph 'space
+            (glyph. 'space
                    (metrics -- (/--/ width))
                    [contours #f])
-            (glyph g
+            (glyph. g
                    (metrics -- (/--/ 0))
                    [contours
                     (slicer (foldl + 0 (range ampl)) ampl)]) ...
