@@ -50,61 +50,75 @@
 ;      [(~ (x y) . r)
 ;       (~ ((x y)) r)]))
 
+(define-syntax parse-lines 
+  (syntax-rules (--)
+    [(parse-lines ((x y) . r) ())
+     (parse-lines r ((x y)))]
+    [(parse-lines (-- l . r) (p ... pl))
+     (parse-lines r (p ... pl (@ 0 0) l (@ 0 0)))]
+    [(parse-lines (c . r) (p ...))
+     (parse-lines r (p ... c))]
+    [(parse-lines () (p ...))
+     (parse-curves p ...)]))
 
-(define-syntax ~
-  (syntax-rules (-- insert @ cycle @<)
-    [(~ (insert vlist) c ... cycle)
-     (let ([fp (car vlist)])
-       (~ (insert vlist) c ... ((vec-x fp) (vec-y fp))))]
-    [(~ (x y) c ... cycle)
-     (~ (x y) c ... (x y))]
-    [(~) '()]     
+
+
+(define-syntax parse-curves
+  (syntax-rules (@ cycle insert)
+    [(_ (insert i) c ... cycle)
+     (let* ([b i]
+            [n (car b)])
+       (parse-curves (insert b) c ... ((vec-x n) (vec-y n))))]
+    [(_ (insert i) . r)
+     (let* ([b i]
+            [n (car b)]
+            [l (last b)])
+       (join-subpaths b (parse-curves ((vec-x l) (vec-y l)) . r)))]
+    [(_ (x y) (@ insert o) . r)
+     (let ([n (vec x y)])
+       (join-subpaths (list n) (parse-curves (insert (translate* o (vec-x n) (vec-y n))) . r)))]
+    [(_ (x y) c ... cycle)
+     (let ([n (vec x y)])
+       (parse-curves ((vec-x n) (vec-y n)) c ... ((vec-x n) (vec-y n))))]
+    [(_ (x y) (@ cx cy . t) . r)
+     (let* ([n (vec x y)]
+            [nc (vec+ n (vec cx cy))])
+       (parse-curves ((vec-x n) (vec-y n))
+            ((vec-x nc) (vec-y nc) . t)
+            . r))]
+    [(_ (x y) (cx cy t) . r)
+     (let ([tension t])
+       (parse-curves (x y) (cx cy tension tension) . r))]
+    [(_ (x y) (cx cy t t1) . r)
+     (let ([n (vec x y)]
+           [nt (vec cx cy)]
+           [tension t1])
+       (append (list n (vec+ n (vec* (vec- nt n) t)))
+               (parse-curves ((vec-x nt) (vec-y nt) tension) . r)))]
+    [(_ (cx cy t) (@ x1 y1) . r)
+     (let* ([nt (vec cx cy)]
+            [n (vec+ nt (vec x1 y1))])
+       (parse-curves ((vec-x nt) (vec-y nt) t)
+            ((vec-x n) (vec-y n)) . r))]
+    [(_ (cx cy t) (x1 y1) . r)
+     (let ([n (vec x1 y1)]
+           [nt (vec cx cy)])
+       (cons (vec+ n (vec* (vec- nt n) t)) 
+             (parse-curves ((vec-x n) (vec-y n)) . r)))]
+    [(_ (x y) . r)
+     (cons (vec x y) (parse-curves . r))]
     
-    [(~ (insert vlist) (@ insert vlist2) . r)
-     (let ([sb vlist])
-       (join-subpaths vlist
-                      (~ (insert (translate* vlist2 
-                                             (vec-x (last vlist)) 
-                                             (vec-y (last vlist))))
-                         . r)))]
-    [(~ (x y) (@ insert vlist) . r)
-     (~ (x y) (insert (translate* vlist x y)) . r)]
-    [(~ (x y) (insert vlist) (@ x1 y1) . r)
-     (let ([lasti (last vlist)])
-       (~ (x y) 
-          (insert vlist) 
-          ((+ (vec-x lasti) x1)
-           (+ (vec-y lasti) y1))
-          . r))]
-    [(~ (x y) (insert vlist) . r)
-     (join-subpaths (list (vec x y))
-                    (~ (insert vlist) . r))]
-    [(~ (insert vlist) . r)
-     (join-subpaths vlist (~ . r))]
-    [(~ (x y)) (list (vec x y))]
-    [(~ (x y) -- (x1 y1) . r)
-     (let ([v (vec x y)]
-           [v1 (vec x1 y1)])
-       (append (list v v v1)
-             (~ ((vec-x v1) (vec-y v1)) . r)))]
-    [(~ (x y) -- (@ x1 y1) . r)
-     (~ (x y) -- ((+ x1 x) (+ y1 y)) . r)]
-    [(~ (x y) (@ x1 y1 . a) . r)
-     (~ (x y) ((+ x1 x) (+ y1 y) . a) . r)]
-    [(~ (x y) (x1 y1 . a) (@ x2 y2 . a2) . r)
-     (~ (x y) (x1 y1 . a) ((+ x2 x1) (+ y2 y1) . a2) . r)]
-    [(~ (x y) (x1 y1 . a) (x2 y2 . a2) (@ x3 y3 . a3) . r)
-     (~ (x y) (x1 y1 . a) (x2 y2 . a2) ((+ x3 x2) (+ y3 y2) . a3) . r)]
-    [(~ (x y) (cx cy) (cx1 cy1) (x1 y1) . r)
-     (append (list (vec x y) (vec cx cy) (vec cx1 cy1))
-             (~ (x1 y1) . r))]
-    [(~ (x y) (cx cy t) (x1 y1) . r)
-     (~ (x y) (cx cy t t) (x1 y1) . r)]
-    [(~ (x y) (cx cy t t1) (x1 y1) . r)
-     (append (list (vec x y) 
-                   (vec+ (vec x y) (vec* (vec- (vec cx cy) (vec x y)) t)) 
-                   (vec+ (vec x1 y1) (vec* (vec- (vec cx cy) (vec x1 y1)) t1)))
-             (~ (x1 y1) . r))]))
+    [(_ (x y))
+     (list (vec x y))]
+    [(_) '()]))
+    
+   
+(define-syntax-rule (~ . r)
+  (parse-lines r ()))
+   
+
+
+
 
 
 
@@ -410,4 +424,4 @@
        #'n]
       [(find-descender ([n a o . r] . as))
        #'(find-descender as)]))
-      
+     
