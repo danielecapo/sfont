@@ -69,11 +69,13 @@
      (let* ([b i]
             [n (car b)])
        (parse-curves (insert b) c ... ((vec-x n) (vec-y n))))]
+    [(_ (x y) (insert i) . r)
+     (join-subpaths (list (vec x y)) (parse-curves  (insert i) . r))]
     [(_ (insert i) . r)
      (let* ([b i]
             [n (car b)]
             [l (last b)])
-       (join-subpaths b (parse-curves ((vec-x l) (vec-y l)) . r)))]
+       (join-subpaths b (parse-curves . r)))]
     [(_ (x y) (@ insert o) . r)
      (let ([n (vec x y)])
        (join-subpaths (list n) (parse-curves (insert (translate* o (vec-x n) (vec-y n))) . r)))]
@@ -113,8 +115,17 @@
     [(_) '()]))
     
    
-(define-syntax-rule (~ . r)
-  (parse-lines r ()))
+(define-syntax ~
+  (syntax-rules (insert cycle)
+    [(_ (insert i) c ... cycle)
+     (let* ([b i]
+            [n (car b)])
+       (parse-lines ((insert b) c ... ((vec-x n) (vec-y n))) ()))]
+    [(_ (x y) c ... cycle)
+     (let ([n (vec x y)])
+       (parse-lines (((vec-x n) (vec-y n)) c ... ((vec-x n) (vec-y n))) ()))]
+    [(_ . r)
+     (parse-lines r ())]))
    
 
 

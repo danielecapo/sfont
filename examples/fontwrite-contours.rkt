@@ -1,5 +1,5 @@
 #lang racket
-(require "../fontwriter.rkt"
+(require "../parametric/fontwriter.rkt"
          "../utilities.rkt")
 
 ;Contours examples
