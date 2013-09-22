@@ -3,7 +3,8 @@
 
 (require racket/draw
          "geometry.rkt"
-         "utilities.rkt")
+         "utilities.rkt"
+         "glyphlist.rkt")
 
 (provide *size*
          *text*
@@ -12,7 +13,6 @@
          set-contour-view!
          show-kerning!
          hide-kerning!
-         string->text
          with-sample-text
          pictf:font
          pictf:glyph
@@ -61,34 +61,7 @@
 (define (unique-letters t)
   (remove-duplicates (flatten t)))
 
-; String -> Line
-; produce a line from a string
-(define (string->line s)
-  (letrec ([m-read 
-            (lambda (loc acc)
-              (cond [(null? loc) (reverse acc)]
-                    [(eq? #\space (car loc)) (m-read (cdr loc) (cons 'space acc))]
-                    [(eq? #\newline (car loc)) (m-read (cdr loc) (cons 'space acc))]
-                    [(eq? #\/ (car loc)) (read-name (cdr loc) acc '())]
-                    [else (m-read (cdr loc)
-                                  (cons (string->symbol (list->string (list (car loc))))
-                                        acc))]))]
-           [read-name (lambda (loc acc n)
-                        (cond [(null? loc)
-                               (m-read loc
-                                       (cons (string->symbol (list->string (reverse n)))
-                                             acc))]
-                          [(eq? #\space (car loc))
-                               (m-read (cdr loc)
-                                       (cons (string->symbol (list->string (reverse n)))
-                                             acc))]
-                              [else (read-name (cdr loc) acc (cons (car loc) n))]))])
-           (m-read (string->list s) '())))
 
-; String -> Text
-; produce a text from a string
-(define (string->text s)
-  (map string->line (string-split s "\n")))
       
 (define-syntax-rule (with-sample-text (text size) body)
   (let ([t *text*]
@@ -172,7 +145,9 @@
 ; draw the line to the dc
 (define (pictf:draw-line dc l leading glyphs [kerning (lambda (p) 0)])
   (let* ([glyphs-to-display (filter identity (map (lambda (g) (assoc g glyphs)) l))]
-         [k (cons 0 (map kerning (n-groups (map name glyphs-to-display) 2)))])
+         [k (if (null? glyphs-to-display)
+                '()
+                (cons 0 (map kerning (n-groups (map name glyphs-to-display) 2))))])
     (begin
       ;(print (send dc get-transformation))
       (for-each (lambda (g kv) (pictf:draw-glyph dc g kv)) glyphs-to-display k)

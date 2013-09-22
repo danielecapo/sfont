@@ -4287,3 +4287,13 @@
    'zstroke #x01B6
    'zuhiragana #x305A
    'zukatakana #x30BA))
+
+(define a-unicode-to-name
+  (make-immutable-hash
+   (hash-map adobe-glyph-list
+             (lambda (k v) (cons v k)))))
+
+(define (get-name-by-code c)
+  (hash-ref a-unicode-to-name c #f))
+
+  

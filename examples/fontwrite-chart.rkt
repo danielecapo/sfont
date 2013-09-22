@@ -1,7 +1,8 @@
 #lang racket
 
-(require "../parametric/fontwriter.rkt")
-(require "../fontpict.rkt")
+(require "../parametric/fontwriter.rkt"
+         "../utilities.rkt"
+         "../ufo.rkt")
 
 (define (slice cx cy radius angle)
   (if (= angle 0)
