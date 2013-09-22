@@ -84,7 +84,7 @@
   [get-glyph (->* (font? name/c) (name/c) (or glyph? #f))]
   [get-glyphs (->* (font? (listof name/c)) (name/c) (listof glyph?))]
   [remove-glyph (->* (font? name/c) (name/c) font?)]
-  [insert-glyph (->* (font? name/c) (name/c) font?)]
+  [insert-glyph (->* (font? glyph?) (name/c) font?)]
   [get-layers-glyph (-> font? name/c (listof (cons/c name/c (or/c glyph? #f))))]
   [map-glyphs (->* ((-> glyph? any/c) (or/c font? layer?)) (name/c #:sorted boolean?) (listof any/c))]
   [for-each-glyphs (->* ((-> glyph? any/c) (or/c font? layer?)) (name/c #:sorted boolean?) any/c)]
@@ -96,15 +96,30 @@
   [decompose-glyph (->* (font? glyph?) (name/c) glyph?)]
   [decompose-layer (->* (font?) (name/c) layer?)]
   [decompose-font (-> font? font?)]
-  [glyph-bounding-box (->* ((or/c font? #f) glyph?) (name/c boolean?) bounding-box/c)]
-  [font-bounding-box (->* (font?) (name/c boolean?) bounding-box/c)]
-  [get-sidebearings (->* ((or/c font? #f) glyph?) (name/c) (or/c (cons/c real? real?) #f))]
-  [intersections-at (->* ((or/c font? #f) glyph? real?) (name/c) (listof vec?))]
-  [get-sidebearings-at (->* ((or/c font? #f) glyph? real?) (name/c) (or/c (cons/c real? real?) #f))]
-  [glyph-signed-area (->* (font? glyph?) (name/c) real?)]
-  [set-sidebearings (->* ((or/c font? #f) glyph? (or/c real? #f) (or/c real? #f)) (name/c) glyph?)]
-  [set-sidebearings-at (->* ((or/c font? #f) glyph? (or/c real? #f) (or/c real? #f) real?) (name/c) glyph?)]
-  [adjust-sidebearings (->* ((or/c font? #f) glyph? (or/c real? #f) (or/c real? #f)) (name/c) glyph?)]
+  [glyph-bounding-box (case-> (-> glyph? font? name/c bounding-box/c)
+                              (-> glyph? font? bounding-box/c)
+                              (-> glyph? bounding-box/c))]
+  [get-sidebearings (case-> (-> glyph? (or/c (cons/c real? real?) #f))
+                            (-> glyph? font? (or/c (cons/c real? real?) #f))
+                            (-> glyph? font? name/c (or/c (cons/c real? real?) #f)))]
+  [intersections-at (case-> (-> glyph? real? (listof vec?))
+                            (-> glyph? font? real? (listof vec?))
+                            (-> glyph? font? name/c real? (listof vec?)))]
+  [get-sidebearings-at (case-> (-> glyph? real? (or/c (cons/c real? real?) #f))
+                               (-> glyph? font? real? (or/c (cons/c real? real?) #f))
+                               (-> glyph? font? name/c real? (or/c (cons/c real? real?) #f)))]
+  [glyph-signed-area (case-> (-> glyph? real?)
+                             (-> glyph? font? real?)
+                             (-> glyph? font? name/c real?))]
+  [set-sidebearings (case-> (-> glyph? (or/c real? #f) (or/c real? #f) glyph?)
+                            (-> glyph? font? (or/c real? #f) (or/c real? #f) glyph?)
+                            (-> glyph? font? name/c (or/c real? #f) (or/c real? #f) glyph?))]
+  [set-sidebearings-at (case-> (-> glyph? (or/c real? #f) (or/c real? #f) real? glyph?)
+                               (-> glyph? font? (or/c real? #f) (or/c real? #f) real? glyph?)
+                               (-> glyph? font? name/c (or/c real? #f) (or/c real? #f) real? glyph?))]
+  [adjust-sidebearings (case-> (-> glyph? (or/c real? #f) (or/c real? #f) glyph?)
+                               (-> glyph? font? (or/c real? #f) (or/c real? #f) glyph?)
+                               (-> glyph? font? name/c (or/c real? #f) (or/c real? #f) glyph?))]
   [lowercase-stems (-> font? real?)]
   [uppercase-stems (-> font? real?)]
   [correct-directions (-> font? font?)]
@@ -656,124 +671,152 @@
                [layers (map-layers (lambda (l) (decompose-layer f (layer-name l)))
                                    f)]))
 
-; Font Glyph [Symbol] [Boolean] -> BoundingBox
+; Glyph [Font] [Symbol] -> BoundingBox
 ; produces the Bounding Box for the given glyph
-(define (glyph-bounding-box f g [ln 'public.default] [components #t])
-  (let* ([g (if (and f components)
-                (decompose-glyph f g ln)
-                g)]
-         [cs (glyph-contours g)])
-    (if (null? cs)
-        #f
-        (apply combine-bounding-boxes 
-               (map (lambda (c) 
-                      (bezier-bounding-box (contour->bezier c)))
-                    cs)))))
-
+(define glyph-bounding-box 
+  (case-lambda
+    [(g f ln)
+     (glyph-bounding-box (decompose-glyph f g ln))]
+    [(g f)
+     (glyph-bounding-box g f 'public.default)]
+    [(g)
+     (let ([cs (glyph-contours g)])
+       (if (null? cs)
+           #f
+           (apply combine-bounding-boxes 
+                  (map (lambda (c) 
+                         (bezier-bounding-box (contour->bezier c)))
+                       cs))))]))
 
 ; Font [Symbol] [Boolean] -> BoundingBox
 ; produces the Bounding Box for the given font
 (define (font-bounding-box f [ln 'public.default] [components #t])
   (apply combine-bounding-boxes
-         (map-glyphs (lambda (g) (glyph-bounding-box f g ln components))
-                     f)))
+         (map-glyphs 
+          (lambda (g) (if components 
+                          (glyph-bounding-box f g ln)
+                          (glyph-bounding-box g)))
+            f ln)))
 
 
  
-; Font Glyph Symbol -> (Real . Real) or False
+; Glyph Font Symbol -> (Real . Real) or False
 ; produce a pair representing the left and right sidebearings for the given glyph
-(define (get-sidebearings f g [ln 'public.default])
-  (let* ([bb (glyph-bounding-box f g ln)]
-         [a (advance-width (glyph-advance g))])
-    (if (not bb)
-        #f
-        (cons (vec-x (car bb))
-              (- a (vec-x (cdr bb)))))))
+(define get-sidebearings 
+  (case-lambda
+    [(g) (let* ([bb (glyph-bounding-box g)]
+                [a (advance-width (glyph-advance g))])
+           (if (not bb)
+               #f
+               (cons (vec-x (car bb))
+                     (- a (vec-x (cdr bb))))))]
+    [(g f) (get-sidebearings (decompose-glyph f g))]
+    [(g f ln) (get-sidebearings (decompose-glyph f g ln))]))
 
  
-; Font Glyph Real [Symbol] -> (listOf Vec)
+; Glyph [Font Symbol] Real -> (listOf Vec) 
 ; produce a list of the intersections of outlines with the line y = h
-(define (intersections-at f g h [ln 'public.default])
-  (let* ([g (if f (decompose-glyph f g ln) g)]
-         [cs (glyph-contours g)])
-    (sort 
-     (remove-duplicates
-      (apply append 
-             (map (lambda (c) 
-                    (bezier-intersect-hor h (contour->bezier c)))
-                  cs))
-      vec=)
-     < #:key vec-x)))
-
-
-; Font Glyph Number Symbol -> (Number . Number)
-; produce a pair representing sidebearings measured at y = h
-(define (get-sidebearings-at f g h [ln 'public.default])
-  (let* ([is (intersections-at f g h)]
-         [a (advance-width (glyph-advance g))])
-    (if (null? is)
-        #f
-        (cons (vec-x (car is)) (- a (vec-x (last is)))))))
-    
+(define intersections-at
+  (case-lambda
+    [(g h) (sort 
+          (remove-duplicates
+           (apply append 
+                  (map-contours 
+                   (lambda (c) 
+                     (bezier-intersect-hor h (contour->bezier c)))
+                   g))
+           vec=)
+          < #:key vec-x)]
+    [(g f ln h) (intersections-at (decompose-glyph f g ln) h)]
+    [(g f h) (intersections-at (decompose-glyph f g) h)]))
   
 
-; Font Glyph Symbol -> Number
+
+; Glyph [Font Symbol] Real -> (Real . Real) or False
+; produce a pair representing sidebearings measured at y = h
+(define get-sidebearings-at
+  (case-lambda
+    [(g h) (let* ([is (intersections-at g)]
+                  [a (advance-width (glyph-advance g))])
+             (if (null? is)
+                 #f
+                 (cons (vec-x (car is)) (- a (vec-x (last is))))))]
+    [(g f h) (get-sidebearings-at g f 'public.default h)]
+    [(g f ln h) (get-sidebearings-at (decompose-glyph f g ln) h)]))
+           
+
+; Glyph Font Symbol -> Number
 ; produces the area for the given glyph (negative if in the wrong direction)
-(define (glyph-signed-area f g [ln 'public.default])
-  (let* ([g (if f (decompose-glyph f g ln) g)]
-         [cs (glyph-contours g)])
-    (foldl + 0 
-           (map (lambda (c) 
-                  (bezier-signed-area (contour->bezier c)))
-                cs))))
+(define glyph-signed-area 
+  (case-lambda 
+    [(g) (foldl + 0 
+                (map-contours 
+                 (lambda (c) 
+                   (bezier-signed-area (contour->bezier c)))
+                 g))]
+    [(g f) (glyph-signed-area g f 'public.default)]
+    [(g f ln) (glyph-signed-area (decompose-glyph f g ln))]))
+  
 
-
-; Font Glyph (Number or False) (Number or False) Symbol -> Glyph
+; Glyph Font Symbol (Number or False) (Number or False)  -> Glyph
 ; set left and right sidebearings for the glyph 
-(define (set-sidebearings f g left right [ln 'public.default])
-  (let* ([os (get-sidebearings f g ln)]
-         [oa (advance-width (glyph-advance g))])     
-    (if os
-        (let* ([la (if left (- left (car os)) 0)]
-               [ra (if right (+ la (- right (cdr os))) la)])
-          (struct-copy glyph 
-                       (translate g la 0)
-                       [advance (advance (+ oa ra)
-                                         (advance-height 
-                                          (glyph-advance g)))]))
-        #f)))
-                       
-     
+(define set-sidebearings 
+  (case-lambda
+    [(g left right) 
+     (let* ([os (get-sidebearings g)]
+            [oa (advance-width (glyph-advance g))])     
+       (if os
+           (let* ([la (if left (- left (car os)) 0)]
+                  [ra (if right (+ la (- right (cdr os))) la)])
+             (struct-copy glyph 
+                          (translate g la 0)
+                          [advance (advance (+ oa ra)
+                                            (advance-height 
+                                             (glyph-advance g)))]))
+           g))]
+    [(g f left right) (set-sidebearings (decompose-glyph f g) left right)]
+    [(g f ln left right) (set-sidebearings (decompose-glyph f g ln) left right)]))
+         
 
-; Font Glyph (Number or False) (Number or False) Number Symbol -> Glyph
+; Glyph Font Symbol (Number or False) (Number or False) Number  -> Glyph
 ; set left and right sidebearings (measured at y = h) for the glyph 
-(define (set-sidebearings-at f g left right h [ln 'public.default])
-  (let* ([os (get-sidebearings-at f g h ln)]
-         [oa (advance-width (glyph-advance g))])     
-    (if os
-        (let* ([la (if left (- left (car os)) 0)]
-               [ra (if right (+ la (- right (cdr os))) la)])
-          (struct-copy glyph 
-                       (translate g la 0)
-                       [advance (advance (+ oa ra)
-                                             (advance-height 
-                                              (glyph-advance g)))]))
-        #f)))
-
-
-; Font Glyph (Number or False) (Number or False) Symbol -> Glyph
+(define set-sidebearings-at 
+  (case-lambda
+    [(g left right h)
+     (let* ([os (get-sidebearings-at g h)]
+            [oa (advance-width (glyph-advance g))])     
+       (if os
+           (let* ([la (if left (- left (car os)) 0)]
+                  [ra (if right (+ la (- right (cdr os))) la)])
+             (struct-copy glyph 
+                          (translate g la 0)
+                          [advance (advance (+ oa ra)
+                                            (advance-height 
+                                             (glyph-advance g)))]))
+           g))]
+    [(g f left right h) 
+     (set-sidebearings-at (decompose-glyph f g) left right h)]
+    [(g f ln left right h) 
+     (set-sidebearings-at (decompose-glyph f g ln) left right h)]))
+     
+        
+; Glyph Font Symbol (Number or False) (Number or False) -> Glyph
 ; adjust left and right sidebearings for the glyph
-(define (adjust-sidebearings f g left right [ln 'public.default])
-  (let* ([os (get-sidebearings f g ln)])     
-    (if os
-        (set-sidebearings f 
-                          g 
-                          (if left (+ (car os) left) #f)
-                          (if right (+ (cdr os) right) #f)
-                          ln)
-        g)))
-
-
+(define adjust-sidebearings 
+  (case-lambda
+    [(g left right)
+     (let* ([os (get-sidebearings g)])     
+       (if os
+           (set-sidebearings 
+            g 
+            (if left (+ (car os) left) #f)
+            (if right (+ (cdr os) right) #f))
+           g))]
+    [(g f left right) 
+     (adjust-sidebearings (decompose-glyph f g) left right)]
+    [(g f ln left right) 
+     (adjust-sidebearings (decompose-glyph f g ln) left right)]))
+  
 ; Font -> Number
 ; produce the value of lowercase stems from n
 (define (lowercase-stems f)
@@ -1337,15 +1380,9 @@
 ; Glyph -> Glyph
 ; reverse the direction of all contours in the glyph if the area is negative
 (define (glyph-correct-directions g)
-  (let* ([cs (map-contours (lambda (c) (map-points point-pos c)) g)]
-         [a (foldl (lambda (b acc) 
-                     (+ acc (bezier-signed-area b)))
-                   0 cs)])
-    (if (< a 0)
-        (glyph-reverse-directions g)
-        g)))
-
-
+  (if (< (glyph-signed-area g) 0)
+      (glyph-reverse-directions g)
+      g))
 
 
 ; Font -> Font

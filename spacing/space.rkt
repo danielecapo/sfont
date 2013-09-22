@@ -30,15 +30,16 @@
 (define (get-spacing f s)
   (map (lambda (s)
          (let* ([name (car s)]
+                [g (get-glyph f name)]
                 [sleft (cadr s)]
                 [sright (caddr s)])
            (cons name
                  (cons (if sleft
-                           (car (get-sidebearings-at f name sleft))
-                           (car (get-sidebearings f name)))
+                           (car (get-sidebearings-at g f sleft))
+                           (car (get-sidebearings g f)))
                        (if sright
-                           (cdr (get-sidebearings-at f name sright))
-                           (cdr (get-sidebearings f name)))))))
+                           (cdr (get-sidebearings-at g f sright))
+                           (cdr (get-sidebearings g f)))))))
        s))
                        
                          
@@ -52,17 +53,17 @@
            [sright (caddr s)]
            [sb (if (or (list? sleft)
                        (list? sright))
-                   (get-sidebearings f g)
+                   (get-sidebearings g f)
                    #f)]
            [nleft (if (number? sleft)
                       sleft;(- sleft (car (sidebearings f name)))
                       (+ (car sb) 
-                         (- (car sleft) (car (get-sidebearings-at f g (cadr sleft))))))]
+                         (- (car sleft) (car (get-sidebearings-at g f (cadr sleft))))))]
            [nright (if (number? sright)
                        sright ;(- sright (cdr (sidebearings f name)))
                        (+ (cdr sb)
-                          (- (car sright) (cdr (get-sidebearings-at f g (cadr sright))))))])
-      (insert-glyph f (set-sidebearings f g nleft nright))))
+                          (- (car sright) (cdr (get-sidebearings-at g f (cadr sright))))))])
+      (insert-glyph f (set-sidebearings g f nleft nright))))
   (foldl set-space f s))
 
 ; space-macro
@@ -97,41 +98,44 @@
 
 (define-syntax space-glyph
   (syntax-rules (-- <-> /--/)
-    [(space-glyph f g -- --) g]
-    [(space-glyph f g (/--/ a) --)
+    [(space-glyph f g left right)
+     (let ([gd (decompose-glyph f g)])
+       (space-glyph gd left right))]
+    [(space-glyph g -- --) g]
+    [(space-glyph g (/--/ a) --)
      (struct-copy glyph g 
                   [advance (struct-copy advance (glyph-advance g) 
                                         [width a])])]
-    [(space-glyph f g l (/--/ a))
-     (struct-copy glyph (space-glyph f g l --) 
+    [(space-glyph g l (/--/ a))
+     (struct-copy glyph (space-glyph g l --) 
                   [advance (struct-copy advance (glyph-advance g) 
                                         [width a])])]
-    [(space-glyph f g (/--/ a) (<-> r))
+    [(space-glyph g (/--/ a) (<-> r))
      (let ([delta (- r (- a (advance-width (glyph-advance g))))])
-       (space-glyph f (struct-copy glyph g 
+       (space-glyph (struct-copy glyph g 
                                    [advance (struct-copy advance (glyph-advance g) 
                                                          [width a])])
                     (<-> (- delta)) (<-> delta)))]
-    [(space-glyph f g (/--/ a) r)
-     (let* ([gt (space-glyph f g -- r)]
-            [l (car (get-sidebearings f g))]
+    [(space-glyph g (/--/ a) r)
+     (let* ([gt (space-glyph g -- r)]
+            [l (car (get-sidebearings g))]
             [at (advance-width (glyph-advance gt))]
             [delta (- a at)])
-       (space-glyph f gt (<-> delta) --))]
-    [(space-glyph f g (<-> l) r)
-     (space-glyph f (adjust-sidebearings f g l #f) -- r)]
-    [(space-glyph f g l (<-> r))
-     (space-glyph f (adjust-sidebearings f g #f r) l --)]
-    [(space-glyph f g l (r mr))
-     (space-glyph f (set-sidebearings-at f g #f r mr) l --)]
-    [(space-glyph f g (l ml) r)
-     (space-glyph f (set-sidebearings-at f g l #f ml) -- r)]
-    [(space-glyph f g -- r)
-     (set-sidebearings f g #f r)]
-    [(space-glyph f g l --)
-     (set-sidebearings f g l #f)]
-    [(space-glyph f g l r)
-     (space-glyph f (space-glyph f g l --)
+       (space-glyph gt (<-> delta) --))]
+    [(space-glyph g (<-> l) r)
+     (space-glyph (adjust-sidebearings g l #f) -- r)]
+    [(space-glyph g l (<-> r))
+     (space-glyph (adjust-sidebearings g #f r) l --)]
+    [(space-glyph g l (r mr))
+     (space-glyph (set-sidebearings-at g #f r mr) l --)]
+    [(space-glyph g (l ml) r)
+     (space-glyph (set-sidebearings-at g l #f ml) -- r)]
+    [(space-glyph g -- r)
+     (set-sidebearings g #f r)]
+    [(space-glyph g l --)
+     (set-sidebearings g l #f)]
+    [(space-glyph g l r)
+     (space-glyph (space-glyph g l --)
                   -- r)]))
 
 ; Symbol -> Symbol
@@ -292,7 +296,7 @@
 ; adjust the spacing
 (define (adjust-spacing f s)
   (define (set-space s f) 
-      (insert-glyph f (adjust-sidebearings f (get-glyph f (car s)) (cadr s) (caddr s))))
+      (insert-glyph f (adjust-sidebearings (get-glyph f (car s)) f (cadr s) (caddr s))))
   (foldl set-space f s))
 
 

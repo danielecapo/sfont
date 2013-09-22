@@ -266,65 +266,11 @@
             [contours contour ...])
      (let* ([s v] ...)
        (space-glyph
-        #f
         (glyph 1 name (advance 0 0) (unicode name) #f #f '() '() 
                    (map bezier->contour (build-contour-list contour ...)) '() (make-immutable-hash))
          metric-form ...))]))
 
-;remove?
-;(glyph-metric
-;         (glyph 1 name (advance 0 0) (unicode name) #f #f '() '() 
-;                    (map bezier->contour (build-contour-list contour ...)) '() #f)
-;         metric-form ...))]))
 
-(define-syntax glyph-metric
-  (syntax-rules (/--/ /<- ->/)
-    [(glyph-metric g (/--/ a))
-     (struct-copy glyph g
-                  [advance (advance a 0)])]
-    [(glyph-metric g (/<- l) (->/ r))
-     (glyph-metric 
-      (glyph-metric g (/<- l))
-      (->/ r))]
-    [(glyph-metric g (/<- l))
-     (let ([sr (cdr (get-sidebearings #f g))])
-       (set-sidebearings #f g l sr))]
-    [(glyph-metric g (->/ r))
-     (let ([sl (car (get-sidebearings #f g))])
-       (set-sidebearings #f g sl r))]
-    [(glyph-metric g (/<- l lm) (->/ r rm))
-     (glyph-metric 
-      (glyph-metric g (/<- l lm))
-      (->/ r rm))]
-    [(glyph-metric g (/<- l) (->/ r rm))
-     (glyph-metric 
-      (glyph-metric g (/<- l))
-      (->/ r rm))]
-    [(glyph-metric g (/<- l lm) (->/ r))
-     (glyph-metric 
-      (glyph-metric g (/<- l lm))
-      (->/ r))]
-    [(glyph-metric g (/<- l lm))
-     (let ([sr (cdr (get-sidebearings-at #f g lm))])
-       (set-sidebearings-at #f g l sr lm))]
-    [(glyph-metric g (->/ r rm))
-     (let ([sl (car (get-sidebearings-at #f g rm))])
-       (set-sidebearings-at #f g sl r rm))]
-    [(glyph-metric g (/<- l) (/--/ a))
-     (glyph-metric (set-sidebearings #f g l 0) (/--/ a))]
-    [(glyph-metric g (/<- l lm) (/--/ a))
-     (glyph-metric (set-sidebearings-at #f g l 0 lm) (/--/ a))]
-    [(glyph-metric g (/--/ a) (->/ r))
-     (let* ([sb (get-sidebearings #f g)]
-            [sl (car sb)]
-            [sr (cdr sb)])
-       (glyph-metric g (/<- (+ a sl sr (- r))) (/--/ a)))]
-    [(glyph-metric g (/--/ a) (->/ r rm))
-     (let* ([sb (get-sidebearings-at #f g rm)]
-            [sl (car sb)]
-            [sr (cdr sb)])
-       (glyph-metric g (/<- (+ a sl sr (- r)) rm) (/--/ a)))]))
-     
 
 ; (Bezier or (listOf Bezier) ... -> (listOf Bezier)
 (define (build-contour-list . cnts)
