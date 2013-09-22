@@ -232,15 +232,15 @@
                       (match-fonts-contours f0 a)))
                   fs))))
 
-(define-syntax-rule (define-fonts (id ...) (path ...))
+(define-syntax-rule (define-fonts (id ...) f ...)
   (define-values (id ...)
     (apply values
            (apply interpolables
-                  (map (lambda (p)
+                  (map (lambda (u)
                          (prepare-for-interpolation
-                          (ufo->ffont (read-ufo p))
+                          (ufo->ffont u)
                           #f))
-                       (list path ...))))))
+                       (list f ...))))))
 
 (define-syntax (define-space stx)
   (syntax-case stx ()

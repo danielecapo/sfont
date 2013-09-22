@@ -22,8 +22,10 @@
 ;Adjust the paths so that they point to the files in your computer
 
 
-(define-fonts (light bold) ("/Users/daniele/Downloads/source-sans-pro-master/RomanMM/SourceSansPro_0.ufo"
-                            "/Users/daniele/Downloads/source-sans-pro-master/RomanMM/SourceSansPro_1.ufo"))
+(define-fonts 
+  (light bold) 
+  (read-ufo "/Users/daniele/Downloads/source-sans-pro-master/RomanMM/SourceSansPro_0.ufo")
+  (read-ufo "/Users/daniele/Downloads/source-sans-pro-master/RomanMM/SourceSansPro_1.ufo"))
 
 light
 
