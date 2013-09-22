@@ -3,7 +3,8 @@
 
 The goal of this project is to produce a library to work with fonts in Racket.
 The idea is that using the ability of DrRacket to draw images in the REPL a similar software can be used for teaching and making experiment with 'parametric' definitions of fonts in an interective environment.
-Beware that this project is far from being 'stable' and (at least, I hope) will change in the future.
+
+**Beware that this project is far from being 'stable' and (at least, I hope) will change in the future.**
 
 You can see three screencasts here:
 
@@ -15,7 +16,7 @@ http://vimeo.com/73070195
 
 At the moment it can be used to read and write fonts in the UFO format. It can (but it is not tested in a serious way) read from UFO 2 and UFO 3, covert UFO 2 to UFO 3 and UFO 3 to UFO 2.
 
-It can export the font in a minimal type1 plain text format that can be used by the last version of the AFDKO to produce an otf font file, or converted in a pfa format with the command type1 (available with AFDKO).
+It can export the font in a minimal type1 plain text format that can be used by AFDKO to produce an otf font file, or converted in a pfa format with the command type1 (available with AFDKO), however, this is no longer necessary since the latest version (september 2013) AFDKO supports UFOs.
 
 Once 'loaded' the font is represented in Racket struct and drawn in the REPL. 
 
@@ -23,7 +24,7 @@ It can perform operations on fonts, using the idea of font math (see http://code
 These operations can be used to implement interpolations.
 While they aren't assured to always work they can actually be useful to make complex operations and exporting the result to UFO.
 
-The other functionality that need to be developed more carefully is a system of macros used to produce parametric fonts. There is a first approximation of it in fontwriter.rkt.
+The other functionality that need to be developed more carefully is a system of macros used to produce parametric fonts. There is a first approximation of it in parametric/fontwriter.rkt.
 
 To learn more about it, I suggest to read the files in the examples directory, they have comments that explain the usage.
 
@@ -31,7 +32,20 @@ The examples use two ufo files from the Adobe Source Sans Pro code that can be d
 
 Every comment, suggestion and critique is welcome.
 
--------
+## TO DO
+
+Nice things that can be added to this library:
+
+- Validation of UFOs
+- Documentation
+- Make it installable via Planet
+- Simple GUI
+- Export to (and import from) fontforge sfd format
+- Export and import glyphs in SVG
+- Better macros for parametric definitions of fonts
+- OpenType Tables instead of a string to represents features
+- Implementing metafont paths
+- ...
 
 ## Usage
 
@@ -100,7 +114,7 @@ The macro seq let's you access data:
 
 ### Spacing fonts
 
-In spacer.rkt you have two macros `space` and `kern`.
+In spacing/space.rkt you have two macros `space` and `kern`.
 The basic usage of space is
 
 ```
@@ -195,9 +209,13 @@ The function is called with the font, the height of capitals, the space applied 
 (upper-tracy f 700 140 70 11) 
 ```
 
+### Interpolations
+
+A discussion of interpolations is in examples/usemath.rkt.
+
 ### Macros for defining fonts
 
-In fontwriter.rkt I've defined macros that can be used to produce fonts. You can browse the example directory to learn about them (in particular the file examples/fontwrite-square.rkt is commented and can be used as a guide).
+In parametric/fontwriter.rkt I've defined macros that can be used to produce fonts. You can browse the example directory to learn about them (in particular the file examples/fontwrite-square.rkt is commented and can be used as a guide).
 
 My idea is that a parametric font should be represented as a function that relates an input (the *parameters*) to an output (the resulting font). In this way when we call the font-function we have a new font output and, if we can display the resulting font, we can easily explore our 'design space'.
 
