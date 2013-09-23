@@ -7,7 +7,7 @@
          "../ufo.rkt"
          "../utilities.rkt")
 
-
+#;
 (define-fonts 
   (light bold) 
   (read-ufo "/Users/daniele/Downloads/source-sans-pro-master/RomanMM/SourceSansPro_0.ufo")
@@ -40,12 +40,10 @@
                    [parent frame]
                    [paint-callback
                     (lambda (canvas dc)
-                      
                       (send dc set-initial-matrix (vector 1 0 0 1 0 0))
                       (send dc set-smoothing 'smoothed)
                       ((get-drawing-proc (world-current-state w)) dc 1.2 *text* *size*))])])
       (letrec ([aux (lambda (c)
-                      
                       (if (> c end)
                           (world-current-state w)
                           (begin
@@ -56,6 +54,38 @@
         (begin 
           (send frame show #t)
           (aux (inc-proc start))))))
+
+
+(define-syntax slider-application
+  (syntax-rules (font sliders update)
+    [(_ [font font-proc] 
+        [sliders (sl-name sl-min sl-max) ...]
+        [update update-proc])
+     (lambda (state)
+       (let* ([w (world state)]
+              [frame (new frame%
+                          [label "sfont"]
+                          [width 1000]
+                          [height 400])]
+              [pan (new horizontal-pane%
+                        [parent frame])]
+              [sls (new vertical-pane%
+                        [parent pan]
+                        [min-width 300]
+                        [stretchable-width #f])]
+              [can (new canvas%
+                        [parent pan]
+                        [min-width 700]
+                        [stretchable-width #t])])
+         (let [(sl-name (new slider%
+                             [parent sls]
+                             [style '(horizontal vertical-label)]
+                             [label (symbol->string 'sl-name)]
+                             [min-value sl-min]
+                             [max-value sl-max]))
+               ...]
+           (send frame show #t))))]))
+     
                     
       
       
