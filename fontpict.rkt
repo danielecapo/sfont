@@ -16,6 +16,8 @@
          with-sample-text
          pictf:font
          pictf:glyph
+         draw-font-dc
+         lines
          unique-letters)
 
 ;;; Global variables
@@ -115,20 +117,20 @@
 
 ; DC Number Number Number (listOf DrawableGlyph) ((Symbol Symbol) -> Number) -> void
 ; draw the font in the drawing context     
-(define (draw-font-dc dc ascender descender leading glyphs [kerning (lambda (p) 0)])
-  (let ([f (/  *size* (+ ascender (- descender)))])
+(define (draw-font-dc dc ascender descender leading glyphs [kerning (lambda (p) 0)] [size *size*] [text *text*])
+  (let ([f (/  size (+ ascender (- descender)))])
     (begin
       (send dc set-brush "black" 'solid)
       (send dc set-pen *pen*)
       (send dc scale f (- f))
-      (send dc translate 0 (- (/ (* *size* -0.5) f) ascender))                      
+      (send dc translate 0 (- (/ (* size -0.5) f) ascender))                      
       (for-each (lambda (l) 
                   (begin
-                    (pictf:draw-line dc l (- (/ (* *size* leading) f)) glyphs 
+                    (pictf:draw-line dc l (- (/ (* size leading) f)) glyphs 
                                      (if *show-kerning* kerning (lambda (p) 0)))
                     (let ([current-x (vector-ref (vector-ref (send dc get-transformation) 0) 4)])
                       (send dc translate (/ (- current-x) f) 0))))
-                *text*))))
+                text))))
 
 ; Number Number (listOf DrawableGlyph) ((Symbol Symbol) -> Number) -> pict
 ; draw the current *text*

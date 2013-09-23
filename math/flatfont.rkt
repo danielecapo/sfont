@@ -6,6 +6,7 @@
 (require "../ufo.rkt"
          "../fontpict.rkt"
          "../geometry.rkt"
+         "../gui/draw-property.rkt"
          slideshow/pict-convert
          racket/generic)
 
@@ -86,6 +87,14 @@
 ;;; (font Font FInfo FKerning (listOf FGlyph))
 (struct ffont (ufo info kerning glyphs) 
   #:transparent
+  #:property prop:draw 
+  (lambda (f)
+    (let ([ascender (dict-ref (ffont-info f) 'ascender 750)]
+          [descender (dict-ref (ffont-info f) 'descender -250)])
+      (lambda (dc leading text size)
+        (let ([glyphs (map (lambda (g) (draw-fglyph (decompose-fglyph f g)))
+                           (fget-glyphs f (unique-letters *text*)))])
+          (draw-font-dc dc ascender descender leading glyphs (lambda (p) 0) size text)))))
   #:property prop:pict-convertible 
   (lambda (f)
     (let ([ascender (dict-ref (ffont-info f) 'ascender 750)]
