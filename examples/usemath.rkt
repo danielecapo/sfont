@@ -11,10 +11,10 @@
 ;The macro define-fonts is used to load font for interpolations
 ;
 ;(define-fonts (id ...) 
-;  ("path/to/font.ufo"
+;  (ufo-font
 ;   ...))
 ;
-;It binds id to the corresponding font, the fonts are read, 
+;It binds id to the corresponding font, the fonts are 
 ;trasformed in the format used for interpolations, then 
 ;outlines are processed to minimize non compatible glyphs.
 ;Glyphs that can't be interpolated are then automatically discarded.
