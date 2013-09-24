@@ -48,13 +48,12 @@
           (aux (inc-proc start))))))
 
 ; (animate-fonts font1 font2 font3 ...)
-; the fonts should be ufos, they are transformed in 'interpolables' font then interpolated
-; in series: font1 ----> font2 ----> font3 ...
+; the fonts should be ready for interpolation (see usemath example)
+; They are interpolated in series: font1 ----> font2 ----> font3 ...
 (define-syntax animate-fonts 
   (syntax-rules ()
     [(animate-fonts f ...)
-     (lambda ()
-       (let* ([ifp (n-groups (get-interpolable-fonts f ...) 2)]
+     (let* ([ifp (n-groups (list f ...) 2)]
               [intps (map (lambda (p)
                            (let ([d (- (second p) (first p))]
                                  [a (first p)])
@@ -68,6 +67,7 @@
                         ((list-ref intps 
                                    (if (= d l) (- d 1) d)) 
                          (if (= d l) 1 r))))])
+       (lambda ()
          (animate proc 0 (* 1000 l) ((curry +) 10))))]))
          
 
@@ -223,4 +223,3 @@
 ;
 ;(main)
 
-;(make-canvas frame (get-drawing-proc light))
