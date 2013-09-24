@@ -63,7 +63,7 @@
               [l (length intps)]
               [proc (lambda (i)
                       (let ([r (/ (remainder i 1000) 1000)]
-                            [d (exact-floor (/ i 1000))])
+                            [d (quotient i 1000)])
                         ((list-ref intps 
                                    (if (= d l) (- d 1) d)) 
                          (if (= d l) 1 r))))])
