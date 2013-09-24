@@ -26,8 +26,10 @@
                      reflect-x
                      reflect-y)
          (contract-out
+          [ffont? (-> any/c boolean?)]
           [fontmath-object/c (-> any/c boolean?)]
           [font-object/c (-> any/c boolean?)]
+          [get-interpolable-fonts (->* () () #:rest (listof font?) (listof ffont?))]
           [rename prod * (->* (fontmath-object/c) () #:rest (listof fontmath-object/c) fontmath-object/c)]
           [rename add  + (->* (fontmath-object/c) () #:rest (listof fontmath-object/c) fontmath-object/c)]
           [rename sub  - (->* (fontmath-object/c) () #:rest (listof fontmath-object/c) fontmath-object/c)]
@@ -234,13 +236,16 @@
 
 (define-syntax-rule (define-fonts (id ...) f ...)
   (define-values (id ...)
-    (apply values
-           (apply interpolables
-                  (map (lambda (u)
-                         (prepare-for-interpolation
-                          (ufo->ffont u)
-                          #f))
-                       (list f ...))))))
+    (apply values (get-interpolable-fonts f ...))))
+
+; Font ... -> FFont ...
+(define (get-interpolable-fonts . fs)
+  (apply interpolables
+         (map (lambda (u)
+                (prepare-for-interpolation
+                 (ufo->ffont u)
+                 #f))
+              fs)))
 
 (define-syntax (define-space stx)
   (syntax-case stx ()
