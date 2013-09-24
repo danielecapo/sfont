@@ -48,19 +48,27 @@
                           (world-current-state w)
                           (begin
                             (set-world-current-state! w (update-proc c))
-                            ;(send canv set-canvas-background (send the-color-database find-color "white"))
                             (send canv refresh-now)
                             (aux (inc-proc c)))))])
         (begin 
           (send frame show #t)
           (aux (inc-proc start))))))
 
+(struct slider-editor
+  (text inputs)
+  #:transparent)
+
+(define (update-inputs e f v)
+  (struct-copy slider-editor e
+               [inputs (hash-set (slider-editor-inputs e) f v)]))
+
+(define (get-input e f)
+  (hash-ref (slider-editor-inputs e) f))
 
 (define-syntax slider-application
   (syntax-rules (font sliders update)
     [(_ [font font-proc] 
-        [sliders (sl-name sl-min sl-max) ...]
-        [update update-proc])
+        [sliders (sl-name sl-min sl-max) ...])
      (lambda (state)
        (let* ([w (world state)]
               [frame (new frame%
@@ -76,15 +84,34 @@
               [can (new canvas%
                         [parent pan]
                         [min-width 700]
-                        [stretchable-width #t])])
-         (let [(sl-name (new slider%
+                        [stretchable-width #t]
+                        [paint-callback
+                         (lambda (canvas dc)
+                           (send dc set-initial-matrix (vector 1 0 0 1 0 0))
+                           (send dc set-smoothing 'smoothed)
+                           (let* ([e (world-current-state w)]
+                                  [is (map ((curry get-input) e) '(sl-name ...))])
+                             ((get-drawing-proc (apply font-proc is)) dc 1.2 (string->text (slider-editor-text e)) *size*)))]
+                        )]
+              [updater (lambda (f v)
+                         (begin
+                           (set-world-current-state! 
+                            w 
+                            (update-inputs (world-current-state w) f v))
+                           ;(print (world-current-state w))
+                           (send can refresh-now)))])
+                         
+         (let ([sl-name (new slider%
                              [parent sls]
                              [style '(horizontal vertical-label)]
                              [label (symbol->string 'sl-name)]
                              [min-value sl-min]
-                             [max-value sl-max]))
-               ...]
-           (send frame show #t))))]))
+                             [max-value sl-max]
+                             [init-value (get-input (world-current-state w) 'sl-name)]
+                             [callback (lambda (s e) (updater 'sl-name (send s get-value)))])]
+               ...)
+           (let ([s (list sl-name ...)])
+             (send frame show #t)))))]))
      
                     
       

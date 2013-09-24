@@ -2,6 +2,8 @@
 
 (require "../parametric/fontwriter.rkt")
 
+(provide sq)
+
 ;An example of the fontwriter 'language'
 ;the font macro can be used in two ways:
 ;1. to produce a 'static' font
@@ -14,6 +16,7 @@
 ;2. alignments 
 ;3. variables
 ;4. glyphs
+
 
 
 (define sq 
