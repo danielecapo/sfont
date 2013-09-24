@@ -349,11 +349,12 @@
           (proc path)
           (copy-directory/files dir path))))
   (define (write-on-text-file text path)
-    (let ([text (string-trim text)])
-      (when (and text (string? text) (not (string=? "" text)))
-        (call-with-output-file path 
-          (lambda (o)
-            (write-string text o))))))
+    (when text
+      (let ([text (string-trim text)])
+        (when (and (string? text) (not (string=? "" text)))
+          (call-with-output-file path 
+            (lambda (o)
+              (write-string text o)))))))
   (define (write-groups)
     (write-on-plist (make-immutable-hash
                      (hash-map (font-groups f)
@@ -403,7 +404,7 @@
                       (write-layerinfo (layer-info la) dir))))
                 layers-names)))
   (define (write-layerinfo info dir)
-    (write-on-plist info (build-path (make-ufo-path dir) "layerinfo.plist")))
+    (write-on-plist info (build-path dir "layerinfo.plist")))
   (define (write-layercontents)
     (write-on-plist 
      (map (lambda (layer) (list (symbol->string (car layer)) (cdr layer)))
