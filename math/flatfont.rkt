@@ -93,7 +93,9 @@
           [descender (dict-ref (ffont-info f) 'descender -250)])
       (lambda (dc leading text size)
         (let ([glyphs (map (lambda (g) (draw-fglyph (decompose-fglyph f g)))
-                           (fget-glyphs f (unique-letters *text*)))])
+                           (fget-glyphs f (unique-letters text)))])
+          
+            (print (map car glyphs))
           (draw-font-dc dc ascender descender leading glyphs (lambda (p) 0) size text)))))
   #:property prop:pict-convertible 
   (lambda (f)

@@ -4,6 +4,7 @@
          "../properties.rkt"
          "../fontpict.rkt"
          "../utilities.rkt"
+         "../gui/draw-property.rkt"
          racket/generic
          (planet wmfarr/plt-linalg:1:13/matrix)
          slideshow/pict-convert)
@@ -314,6 +315,14 @@
 (struct font 
   (format creator fontinfo groups kerning features layers lib data images)
   #:transparent
+  #:property prop:draw 
+  (lambda (f)
+    (let ([ascender (dict-ref (font-fontinfo f) 'ascender 750)]
+          [descender (dict-ref (font-fontinfo f) 'descender -250)])
+      (lambda (dc leading text size)
+          (let ([glyphs (map (lambda (g) (draw-glyph (decompose-glyph f g)))
+                             (get-glyphs f (unique-letters text)))])
+            (draw-font-dc dc ascender descender leading glyphs (lambda (p) (apply kerning-value f p)) size text)))))
   #:property prop:pict-convertible 
   (lambda (f)
     (let ([ascender (dict-ref (font-fontinfo f) 'ascender 750)]
