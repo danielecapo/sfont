@@ -37,7 +37,7 @@
           [x-> (-> font-object/c font-object/c)]
           [y-> (-> font-object/c font-object/c)]
           [fix-components (-> ffont? ffont? ffont?)])
-         define-fonts
+         define-interpolable-fonts
          define-space
          )
          
@@ -234,7 +234,7 @@
                       (match-fonts-contours f0 a)))
                   fs))))
 
-(define-syntax-rule (define-fonts (id ...) f ...)
+(define-syntax-rule (define-interpolable-fonts (id ...) f ...)
   (define-values (id ...)
     (apply values (get-interpolable-fonts f ...))))
 

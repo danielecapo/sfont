@@ -22,7 +22,7 @@
 ;Adjust the paths so that they point to the files in your computer
 
 
-(define-fonts 
+(define-interpolable-fonts 
   (light bold) 
   (read-ufo "/Users/daniele/Downloads/source-sans-pro-master/RomanMM/SourceSansPro_0.ufo")
   (read-ufo "/Users/daniele/Downloads/source-sans-pro-master/RomanMM/SourceSansPro_1.ufo"))
