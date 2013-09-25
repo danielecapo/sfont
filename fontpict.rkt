@@ -6,14 +6,10 @@
          "utilities.rkt"
          "glyphlist.rkt")
 
-(provide *size*
-         *text*
-         set-sample-size!
-         set-sample-text!
-         set-contour-view!
-         show-kerning!
-         hide-kerning!
-         with-sample-text
+(provide SIZE
+         TEXT
+         show-kerning?
+         set-contour-view!  
          pictf:font
          pictf:glyph
          draw-font-dc
@@ -21,22 +17,18 @@
          unique-letters)
 
 ;;; Global variables
-(define *pen* (new pen% [style 'transparent]))
+(define PEN (make-parameter (new pen% [style 'transparent])))
 
 
-(define *size* 100)
-(define *text* '((a b c d e f g h i j k l m n o p q r s t u v w x y z)))
-(define *show-kerning* #t)
+(define SIZE (make-parameter 100))
+(define TEXT (make-parameter '((a b c d e f g h i j k l m n o p q r s t u v w x y z))))
+(define show-kerning? (make-parameter #t))
 
-(define (set-sample-size! s) (set! *size* s))
-(define (set-sample-text! t) (set! *text* t))
-(define (show-kerning!) (set! *show-kerning* #t))
-(define (hide-kerning!) (set! *show-kerning* #f))
 
 (define (set-contour-view! b) 
   (if b 
-      (set! *pen* (new pen% [color "red"]))
-      (set! *pen* (new pen% [style 'transparent]))))
+      (PEN (new pen% [color "red"]))
+      (PEN (new pen% [style 'transparent]))))
 
 ;;; Line is one of:
 ;;; - nil
@@ -66,8 +58,8 @@
 
       
 (define-syntax-rule (with-sample-text (text size) body)
-  (let ([t *text*]
-        [s *size*])
+  (let ([t (TEXT)]
+        [s (SIZE)])
     (begin
       (set-sample-text! text)
       (set-sample-size! size)
@@ -117,27 +109,27 @@
 
 ; DC Number Number Number (listOf DrawableGlyph) ((Symbol Symbol) -> Number) -> void
 ; draw the font in the drawing context     
-(define (draw-font-dc dc ascender descender leading glyphs [kerning (lambda (p) 0)] [size *size*] [text *text*])
+(define (draw-font-dc dc ascender descender leading glyphs [kerning (lambda (p) 0)] [size (SIZE)] [text (TEXT)])
   (let ([f (/  size (+ ascender (- descender)))])
     (begin
       (send dc set-brush "black" 'solid)
-      (send dc set-pen *pen*)
+      (send dc set-pen (PEN))
       (send dc scale f (- f))
       (send dc translate 0 (- (/ (* size -0.5) f) ascender))                      
       (for-each (lambda (l) 
                   (begin
                     (pictf:draw-line dc l (- (/ (* size leading) f)) glyphs 
-                                     (if *show-kerning* kerning (lambda (p) 0)))
+                                     (if (show-kerning?) kerning (lambda (p) 0)))
                     (let ([current-x (vector-ref (vector-ref (send dc get-transformation) 0) 4)])
                       (send dc translate (/ (- current-x) f) 0))))
                 text))))
 
 ; Number Number (listOf DrawableGlyph) ((Symbol Symbol) -> Number) -> pict
-; draw the current *text*
+; draw the current (TEXT)
 (define (pictf:font ascender descender glyphs [kerning (lambda (p) 0)])
    (let* ([leading 1.2]
-          [n-lines (lines *text*)] 
-          [area-height (* *size* (+ 1 n-lines (* (- leading 1) (- n-lines 1))))])
+          [n-lines (lines (TEXT))] 
+          [area-height (* (SIZE) (+ 1 n-lines (* (- leading 1) (- n-lines 1))))])
      (dc
       (lambda (dc dx dy)
         (draw-font-dc dc ascender descender leading glyphs kerning))
@@ -157,24 +149,24 @@
 
 #; 
 (define (pictf:font ascender descender . glyphs)
-   (let* ([letters *text*]
-          [f (/  *size* (+ ascender (- descender)))]     
+   (let* ([letters (TEXT)]
+          [f (/  (SIZE) (+ ascender (- descender)))]     
           [glyphs-to-display (filter identity (map (lambda (g) (assoc g glyphs)) letters))])
      (dc
       (lambda (dc dx dy)
          (begin
            (send dc set-brush "black" 'solid)
-           (send dc set-pen *pen*)
+           (send dc set-pen (PEN))
            (send dc scale f (- f))
-           (send dc translate 0 (- (/ (* *size* -0.5) f) ascender))                      
+           (send dc translate 0 (- (/ (* (SIZE) -0.5) f) ascender))                      
            (for-each (lambda (g) (pictf:draw-glyph dc g)) glyphs-to-display )))
-      1300 (* *size* 2))))
+      1300 (* (SIZE) 2))))
 
 
 (define (draw-glyph-dc dc g f x-min y-max)
   (begin
     (send dc set-brush "black" 'solid)
-    (send dc set-pen *pen*)
+    (send dc set-pen (PEN))
     (send dc scale f (- f))
     (send dc translate (- x-min) (- y-max))
     (pictf:draw-glyph dc g)))

@@ -323,11 +323,12 @@
 (define (sample-choice samples n history text size)
   (let ([random-samples (shuffle samples)])
     (begin
-      (with-sample-text [text size]
-                        (for-each (lambda (s) 
-                                    (print (cdr s))
-                                    (newline)) 
-                                  (take random-samples n)))
+      (parameterize ([TEXT text]
+                     [SIZE size])
+        (for-each (lambda (s) 
+                    (print (cdr s))
+                    (newline)) 
+                  (take random-samples n)))
       (newline)
       (let ([c (read)])
         (cond [(= c 0) (floor (/ (foldl + 0 history) (length history)))]

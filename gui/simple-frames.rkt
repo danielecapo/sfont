@@ -24,7 +24,7 @@
 ; Default value mean that time start at 0, ends at 100 with increments of 10
 (define (animate font-proc [start 0] [end 100] [inc-proc ((curry +) 10)])
     (let* ([w (world (font-proc start))]
-           [area-height (* *size* (+ 1 (lines *text*) (* (- 1.2 1) (lines *text*))))]
+           [area-height (* (SIZE) (+ 1 (lines (TEXT)) (* (- 1.2 1) (lines (TEXT)))))]
            [frame (new frame%
                       [label "Viewer"]
                       [width 1000]
@@ -35,7 +35,7 @@
                     (lambda (canvas dc)
                       (send dc set-initial-matrix (vector 1 0 0 1 0 0))
                       (send dc set-smoothing 'smoothed)
-                      ((get-drawing-proc (world-current-state w)) dc 1.2 *text* *size*))])])
+                      ((get-drawing-proc (world-current-state w)) dc 1.2 (TEXT) (SIZE)))])])
       (letrec ([aux (lambda (c)
                       (if (> c end)
                           (world-current-state w)

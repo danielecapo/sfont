@@ -6,7 +6,6 @@
          "../glyphlist.rkt"
          "../spacing/space.rkt")
 
-(set-sample-size! 150)
 
 (provide 
  (contract-out

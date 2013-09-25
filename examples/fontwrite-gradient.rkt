@@ -154,8 +154,8 @@
               (range 10 (+ 10 (length alphabet-lc))))
          )))
 
-(set-sample-size! 40)
-(set-sample-text!
+(SIZE 40)
+(TEXT
    (list alphabet-lc
          (add-suffix-lon 'vstr alphabet-lc)
          (add-suffix-lon 'hstr alphabet-lc)

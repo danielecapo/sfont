@@ -6,6 +6,6 @@
 
 (provide (all-from-out "ufo/ufo-def.rkt")
          (all-from-out "ufo/ufo-read-write.rkt")
-         with-sample-text
-         set-sample-text!
-         set-sample-size!)
+         SIZE
+         TEXT
+         show-kerning?)
