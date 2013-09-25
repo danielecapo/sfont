@@ -18,7 +18,7 @@ At the moment it can be used to read and write fonts in the UFO format. It can (
 
 It can export the font in a minimal type1 plain text format that can be used by AFDKO to produce an otf font file, or converted in a pfa format with the command type1 (available with AFDKO), however, this is no longer necessary since the latest version (september 2013) AFDKO supports UFOs.
 
-Once 'loaded' the font is represented in Racket struct and drawn in the REPL. 
+Once 'loaded' the font is represented in a Racket struct and drawn in the REPL. 
 
 It can perform operations on fonts, using the idea of font math (see http://code.typesupply.com/wiki/FontMath). The operations are implemented on a different and simpler representation of the data, they works with contours, components, anchors and kerning pairs.
 These operations can be used to implement interpolations.
@@ -38,6 +38,7 @@ Nice things that can be added to this library:
 
 - Validation of UFOs
 - Documentation
+- Boolean operations on bezier curves
 - Make it installable via Planet
 - Simple GUI
 - Export to (and import from) fontforge sfd format
