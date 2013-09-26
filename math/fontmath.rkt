@@ -27,6 +27,7 @@
                      reflect-y)
          (contract-out
           [ffont? (-> any/c boolean?)]
+          [fglyph? (-> any/c boolean?)]
           [fontmath-object/c (-> any/c boolean?)]
           [font-object/c (-> any/c boolean?)]
           [get-interpolable-fonts (->* () () #:rest (listof font?) (listof ffont?))]
@@ -39,18 +40,48 @@
           [fix-components (-> ffont? ffont? ffont?)])
          define-interpolable-fonts
          define-space
+         use-glyphs
          )
-         
+   
          
 (define fontmath-object/c
   (flat-named-contract 
    'fontmath-object/c
-   (or/c vec? real? ffont? bezier/c)))
+   (or/c vec? real? ffont? fglyph? bezier/c)))
 
 (define font-object/c
   (flat-named-contract 
    'font-object/c
    (or/c vec? ffont? fglyph? fcontour? fanchor/c fcomponent/c finfo/c fkerning/c)))
+
+(define use-only
+  (make-parameter #f))
+
+(define-syntax use-glyphs 
+  (syntax-rules ()
+    [(interpolate-glyphs gs . body)
+     (parameterize [(use-only gs)] . body)]))
+
+; FFont (listof Symbol) -> FFont
+(define (only-glyphs-in gl f)
+    (struct-copy ffont f
+                 [glyphs (filter (lambda (g)
+                                   (member (fglyph-name g) gl))
+                                 (ffont-glyphs f))]))
+
+; Symbol FFont -> (listof Symbol)
+(define (component-deps g f)
+    (let ([cs (map component-base (fglyph-components (car (fget-glyphs f (list g)))))])
+      (append* cs (map (lambda (g) (component-deps g f)) cs))))
+
+; FFont -> FFont
+(define (reduced-font f)
+  (let ([ls (if (use-only)
+                 (remove-duplicates 
+                  (apply append (use-only) 
+                         (map (lambda (g) (component-deps g f)) (use-only))))
+                 #f)])
+    (if ls (only-glyphs-in ls f) f)))
 
 ; FContour ... -> FContour
 (define (contour+ c1 . cs)
@@ -100,11 +131,11 @@
 
 ; FFont ... -> FFont
 (define (font+ f1 . fs)
-  (let [(fonts (cons f1 fs))]
-  (struct-copy ffont f1
-               [info (apply info+ (map ffont-info fonts))]
-               [kerning (apply kerning+ (map ffont-kerning fonts))]
-               [glyphs (apply map glyph+ (map ffont-glyphs fonts))])))
+  (let ([fonts (map reduced-font (cons f1 fs))])
+    (struct-copy ffont f1
+                 [info (apply info+ (map ffont-info fonts))]
+                 [kerning (apply kerning+ (map ffont-kerning fonts))]
+                 [glyphs (apply map glyph+ (map ffont-glyphs fonts))])))
 
 ; FInfo ... -> FInfo
 (define (info+ i1 . is)
@@ -131,9 +162,21 @@
                        k1 k2)))]
     (foldl aux k1 ks)))
 
+
 ; FFont Real ... -> FFont
-(define (font:* f s1 . ss)
-  (scale f (apply * (cons s1 ss))))
+(define (font* f s1 . ss)
+  (scale (reduced-font f) (apply * (cons s1 ss))))
+
+; FontObject Real ... -> FontObject
+(define (font:* o s1 . ss)
+  ((match o
+    [(ffont _ _ _ _) font*]
+    [(fglyph _ _ _ _ _) scale]
+    [(contour _ _) scale]
+    [(anchor _ _ _ _) scale]
+    [(component _ _ _) scale])
+   o
+   (apply * (cons s1 ss))))
 
 ; FontObject ... -> FontObject
 (define (font:+ o1 . os)
@@ -161,6 +204,8 @@
   (match (cons a as)
     [(list (? ffont? _) ...)
      (apply font:+ a as)]
+    [(list (? fglyph? _) ...)
+     (apply font:+ a as)]
     [(list (? real? _) ...)
      (apply + a as)]
     [(list (? vec? _) ...)
@@ -173,6 +218,8 @@
 (define (sub a . as)
   (match (cons a as)
     [(list (? ffont? _) ...)
+     (apply font:+ a (map (lambda (i) (prod i -1)) as))]
+    [(list (? fglyph? _) ...)
      (apply font:+ a (map (lambda (i) (prod i -1)) as))]
     [(list (? real? _) ...)
      (apply - a as)]
@@ -187,6 +234,8 @@
   (match (cons a as)
     [(list-no-order (? ffont? f) (? real? s) ...)
      (apply font:* f s)]
+    [(list-no-order (? fglyph? f) (? real? s) ...)
+     (apply font:* f s)]
     [(list-no-order (? vec? v) (? real? s) ...)
      (vec* v (apply * s))]
     [(list-no-order (? bezier/c b) (? real? s) ...)
@@ -200,6 +249,8 @@
 (define (div a . as)
   (match (cons a as)
     [(list (? ffont? f) (? real? s) ...)
+     (apply font:* f (map (lambda (n) (/ 1.0 n)) s))]
+    [(list (? fglyph? f) (? real? s) ...)
      (apply font:* f (map (lambda (n) (/ 1.0 n)) s))]
     [(list (? vec? v) (? real? s) ...)
      (vec* v (apply * (map (lambda (n) (/ 1.0 n)) s)))]

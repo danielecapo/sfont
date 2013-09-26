@@ -47,6 +47,8 @@
   [match-glyphs-contours (-> fglyph? fglyph? fglyph?)]
   [match-fonts-contours (-> ffont? ffont? ffont?)]
   [import-component-scale (-> fcomponent/c fcomponent/c fcomponent/c)]
+  [glyph->fglyph (-> glyph? fglyph?)]
+  [fglyph->glyph (->* (fglyph?) (font?) glyph?)]
   ))
  
  #;
@@ -513,15 +515,21 @@
 
 ; FGlyph -> Glyph
 ; produce a ufo glyph from a glyph
-(define (fglyph->glyph g ufo) 
+(define (fglyph->glyph g [ufo #f]) 
   (match g
     [(fglyph name (list aw ah) contours components anchors)
-     (let ((ufo-glyph (get-glyph ufo name)))
-       (struct-copy glyph ufo-glyph
-                    [advance (advance aw ah)]
-                    [anchors (map anchor->ufo anchors)]
-                    [components (map component->ufo components)]
-                    [contours (map contour->ufo contours)]))]))
+     (if ufo
+         (let ((ufo-glyph (get-glyph ufo name)))
+           (struct-copy glyph ufo-glyph
+                        [advance (advance aw ah)]
+                        [anchors (map anchor->ufo anchors)]
+                        [components (map component->ufo components)]
+                        [contours (map contour->ufo contours)]))
+         (glyph 1 name (advance aw ah) 
+                '() #f #f '() 
+                (map anchor->ufo anchors) 
+                (map component->ufo components) 
+                (map contour->ufo contours)))]))
 
 ; FAnchor -> Anchor
 ; produce a ufo anchor from an anchor

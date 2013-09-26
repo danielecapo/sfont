@@ -202,8 +202,7 @@
                                     [is (map ((curry get-input) e) '(sl-name ...))])
                                (parameterize ([TEXT (slider-editor-text e)]
                                               [SIZE (slider-editor-size e)])
-                                 ((get-drawing-proc (apply f-proc is)) dc 1.2 (TEXT) (SIZE)))))]
-                          )]
+                                 ((get-drawing-proc (apply f-proc is)) dc 1.2 (TEXT) (SIZE)))))])]
                 [t (new text-field%
                         [label "Text"]
                         [parent tf]
@@ -225,8 +224,9 @@
                                              (when filepath
                                                (write-ufo 
                                                 (f-ufo
-                                                 (apply f-proc 
-                                                        (map ((curry get-input) (world-current-state w)) '(sl-name ...))))
+                                                 (parameterize ([TEXT '()])
+                                                   (apply f-proc 
+                                                          (map ((curry get-input) (world-current-state w)) '(sl-name ...)))))
                                                 filepath
                                                 #:overwrite #t))))])])
            
