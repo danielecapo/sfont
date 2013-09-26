@@ -224,9 +224,8 @@
                                              (when filepath
                                                (write-ufo 
                                                 (f-ufo
-                                                 (parameterize ([TEXT '()])
                                                    (apply f-proc 
-                                                          (map ((curry get-input) (world-current-state w)) '(sl-name ...)))))
+                                                          (map ((curry get-input) (world-current-state w)) '(sl-name ...))))
                                                 filepath
                                                 #:overwrite #t))))])])
            
