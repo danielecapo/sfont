@@ -9,7 +9,7 @@
 
 (provide 
  (contract-out 
-  (animate (->* ((-> real? (or/c font? ffont?))) (real? real? (-> real? real?)) (or/c font? ffont?))))
+  (animate (->* ((-> real? (or/c font? ffont?)) natural-number/c natural-number/c) (real? real? (-> real? real?)) (or/c font? ffont?))))
  animate-fonts
  slider-application)
   
@@ -22,30 +22,62 @@
 ; The idea is that the user call animate with a function that accept a time parameter
 ; and return a font at time t, start and end numbers, and an increment function.
 ; Default value mean that time start at 0, ends at 100 with increments of 10
-(define (animate font-proc [start 0] [end 100] [inc-proc ((curry +) 10)])
-    (let* ([w (world (font-proc start))]
-           [area-height (* (SIZE) (+ 1 (lines (TEXT)) (* (- 1.2 1) (lines (TEXT)))))]
+
+; I understand this is not a good way to do this, probably one can use the slideshow language 
+(define (animate font-proc  width height [start 0] [end 100] [inc-proc ((curry +) 10)])
+    (let* ([w (world (make-bitmap width height))]
            [frame (new frame%
                       [label "Viewer"]
-                      [width 1000]
-                      [height (num->int area-height)])]
+                      [width width]
+                      [height height])]
            [canv (new canvas% 
                    [parent frame]
                    [paint-callback
                     (lambda (canvas dc)
-                      (send dc set-initial-matrix (vector 1 0 0 1 0 0))
-                      (send dc set-smoothing 'smoothed)
-                      ((get-drawing-proc (world-current-state w)) dc 1.2 (TEXT) (SIZE)))])])
-      (letrec ([aux (lambda (c)
-                      (if (> c end)
-                          (world-current-state w)
+                      (send dc draw-bitmap (world-current-state w) 0 0))])])
+    (letrec ([aux (lambda (i)
+                    (if (> i end) '()
+                        (let* ([img (make-bitmap width height)]
+                               [dc (new bitmap-dc% [bitmap img])])
                           (begin
-                            (set-world-current-state! w (font-proc c))
-                            (send canv refresh-now)
-                            (aux (inc-proc c)))))])
-        (begin 
+                            (send dc set-smoothing 'smoothed)
+                            ((get-drawing-proc (font-proc i)) dc 1.2 (TEXT) (SIZE)) 
+                            (cons img (aux (inc-proc i)))))))])
+      (let ([bms (aux start)])
+        (begin
           (send frame show #t)
-          (aux (inc-proc start))))))
+          (for-each (lambda (bm)
+                      (begin 
+                        (set-world-current-state! w bm)
+                        (sleep 0.1)
+                        (send canv refresh-now)))
+                    bms)
+          (font-proc end))))))
+
+;(define (animate font-proc width height [start 0] [end 100] [inc-proc ((curry +) 10)])
+;    (let* ([w (world (font-proc start))]
+;           ;[area-height (* (SIZE) (+ 1 (lines (TEXT)) (* (- 1.2 1) (lines (TEXT)))))]
+;           [frame (new frame%
+;                      [label "Viewer"]
+;                      [width width]
+;                      [height height])]
+;           [canv (new canvas% 
+;                   [parent frame]
+;                   [paint-callback
+;                    (lambda (canvas dc)
+;                      (send dc set-initial-matrix (vector 1 0 0 1 0 0))
+;                      (send dc set-smoothing 'smoothed)
+;                      ((get-drawing-proc (world-current-state w)) dc 1.2 (TEXT) (SIZE)))])])
+;      (letrec ([aux (lambda (c)
+;                      (if (> c end)
+;                          (world-current-state w)
+;                          (begin
+;                            (set-world-current-state! w (font-proc c))
+;                            (send canv refresh-now)
+;                            (aux (inc-proc c)))))])
+;        (begin 
+;          (send frame show #t)
+;          (aux (inc-proc start))))))
 
 ; (animate-fonts font1 font2 font3 ...)
 ; the fonts should be ready for interpolation (see usemath example)
@@ -68,7 +100,7 @@
                                    (if (= d l) (- d 1) d)) 
                          (if (= d l) 1 r))))])
        (lambda ()
-         (animate proc 0 (* 1000 l) ((curry +) 10))))]))
+         (new-animate proc 0 (* 1000 l) ((curry +) 25))))]))
          
 
 ; Slider-Editor
@@ -92,7 +124,7 @@
 ; produce a new editor with the text updated
 (define (update-text e t)
   (struct-copy slider-editor e
-               [text t]))
+               [text (string->text t)]))
 
 ; SliderEditor Integer -> SliderEditor
 ; produce a new editor with the size updated
@@ -112,7 +144,7 @@
         [sliders (sl-name sl-min sl-max init) ...]
         [text txt sz])
      (let ([w (world (slider-editor 
-                      txt sz 
+                      (string->text txt) sz 
                       (make-immutable-hash (list (cons 'sl-name init) ...))))]
            [f-proc font-proc]
            [f-ufo get-ufo])
@@ -123,7 +155,7 @@
                                      w 
                                      (update-inputs (world-current-state w) f v))
                                     ;(print (world-current-state w))
-                                    (send can refresh-now)))]
+                                    (send can refresh)))]
                 [text-updater (lambda (t can)
                                 (begin
                                   (set-world-current-state! 
@@ -168,12 +200,14 @@
                              (send dc set-smoothing 'smoothed)
                              (let* ([e (world-current-state w)]
                                     [is (map ((curry get-input) e) '(sl-name ...))])
-                               ((get-drawing-proc (apply f-proc is)) dc 1.2 (string->text (slider-editor-text e)) (slider-editor-size e))))]
+                               (parameterize ([TEXT (slider-editor-text e)]
+                                              [SIZE (slider-editor-size e)])
+                                 ((get-drawing-proc (apply f-proc is)) dc 1.2 (TEXT) (SIZE)))))]
                           )]
                 [t (new text-field%
                         [label "Text"]
                         [parent tf]
-                        [init-value (slider-editor-text (world-current-state w))]
+                        [init-value txt]
                         [callback (lambda (tf e) (text-updater (send tf get-value) can))]
                         [min-width 800])]
                 [size (new combo-field%	 
