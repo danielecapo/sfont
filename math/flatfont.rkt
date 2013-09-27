@@ -84,10 +84,15 @@
  ; remove anchors if not in both glyph
 
  ; remove kerning-pair not presents in both fonts
- ; collect every right name in the first font
- ; collect every right name in the second font
- ; remove every kerning entry whose right name is not in both fonts
- ; 
+ ; for every left kerning name
+ ; - if not present in both fonts remove it
+ ; - otherwise
+ ;   - collect every right name in the first font
+ ;   - collect every right name in the second font
+ ;   - remove every kerning entry whose right name is not in both fonts
+ 
+ ; remove info not present in both fonts
+ 
  
  
  

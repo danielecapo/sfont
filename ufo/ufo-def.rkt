@@ -1366,16 +1366,84 @@
 (define (contour-open? c)
   (eq? 'move (point-type (car (contour-points c)))))
 
+; Contour -> Boolean?
+; True if the contour is quadratic
+(define (contour-quadratic? c)
+  (letrec ([aux (lambda (lop)
+                  (match lop
+                    [(list) #t]
+                    [(list-rest (point _ 'curve _ _ _) r) #f]
+                    [(list-rest (point _ 'qcurve _ _ _) r) #t]
+                    [(list-rest (point _ 'offcurve _ _ _) (point _ 'offcurve _ _ _) (point _ 'offcurve _ _ _) r)
+                     #t]
+                    [(list-rest (point _ 'offcurve _ _ _) r) (aux r)]))])
+    (if (= 0 (length (contour-points c))) 
+        #f
+        (aux (contour-points c)))))
+                  
+; Contour -> Contour
+(define (reverse-cubic c)
+  (letrec ([aux (lambda (pts)
+                  (match pts
+                    [(list _) '()]
+                    [(list-rest (point _ 'offcurve _ _ _) (point v 'line a b c) r)
+                     (cons (point v 'curve a b c)
+                           (aux (cons (cadr pts) r)))]
+                    [(list-rest (point _ 'line _ _ _) (point v 'curve a b c)  r)
+                     (cons (point v 'line a b c)
+                           (aux (cons (cadr pts) r)))]
+                    [(list-rest (point _ 'line _ _ _) (point _ 'line _ _ _)  r)
+                     (cons (cadr pts)
+                           (aux (cons (cadr pts) r)))]
+                    [(list-rest (point _ 'curve _ _ _) (point _ 'offcurve _ _ _)  r)
+                     (cons (cadr pts)
+                           (aux (cons (cadr pts) r)))]
+                    [(list-rest (point _ 'offcurve _ _ _) (point _ 'offcurve _ _ _)  r)
+                     (cons (cadr pts)
+                           (aux (cons (cadr pts) r)))]
+                    [(list-rest (point _ 'offcurve _ _ _) (point _ 'curve _ _ _)  r)
+                     (cons (cadr pts)
+                           (aux (cons (cadr pts) r)))]))])
+    (struct-copy contour c
+                 [points (let ([pts (reverse (contour-points c))])
+                           (aux (append pts (list (car pts)))))])))
 
+; Contour -> Contour
+(define (reverse-quadratic c)
+  (letrec ([aux (lambda (pts)
+                  (match pts
+                    [(list _) '()]
+                    [(list-rest (point _ 'offcurve _ _ _) (point v 'line a b c) r)
+                     (cons (point v 'qcurve a b c)
+                           (aux (cons (cadr pts) r)))]
+                    [(list-rest (point _ 'line _ _ _) (point v 'qcurve a b c)  r)
+                     (cons (point v 'line a b c)
+                           (aux (cons (cadr pts) r)))]
+                    [(list-rest (point _ 'line _ _ _) (point _ 'line _ _ _)  r)
+                     (cons (cadr pts)
+                           (aux (cons (cadr pts) r)))]
+                    [(list-rest (point _ 'qcurve _ _ _) (point _ 'offcurve _ _ _)  r)
+                     (cons (cadr pts)
+                           (aux (cons (cadr pts) r)))]
+                    [(list-rest (point _ 'offcurve _ _ _) (point _ 'offcurve _ _ _)  r)
+                     (cons (cadr pts)
+                           (aux (cons (cadr pts) r)))]
+                    [(list-rest (point _ 'offcurve _ _ _) (point _ 'qcurve _ _ _)  r)
+                     (cons (cadr pts)
+                           (aux (cons (cadr pts) r)))]))])
+    (struct-copy contour c
+                 [points (let ([pts (reverse (contour-points c))])
+                           (aux (append pts (list (car pts)))))])))
+    
+                  
+    
 ; Contour -> Contour
 ; returns the contour with reversed point list
 (define (reverse-contour c)
-  (if (contour-open? c)
-      c
-      (struct-copy contour c
-                   [points (contour-points 
-                            (bezier->contour 
-                             (reverse (contour->bezier c))))])))
+  (cond [(contour-open? c) c]
+        [(= (length (contour-points c)) 0) c]
+        [(contour-quadratic? c) (reverse-quadratic c)]
+        [else (reverse-cubic c)]))
 
 
 ; Glyph -> Glyph
