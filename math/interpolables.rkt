@@ -113,11 +113,52 @@
          [rpts (aux (cdr bz))])
     (struct-copy contour c
                  [points (if (contour-open? c)
+                             (cons (point (car bz) 'move #f #f #f) rpts)
                              (cons (point (car bz) 'curve #f #f #f)
-                                   (drop-right rpts 1))
-                             (cons (point (car bz) 'move #f #f #f) rpts))]))))
-         
-    
+                                   (drop-right rpts 1)))]))))
+
+; Font Font -> Font Font
+(define (compatible-fonts f1 f2)
+  (let*-values ([(i1 i2) (compatible-infos    (font-fontinfo f1) 
+                                              (font-fontinfo f2))]
+                [(l1 l2) (compatible-layers   (get-layer f1)
+                                              (get-layer f2))]
+                [(g1 g2) (compatible-groups   (font-groups f1) l1
+                                              (font-groups f2) l2)]
+                [(k1 k2) (compatible-kernings (font-kerning f1) l1 g1
+                                              (font-kerning f2) l2 g2)])
+    (values
+     (struct-copy font f1
+                  [fontinfo i1]
+                  [kerning  k1]
+                  [groups   g1]
+                  [layers   l1])
+     (struct-copy font f2
+                  [fontinfo i2]
+                  [kerning  k2]
+                  [groups   g2]
+                  [layers   l2]))))
+
+; FontInfo FontInfo -> FontInfo FontInfo 
+(define (compatible-infos i1 i2) 
+  (let ([loi1 (sort-by-key (hash->list i1))]
+        [loi2 (sort-by-key (hash->list i2))])
+  (values i1 i2)))
+
+; Layer Layer -> Layer Layer 
+(define (compatible-layers l1 l2)                ;stub
+  (values l1 l2))
+                
+; Groups Groups -> Groups Groups 
+(define (compatible-groups g1 l1 g2 l2)          ;stub
+  (values g1 g2))
+
+; Kerning Kerning -> Kerning Kerning 
+(define (compatible-kernings k1 l1 g1 k2 l2 g2)  ;stub
+  (values k1 k2))
+
+
+
 
 ; (listof Point) -> (listof Point)
 (define (sort-points lop)                     
@@ -234,3 +275,15 @@
     (postscriptBlueScale ,->int)
     (postscriptDefaultWidthX ,->int)
     (postscriptNominalWidthX ,->int)))
+
+; AssociationList -> AssociationList
+; sort the alist with key name
+(define (sort-by-key alist)
+  (sort alist string<? 
+        #:key (lambda (p) 
+                (symbol->string (car p)))))
+
+; Symbol Symbol -> Boolean
+(define (symbol<? s1 s2)
+  (string<? (symbol->string s1)
+            (symbol->string s2)))
