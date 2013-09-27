@@ -45,8 +45,19 @@
                [layers (list (prepare-layer (get-layer f) weak))]))
 
 ; FontInfo -> Fontinfo
-(define (prepare-info i)       ; stub
-  i)
+(define (prepare-info i)       
+  (let* ([keys (map car *infos*)]
+         [psname (dict-ref i 'postscriptFontName "untitled")]
+         [famname (dict-ref i 'familyName "untitled")])
+    (hash-set*
+     (make-immutable-hash
+      (filter identity
+              (dict-map i (lambda (key value)
+                            (if (member key keys)
+                                (cons key value)
+                                #f)))))
+     'postscriptFontName psname 
+     'familyName famname)))
 
 ; Kerning -> Kerning
 (define (prepare-kerning k)    ; stub
@@ -159,3 +170,67 @@
               (and (= l1 l2)
                    (< (vec-length (point-pos (car p1)))
                       (vec-length (point-pos (car p2))))))))))
+
+
+; Utility functions used for infos
+(define (->int n) (inexact->exact (round n)))
+(define (->float n) (exact->inexact n))
+(define (->intlist l) (map ->int l))
+(define (->widthclass n) (cond [(< n 0) 0]
+                               [(> n 9) 9]
+                               [else (->int n)]))
+
+
+(define *infos*
+  `((unitsPerEm ,->int)
+    (descender ,->int)
+    (xHeight ,->int)
+    (capHeight ,->int)
+    (ascender ,->int)
+    (italicAngle ,->float)
+    (openTypeHeadLowestRecPPEM ,->int)
+    (openTypeHheaAscender ,->int)
+    (openTypeHheaDescender ,->int)
+    (openTypeHheaLineGap ,->int)
+    (openTypeHheaCaretSlopeRise ,->int)
+    (openTypeHheaCaretSlopeRun ,->int)
+    (openTypeHheaCaretOffset ,->int)
+    (openTypeOS2WidthClass ,->widthclass)
+    (openTypeOS2WeightClass ,->int)
+    (openTypeOS2Panose ,->intlist)
+    (openTypeOS2FamilyClass ,->intlist)
+    (openTypeOS2TypoAscender ,->int)
+    (openTypeOS2TypoDescender ,->int)
+    (openTypeOS2TypoLineGap ,->int)
+    (openTypeOS2WinAscent ,->int)
+    (openTypeOS2WinDescent ,->int)
+    (openTypeOS2SubscriptXSize ,->int)
+    (openTypeOS2SubscriptYSize ,->int)
+    (openTypeOS2SubscriptXOffset ,->int)
+    (openTypeOS2SubscriptYOffset ,->int)
+    (openTypeOS2SuperscriptXSize ,->int)
+    (openTypeOS2SuperscriptYSize ,->int)
+    (openTypeOS2SuperscriptXOffset ,->int)
+    (openTypeOS2SuperscriptYOffset ,->int)
+    (openTypeOS2StrikeoutSize ,->int)
+    (openTypeOS2StrikeoutPosition ,->int)
+    (openTypeVheaVertTypoAscender ,->int)
+    (openTypeVheaVertTypoDescender ,->int)
+    (openTypeVheaVertTypoLineGap ,->int)
+    (openTypeVheaCaretSlopeRise ,->int)
+    (openTypeVheaCaretSlopeRun ,->int)
+    (openTypeVheaCaretOffset ,->int)
+    (postscriptSlantAngle ,->int)
+    (postscriptUnderlineThickness ,->int)
+    (postscriptUnderlinePosition ,->int)
+    (postscriptBlueValues ,->intlist)
+    (postscriptOtherBlues ,->intlist)
+    (postscriptFamilyBlues ,->intlist)
+    (postscriptFamilyOtherBlues ,->intlist)
+    (postscriptStemSnapH ,->intlist)
+    (postscriptStemSnapV ,->intlist)
+    (postscriptBlueFuzz ,->int)
+    (postscriptBlueShift ,->int)
+    (postscriptBlueScale ,->int)
+    (postscriptDefaultWidthX ,->int)
+    (postscriptNominalWidthX ,->int)))
