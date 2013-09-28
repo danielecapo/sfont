@@ -5,6 +5,24 @@
          "../geometry.rkt")
 
 
+(provide 
+ (contract-out
+  [interpolable-fonts (->* (font? font?) (boolean? boolean?) (values font? font?))]
+  [prepare-font (->* (font?) (boolean? boolean?) font?)]
+  [prepare-info (-> fontinfo/c fontinfo/c)]
+  [prepare-kerning (-> kerning/c kerning/c)]
+  [prepare-layer (->* (layer?) (boolean?) layer?)]
+  [prepare-glyph (->* (glyph?) (boolean?) glyph?)]
+  [prepare-contour (->* (contour?) (boolean?) contour?)]
+  [compatible-fonts (-> font? font? (values font? font?))]
+  [compatible-glyphs (-> glyph? glyph? (values glyph? glyph?))]
+  [compatible-layers (-> layer? layer? (values layer? layer?))]
+  [compatible-infos (-> fontinfo/c fontinfo/c (values fontinfo/c fontinfo/c))]
+  [compatible-groups (-> groups/c groups/c (listof symbol?) (values groups/c groups/c))]
+  [compatible-kernings (-> kerning/c kerning/c (listof symbol?) (listof symbol?) (values kerning/c kerning/c))]))
+  
+  
+  
 ; Now, I want to remove the duplicaton of 'fonts'
 
 
@@ -37,7 +55,14 @@
 
 ; remove info not present in both fonts
 
-; Font Boolean -> Font
+
+; Font Font Boolean Boolean -> Font
+(define (interpolable-fonts f1 f2 [weak #t] [auto-directions #f])
+  (compatible-fonts (prepare-font f1 weak auto-directions)
+                    (prepare-font f2 weak auto-directions)))
+
+ 
+; Font Boolean Boolean -> Font
 (define (prepare-font f [weak #t] [auto-directions #f])
   (struct-copy font (if auto-directions (correct-directions f) f)
                [fontinfo (prepare-info (font-fontinfo f))]
@@ -60,7 +85,7 @@
      'familyName famname)))
 
 ; Kerning -> Kerning
-(define (prepare-kerning k)    ; stub
+(define (prepare-kerning k)    
   k)
 
 ; Layer Boolean -> Layer
@@ -286,12 +311,7 @@
                            (cdr l)))))
           (filter-left k1 (map car pairs))))))
 
-
-            
-
-
-
-
+        
 ; (listof Point) -> (listof Point)
 (define (sort-points lop)                     
   (if (eq? (point-type (car lop)) 'move)
