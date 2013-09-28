@@ -123,39 +123,171 @@
                                               (font-fontinfo f2))]
                 [(l1 l2) (compatible-layers   (get-layer f1)
                                               (get-layer f2))]
-                [(g1 g2) (compatible-groups   (font-groups f1) l1
-                                              (font-groups f2) l2)]
-                [(k1 k2) (compatible-kernings (font-kerning f1) l1 g1
-                                              (font-kerning f2) l2 g2)])
+                [(g1 g2) (compatible-groups   (font-groups f1)
+                                              (font-groups f2) 
+                                              (map-glyphs glyph-name l1 #:sorted #t))]
+                [(k1 k2) (compatible-kernings (font-kerning f1)
+                                              (font-kerning f2)
+                                              (map-glyphs glyph-name l1 #:sorted #t)
+                                              (hash-keys g1))])
     (values
      (struct-copy font f1
                   [fontinfo i1]
                   [kerning  k1]
                   [groups   g1]
-                  [layers   l1])
+                  [layers   (list l1)])
      (struct-copy font f2
                   [fontinfo i2]
                   [kerning  k2]
                   [groups   g2]
-                  [layers   l2]))))
+                  [layers   (list l2)]))))
 
 ; FontInfo FontInfo -> FontInfo FontInfo 
 (define (compatible-infos i1 i2) 
   (let ([loi1 (sort-by-key (hash->list i1))]
         [loi2 (sort-by-key (hash->list i2))])
-  (values i1 i2)))
+    (let-values ([(li1 li2) (commons loi1 loi2 car eq? symbol<?)])
+      (values (make-immutable-hash li1)
+              (make-immutable-hash li2)))))
 
 ; Layer Layer -> Layer Layer 
-(define (compatible-layers l1 l2)                ;stub
-  (values l1 l2))
+(define (compatible-layers l1 l2)
+  (let*-values ([(gs1 gs2) (commons (map-glyphs identity l1 #:sorted #t)
+                                    (map-glyphs identity l2 #:sorted #t)
+                                    glyph-name eq? symbol<?)]
+                [(gr1 gr2) (compatible-list-of-glyphs gs1 gs2)])
+    (values
+     (struct-copy layer l1 [glyphs gr1])
+     (struct-copy layer l2 [glyphs gr2]))))
+
+; (listof Glyph) (listof Glyph) -> (listof Glyph) (listof Glyph)
+(define (compatible-list-of-glyphs log1 log2)
+  (let ([cl (map (lambda (g1 g2)
+                   (let-values ([(ng1 ng2) (compatible-glyphs g1 g2)])
+                     (cons g1 g2)))
+                 log1 
+                 log2)])
+    (values (filter identity (map car cl))
+            (filter identity (map cdr cl)))))
+
+; Glyph Glyph -> Glyph or False Glyph or False
+(define (compatible-glyphs g1 g2)
+  (let ([cs1 (glyph-contours g1)]
+        [cs2 (glyph-contours g2)])
+    (cond [(not (= (length cs1) (length cs2))) (values #f #f)]
+          [(andmap (lambda (a b) (= (length (contour-points a)) (length (contour-points b))))
+                     cs1 cs2)
+           (values #f #f)]
+          [else (let-values (((c1 c2) (compatible-components (glyph-components g1)
+                                                             (glyph-components g2)))
+                             ((a1 a2) (compatible-anchors (glyph-anchors g1)
+                                                          (glyph-anchors g2))))
+                  (values (struct-copy glyph g1 [components c1] [anchors a1])
+                          (struct-copy glyph g2 [components c2] [anchors a2])))])))
+
+; (listof Component) (listof Component) -> (listof Component) (listof Component)
+(define (compatible-components loc1 loc2)
+  (commons loc1 loc2 component-base eq? symbol<?))
+
+; (listof Anchor) (listof Anchor) -> (listOf Anchor) (listof Anchor)
+; produce two interpolable anchor lists
+(define (compatible-anchors loa1 loa2)
+  (commons loa1 loa2 anchor-name string=? string<?))
+
+
                 
 ; Groups Groups -> Groups Groups 
-(define (compatible-groups g1 l1 g2 l2)          ;stub
-  (values g1 g2))
+(define (compatible-groups g1 g2 gs)
+  (let* ([ng1 (purge-groups g1 gs)]
+         [ng2 (purge-groups g2 gs)])
+    (common-groups ng1 ng2)))
 
-; Kerning Kerning -> Kerning Kerning 
-(define (compatible-kernings k1 l1 g1 k2 l2 g2)  ;stub
-  (values k1 k2))
+
+; Groups (listof Symbol) -> Groups
+(define (purge-groups gs los)
+  (let ([gl (hash->list gs)])
+    (make-immutable-hash
+     (filter (lambda (g) (not (null? (cdr g))))
+             (map (lambda (g)
+                   (cons (car g)
+                         (filter (lambda (s) (member s los))
+                                 (cdr g))))
+                  gl)))))
+
+; Groups Groups -> Groups Groups
+(define (common-groups g1 g2)
+  (let-values ([(ng1 ng2) (commons (sort-by-key (hash->list g1))
+                                   (sort-by-key (hash->list g2))
+                                   car eq? symbol<?)])
+    (let ([g (make-immutable-hash
+              (filter (lambda (g) (not (null? (cdr g))))
+                      (map (lambda (g1 g2)
+                             (cons (car g1)
+                                   (set->list
+                                    (set-intersect (list->set (cdr g1))
+                                                   (list->set (cdr g2))))))
+                           ng1 ng2)))])
+      (values g g))))
+    
+    
+
+
+; Kerning Kerning (listof Symbol) (listof Symbol) -> Kerning Kerning 
+(define (compatible-kernings k1 k2 lgl lgr)
+  (let ([los (append lgl lgr)])
+    (let ([nk1 (purge-kerns k1 los)]
+          [nk2 (purge-kerns k2 los)])
+      (common-kerns nk1 nk2))))
+
+; Kerning (listof Symbol) -> Kerning
+(define (purge-kerns k los)
+  (let ([k (hash-map k (lambda (key val) (cons key (hash->list val))))])
+    (make-immutable-hash
+     (filter (lambda (kg) (member (car kg) los))
+             (map (lambda (kg)
+                    (cons (car kg)
+                          (make-immutable-hash
+                           (filter (lambda (v) (member (car v) los)) (cdr kg)))))
+                  k)))))
+
+(define (common-kerns k1 k2)
+  (let [(pairs (common-pairs k1 k2))]
+    (values (filter-kerning k1 pairs)
+            (filter-kerning k2 pairs))))
+
+; Kerning Kerning -> (listOf (Symbol . Symbol))
+; produce a list of kerning pairs used in noth fonts
+(define (common-pairs k1 k2)
+  (let ([k1 (hash-map k1 (lambda (key val) (cons key (hash->list val))))]
+        [k2 (hash-map k2 (lambda (key val) (cons key (hash->list val))))])
+    (letrec ([kerning-pairs (lambda (k)
+                              (foldl (lambda (k acc)
+                                       (append acc
+                                               (map (lambda (r) 
+                                                      (cons (car k) (car r))) 
+                                                    (cdr k))))
+                                     '()
+                                     k))])
+      (set->list (set-intersect (list->set (kerning-pairs k1))
+                                (list->set (kerning-pairs k2)))))))
+
+; (listof (Symbol . (listof Symbol Real))) (listOf (Symbol . Symbol)) -> Kerning
+; produce a new kerning removing data for combinations NOT in pairs
+(define (filter-kerning k1 pairs)
+  (define (filter-left k1 left)
+    (filter (lambda (k) (member (car k) left)) k1))
+  (let ([k1 (hash-map k1 (lambda (key val) (cons key (hash->list val))))])
+    (make-immutable-hash
+     (map (lambda (l)
+            (cons (car l)
+                  (make-immutable-hash
+                   (filter (lambda (r)
+                             (member (cons (car l) (car r)) pairs))
+                           (cdr l)))))
+          (filter-left k1 (map car pairs))))))
+
+
+            
 
 
 
@@ -287,3 +419,22 @@
 (define (symbol<? s1 s2)
   (string<? (symbol->string s1)
             (symbol->string s2)))
+
+; (listof A) (listof A) (A -> B) (B B -> Boolean) (B B -> Boolean) -> (listof A) (listof A)
+(define (commons l1 l2 key k=? k<?)
+  (if (or (null? l1) (null? l2))
+      (values '() '())
+      (let* ([f1 (car l1)]
+             [f2 (car l2)]
+             [k1 (key f1)]
+             [k2 (key f2)])
+        (cond [(k=? k1 k2)
+               (let-values ([(r1 r2) (commons (cdr l1) (cdr l2) key k=? k<?)])
+                 (values (cons f1 r1) (cons f2 r2)))]
+              [(k<? k1 k2)
+               (let-values ([(r1 r2) (commons (cdr l1) l2 key k=? k<?)])
+                 (values r1 r2))]
+              [else
+               (let-values ([(r1 r2) (commons l1 (cdr l2) key k=? k<?)])
+                 (values r1 r2))]))))
+            
