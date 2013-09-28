@@ -8,7 +8,51 @@
 (provide 
  (contract-out 
   [info-scale (->* (fontinfo/c real?) (real?) fontinfo/c)]
-  [kerning-scale (-> kerning/c real? kerning/c)]))
+  [kerning-scale (-> kerning/c real? kerning/c)]
+  [info+ (->* (fontinfo/c) () #:rest (listof fontinfo/c) fontinfo/c)]
+  [kerning+ (->* (kerning/c) () #:rest (listof kerning/c) kerning/c)]))
+
+
+; FontInfo Real Real -> FontInfo
+(define (info-scale i fx [fy fx])
+  (make-immutable-hash
+   (hash-map i (lambda (key value)
+                 (cons key 
+                      (((car (dict-ref *info-transform* key)) 
+                        * value) fx fy))))))
+
+; FontInfo ... -> FontInfo
+(define (info+ i1 . is)
+  (letrec [(aux (lambda (i1 i2)
+                  (make-immutable-hash
+                   (hash-map i1
+                             (lambda (key value)
+                               (let [(v2 (hash-ref i2 key))]
+                                 (cons key
+                                       (match value
+                                         [(list _ ...) (map + value v2)]
+                                         [(? string? value) value]
+                                         [(? real? value) (+ value v2)]
+                                         [_ (error "cannot add info")]))))))))]
+        (foldl aux i1 is)))
+
+
+; Kerning Real -> Kerning
+(define (kerning-scale k f)
+  (map-kerning ((curry *) f) k))
+                    
+; Kerning ... -> Kerning
+(define (kerning+ k1 . ks)
+  (letrec ([right-kerns
+            (lambda (r1 r2)
+              (make-immutable-hash
+               (hash-map r1 (lambda (r v)
+                              (cons r (+ v (hash-ref r2 r)))))))]
+           [aux (lambda (k1 k2)
+                  (make-immutable-hash
+                   (hash-map k1 (lambda (l rk)
+                                  (cons l (right-kerns rk (hash-ref k2 l)))))))])
+    (foldl aux k1 ks)))
 
 ;;; Functions used for info
 
@@ -89,16 +133,3 @@
     (postscriptBlueScale ,->y)
     (postscriptDefaultWidthX ,->x)
     (postscriptNominalWidthX ,->x)))
-
-; FontInfo Real Real -> FontInfo
-(define (info-scale i fx [fy fx])
-  (make-immutable-hash
-   (hash-map i (lambda (key value)
-                 (cons key 
-                      (((car (dict-ref *info-transform* key)) 
-                        * value) fx fy))))))
-
-; Kerning Real -> Kerning
-(define (kerning-scale k f)
-  (map-kerning ((curry *) f) k))
-                    
