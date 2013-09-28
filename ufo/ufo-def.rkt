@@ -84,6 +84,7 @@
   [set-layer (-> font? layer? font?)]
   [get-glyph (->* (font? name/c) (name/c) (or glyph? #f))]
   [get-glyphs (->* (font? (listof name/c)) (name/c) (listof glyph?))]
+  [font-glyphs (-> font? (listof glyph?))]
   [remove-glyph (->* (font? name/c) (name/c) font?)]
   [insert-glyph (->* (font? glyph?) (name/c) font?)]
   [get-layers-glyph (-> font? name/c (listof (cons/c name/c (or/c glyph? #f))))]
@@ -547,6 +548,10 @@
 (define (get-glyphs f gs [l 'public.default])
   (filter identity
           (map (lambda (g) (get-glyph f g l)) gs)))
+
+; Font -> (listof Glyph)
+(define (font-glyphs f)
+  (sort-glyph-list (hash-values (layer-glyphs (get-layer f)))))
         
 ; Font Symbol [Symbol] -> Font
 ; produce a new font with the glyph removed from the given layer

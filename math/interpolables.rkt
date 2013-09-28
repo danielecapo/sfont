@@ -19,7 +19,10 @@
   [compatible-layers (-> layer? layer? (values layer? layer?))]
   [compatible-infos (-> fontinfo/c fontinfo/c (values fontinfo/c fontinfo/c))]
   [compatible-groups (-> groups/c groups/c (listof symbol?) (values groups/c groups/c))]
-  [compatible-kernings (-> kerning/c kerning/c (listof symbol?) (listof symbol?) (values kerning/c kerning/c))]))
+  [compatible-kernings (-> kerning/c kerning/c (listof symbol?) (listof symbol?) (values kerning/c kerning/c))]
+  [match-fonts-contours (-> font? font? font?)]
+  [import-component-scale (-> component? component? component?)])
+ in-layers)
   
   
   
@@ -330,7 +333,60 @@
                   (filter (lambda (p) (eq? 'curve (point-type p))) 
                           lop)) 
              pos<?)))
+
+(define-syntax-rule (in-layers l f body)
+  (map-layers 
+   (lambda (l)
+     (struct-copy layer l
+                  [glyphs body]))
+   f))
+
+; Font Font -> Font
+; match the contours of the second font against the first
+(define (match-fonts-contours f1 f2)
+  (let ([gs1 (map-glyphs identity f1)]
+        [gs2 (map-glyphs identity f2)])
+    (struct-copy font f2 
+                 [layers (in-layers l f2 (map match-glyphs-contours gs1 gs2))])))
+
+; Glyph Glyph -> Glyph
+; match the contours of the second glyph against the first
+(define (match-glyphs-contours g1 g2)
+  (let ([cs1 (glyph-contours g1)]
+        [cs2 (glyph-contours g2)])
+    (struct-copy glyph g2 [contours (match-contour-order cs1 cs2)])))
+
+; (listof Contour) (listof Contour) -> (listof Contour)
+; match the second list of contours against the first list.
+(define (match-contour-order cs1 cs2)
+  (define (contour-distance c1 c2)
+    (foldl (lambda (p1 p2 d)
+             (+ d (vec-length (vec- p2 p1))))
+           0 (map-points point-pos c1) (map-points point-pos c2)))
+  (reverse
+   (cdr 
+    (foldl (lambda (cm acc)
+             (let* ([r (cdr acc)]
+                    [cs (car acc)]
+                    [m (car (argmin cdr (filter (lambda (i) (identity (cdr i)))
+                                                (map (lambda (c)
+                                                       (cons c
+                                                             (if (= (length (contour-points c)) (length (contour-points cm)))
+                                                                    (contour-distance cm c)
+                                                                    #f)))
+                                                     cs))))])
+               (cons (remq m cs) (cons m r)))) 
+           (cons cs2 '())
+           cs1))))
         
+; Component, Component -> Component
+; produce a new component with scale fields imported from another component
+(define (import-component-scale c1 c2)
+  (match c1 
+    [(component base (trans-mat _ _ _ _ x-offset y-offset) id) 
+     (match c2
+       [(component _ (trans-mat x-scale xy-scale yx-scale y-scale _ _) _)
+        (component base (trans-mat x-scale xy-scale yx-scale y-scale x-offset y-offset) id)])]))
 
 ; Component -> Vec
 ; Produce a Vec from x and y offset
