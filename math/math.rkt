@@ -258,7 +258,7 @@
 (define (y-> o)
   ((if (font? o) font-scale* scale) o 0 1))  
 
-; FFont ... -> (listof FFont)
+; Font ... -> (listof Font)
 (define (interpolables  f . fs)
   (let ([f0 (foldl (lambda (f acc)
                      (let-values ([(a b) (interpolable-fonts acc f)])
@@ -273,7 +273,7 @@
   (define-values (id ...)
     (apply values (get-interpolable-fonts f ...))))
 
-; Font ... -> FFont ...
+; Font ... -> Font ...
 (define (get-interpolable-fonts . fs)
   (apply interpolables
          (map (lambda (f)

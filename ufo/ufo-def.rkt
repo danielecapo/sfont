@@ -357,7 +357,7 @@
    (define (reflect-y f)
      (apply-font-trans f super-reflect-y))])
 
-; FFont (T -> T) . T1 -> FFont
+; Font (T -> T) . T1 -> Font
 ; Produce a new Font applying the transformation
 (define (apply-font-trans f fn . args)
   (struct-copy font f

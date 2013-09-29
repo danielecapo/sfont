@@ -17,7 +17,7 @@
 
 (struct world (current-state) #:mutable)
 
-; (Real -> Font or FFont) Real Real (Real -> Real) -> Font or FFont
+; (Real -> Font) Real Real (Real -> Real) -> Font
 ; Show an animation frame and return the last font in animation
 ; The idea is that the user call animate with a function that accept a time parameter
 ; and return a font at time t, start and end numbers, and an increment function.
