@@ -95,7 +95,7 @@
   (letrec ([p+ (lambda (p1 p2)
                  (struct-copy point p1
                               [pos (vec+ (point-pos p1) (point-pos p2))]))])
-    (foldl point+ p1 ps)))
+    (foldl p+ p1 ps)))
 
 ; Contour ... -> Contour
 (define (contour+ c1 . cs)
@@ -142,25 +142,33 @@
                  [anchors
                   (apply map anchor+ (map glyph-anchors gss))])))
 
+; Any Real Real -> Any
+(define (font-scale* o fx [fy fx])
+  (let ([o1 (scale o fx fy)])
+    (struct-copy font o1
+                 [fontinfo (info-scale (font-fontinfo o1) fx fy)]
+                 [kerning (kerning-scale (font-kerning o1) fx)])))
 
 ; Font ... -> Font
 (define (font+ f1 . fs)
-  (let ([f+ (lambda (f1 f2)
-              (struct-copy font f1
-                           [fontinfo (info+ (font-fontinfo f1) (font-fontinfo f2))]
-                           [kerning (kerning+ (font-kerning f1) (font-kerning f2))]
-                           [layers (map-layers 
-                                    (lambda (l)
-                                      (struct-copy layer l
-                                                   [glyphs (map glyph+ 
-                                                                (font-glyphs f1) 
-                                                                (font-glyphs f2))])))]))]
-        [fonts (map reduced-font (cons f1 fs))])
-    (foldl f+ (car fonts) (cdr fonts))))
+  (if (null? fs)
+      f1
+      (let ([f+ (lambda (f1 f2)
+                  (struct-copy font f1
+                               [fontinfo (info+ (font-fontinfo f1) (font-fontinfo f2))]
+                               [kerning (kerning+ (font-kerning f1) (font-kerning f2))]
+                               [layers (in-layers l f1
+                                                  (map glyph+ 
+                                                       (font-glyphs f1) 
+                                                       (font-glyphs f2)))]))]
+            [fonts (map reduced-font (cons f1 fs))])
+        (foldl f+ (car fonts) (cdr fonts)))))
 
 ; Font Real ... -> Font
 (define (font* f s1 . ss)
-  (scale (reduced-font f) (apply * (cons s1 ss))))
+  (let ([s (apply * (cons s1 ss))])
+    (if (= 1 s) f
+        (font-scale* (reduced-font f) s))))
 
 ; FontObject Real ... -> FontObject
 (define (font:* o s1 . ss)
@@ -187,8 +195,8 @@
 
 ; FontObject ... -> FontObject
 (define (font:- o1 . os)
-  (apply font:+ (cons o1 (map (lambda (o) (font:* o -1))
-                                  os))))
+  (font:+ o1 (font:* (apply font:+ os) -1)))
+          
 
 ; FontObject Real ... -> FontObject
 (define (font:/ o s1 . ss)
@@ -264,12 +272,12 @@
 ; FontObject -> FontObject
 ; project the object on the x axis (set every y coord. to zero)
 (define (x-> o)
-  (scale o 1 0))
+  ((if (font? o) font-scale* scale) o 1 0))
 
 ; FontObject -> FontObject
 ; project the object on the y axis (set every x coord. to zero)
 (define (y-> o)
-  (scale o 0 1))  
+  ((if (font? o) font-scale* scale) o 0 1))  
 
 ; FFont ... -> (listof FFont)
 (define (interpolables  f . fs)
@@ -282,7 +290,7 @@
                       (match-fonts-contours f0 a)))
                   fs))))
 
-(define-syntax-rule (define-interpolable-fonts (id ...) f ...)
+(define-syntax-rule (define-interpolable-fonts (id f) ...)
   (define-values (id ...)
     (apply values (get-interpolable-fonts f ...))))
 
@@ -330,3 +338,9 @@
                                        (font-glyphs f2)))]))
                                                       
 
+
+
+
+(define f0 (read-ufo "/Users/daniele/Downloads/source-sans-pro-master/RomanMM/SourceSansPro_0.ufo"))
+(define f1 (read-ufo "/Users/daniele/Downloads/source-sans-pro-master/RomanMM/SourceSansPro_1.ufo"))
+(define-interpolable-fonts (a f1) (b f0))

@@ -110,9 +110,9 @@
   [get-sidebearings-at (case-> (-> glyph? real? (or/c (cons/c real? real?) #f))
                                (-> glyph? font? real? (or/c (cons/c real? real?) #f))
                                (-> glyph? font? name/c real? (or/c (cons/c real? real?) #f)))]
-  [glyph-signed-area (case-> (-> glyph? real?)
-                             (-> glyph? font? real?)
-                             (-> glyph? font? name/c real?))]
+  [glyph-signed-area (case-> (-> glyph? natural-number/c real?)
+                             (-> glyph? font? natural-number/c real?)
+                             (-> glyph? font? name/c natural-number/c real?))]
   [set-sidebearings (case-> (-> glyph? (or/c real? #f) (or/c real? #f) glyph?)
                             (-> glyph? font? (or/c real? #f) (or/c real? #f) glyph?)
                             (-> glyph? font? name/c (or/c real? #f) (or/c real? #f) glyph?))]
@@ -177,8 +177,8 @@
   [for-each-guidelines (-> (-> guideline? any) glyph? any)]
   [map-anchors (-> (-> anchor? any/c) glyph? (listof any/c))]
   [for-each-anchors (-> (-> anchor? any) glyph? any)]
-  [map-points (-> (-> point? any/c) glyph? (listof any/c))]
-  [for-each-points (-> (-> point? any) glyph? any)]
+  [map-points (-> (-> point? any/c) contour? (listof any/c))]
+  [for-each-points (-> (-> point? any) contour? any)]
   [glyph->glyph1 (-> glyph? glyph?)]
   [glyph->glyph2 (-> glyph? glyph?)]
   [anchor->contour (-> anchor? contour?)]
@@ -330,8 +330,42 @@
           [descender (dict-ref (font-fontinfo f) 'descender -250)]
           [glyphs (map (lambda (g) (draw-glyph (decompose-glyph f g)))
                        (get-glyphs f (unique-letters (TEXT))))])
-      (pictf:font ascender descender glyphs (lambda (p) (apply kerning-value f p))))))
+      (pictf:font ascender descender glyphs (lambda (p) (apply kerning-value f p)))))
+  #:methods gen:geometric
+  [(define/generic super-transform transform)
+   (define/generic super-translate translate)
+   (define/generic super-scale scale)
+   (define/generic super-rotate rotate)
+   (define/generic super-skew-x skew-x)
+   (define/generic super-skew-y skew-y)
+   (define/generic super-reflect-x reflect-x)
+   (define/generic super-reflect-y reflect-y)
+   (define (transform f m)
+     (apply-font-trans f super-transform m))
+   (define (translate f x y)
+     (apply-font-trans f super-translate x y))
+   (define (scale f fx [fy fx])
+     (apply-font-trans f super-scale fx fy))
+   (define (rotate f a)
+     (apply-font-trans f super-rotate a))
+   (define (skew-x f a)
+     (apply-font-trans f super-skew-x a))
+   (define (skew-y f a)
+     (apply-font-trans f super-skew-y a))
+   (define (reflect-x f)
+     (apply-font-trans f super-reflect-x))
+   (define (reflect-y f)
+     (apply-font-trans f super-reflect-y))])
 
+; FFont (T -> T) . T1 -> FFont
+; Produce a new Font applying the transformation
+(define (apply-font-trans f fn . args)
+  (struct-copy font f
+               [layers (map-layers
+                        (lambda (l)
+                          (struct-copy layer l
+                                       [glyphs (map-glyphs (lambda (g) (apply fn g args)) l)]))
+                        f)]))
 
 ;;; Layer
 ;;; (layer Symbol HashTable HashTable)
@@ -376,7 +410,7 @@
   (define (translate g x y)
     (apply-glyph-trans g super-translate x y))
   (define (scale g fx [fy fx])
-    (apply-glyph-trans g super-scale fx fy))
+    (glyph-scale g fx fy))
   (define (rotate g a)
     (apply-glyph-trans g super-rotate a))
   (define (skew-x g a)
@@ -396,6 +430,14 @@
                  [components (map t (glyph-components g))]
                  [anchors (map t (glyph-anchors g))]
                  [contours (map t (glyph-contours g))])))
+
+; Glyph Real Real -> Glyph
+(define (glyph-scale g fx [fy fx])
+  (let ([a (glyph-advance g)])
+    (struct-copy glyph (apply-glyph-trans g scale fx fy)
+                 [advance (struct-copy advance a
+                                       [width  (* (advance-width  a) fx)]
+                                       [height (* (advance-height a) fy)])])))
 
 ;;; Advance
 ;;; (advance Number Number)
@@ -763,13 +805,13 @@
 ; produces the area for the given glyph (negative if in the wrong direction)
 (define glyph-signed-area 
   (case-lambda 
-    [(g) (foldl + 0 
+    [(g precision) (foldl + 0 
                 (map-contours 
                  (lambda (c) 
-                   (bezier-signed-area (contour->bezier c)))
+                   (bezier-signed-area (contour->bezier c) 3 precision))
                  g))]
-    [(g f) (glyph-signed-area g f 'public.default)]
-    [(g f ln) (glyph-signed-area (decompose-glyph f g ln))]))
+    [(g f precision) (glyph-signed-area g f 'public.default precision)]
+    [(g f ln precision) (glyph-signed-area (decompose-glyph f g ln) precision)]))
   
 
 ; Glyph Font Symbol (Number or False) (Number or False)  -> Glyph
@@ -1462,7 +1504,7 @@
 ; Glyph -> Glyph
 ; reverse the direction of all contours in the glyph if the area is negative
 (define (glyph-correct-directions g)
-  (if (< (glyph-signed-area g) 0)
+  (if (< (glyph-signed-area g 30) 0)
       (glyph-reverse-directions g)
       g))
 

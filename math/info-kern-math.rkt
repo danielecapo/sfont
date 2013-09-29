@@ -1,8 +1,6 @@
 #lang racket
 
-(require "../ufo.rkt"
-         "../geometry.rkt"
-         "interpolables.rkt")
+(require "../ufo.rkt")
 
 
 (provide 
@@ -17,9 +15,11 @@
 (define (info-scale i fx [fy fx])
   (make-immutable-hash
    (hash-map i (lambda (key value)
-                 (cons key 
-                      (((car (dict-ref *info-transform* key)) 
-                        * value) fx fy))))))
+                 (let ([r (dict-ref *info-transform* key #f)])
+                   (if r 
+                       (cons key 
+                             (((car r) * value) fx fy))
+                       (cons key value)))))))
 
 ; FontInfo ... -> FontInfo
 (define (info+ i1 . is)
@@ -31,9 +31,8 @@
                                  (cons key
                                        (match value
                                          [(list _ ...) (map + value v2)]
-                                         [(? string? value) value]
                                          [(? real? value) (+ value v2)]
-                                         [_ (error "cannot add info")]))))))))]
+                                         [_  value]))))))))]
         (foldl aux i1 is)))
 
 
