@@ -5,43 +5,22 @@
          "../geometry.rkt"
          "../properties.rkt"
          "../utilities.rkt")
-#;
+
 (provide (except-out (all-from-out racket) + - * /)
-         (rename-out [transform transform]
-                     [translate translate]
-                     [rotate rotate]
-                     [scale scale]
-                     [skew-x skew-x]
-                     [skew-y skew-y]
-                     [reflect-x reflect-x]
-                     [reflect-y reflect-y]
-                     [ffont->ufo get-ufo]
-                     [ffont-scale-glyphs glyphs-scale])
-         (except-out (all-from-out "../geometry.rkt")
-                     transform
-                     translate
-                     rotate
-                     scale
-                     skew-x
-                     skew-y
-                     reflect-x
-                     reflect-y)
          (contract-out
-          [ffont? (-> any/c boolean?)]
-          [fglyph? (-> any/c boolean?)]
           [fontmath-object/c (-> any/c boolean?)]
           [font-object/c (-> any/c boolean?)]
-          [get-interpolable-fonts (->* () () #:rest (listof font?) (listof ffont?))]
+          [get-interpolable-fonts (->* () () #:rest (listof font?) (listof font?))]
           [rename prod * (->* (fontmath-object/c) () #:rest (listof fontmath-object/c) fontmath-object/c)]
           [rename add  + (->* (fontmath-object/c) () #:rest (listof fontmath-object/c) fontmath-object/c)]
           [rename sub  - (->* (fontmath-object/c) () #:rest (listof fontmath-object/c) fontmath-object/c)]
           [rename div  / (->* (fontmath-object/c) () #:rest (listof fontmath-object/c) fontmath-object/c)]
           [x-> (-> font-object/c font-object/c)]
           [y-> (-> font-object/c font-object/c)]
-          [fix-components (-> ffont? ffont? ffont?)])
+          [fix-components (-> font? font? font?)])
          define-interpolable-fonts
          define-space
-         use-glyphs
+         use-only-glyphs
          )
    
          
@@ -341,6 +320,6 @@
 
 
 
-(define f0 (read-ufo "/Users/daniele/Downloads/source-sans-pro-master/RomanMM/SourceSansPro_0.ufo"))
-(define f1 (read-ufo "/Users/daniele/Downloads/source-sans-pro-master/RomanMM/SourceSansPro_1.ufo"))
-(define-interpolable-fonts (a f1) (b f0))
+; (define f0 (read-ufo "/Users/daniele/Downloads/source-sans-pro-master/RomanMM/SourceSansPro_0.ufo"))
+; (define f1 (read-ufo "/Users/daniele/Downloads/source-sans-pro-master/RomanMM/SourceSansPro_1.ufo"))
+; (define-interpolable-fonts (a f1) (b f0))
