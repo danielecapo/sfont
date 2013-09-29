@@ -1,6 +1,7 @@
 #lang racket
 
 (require "../math.rkt"
+         "../geometry.rkt"
          "../ufo.rkt"
          "../utilities.rkt")
 
@@ -15,17 +16,16 @@
 ;   ...))
 ;
 ;It binds id to the corresponding font, the fonts are 
-;trasformed in the format used for interpolations, then 
-;outlines are processed to minimize non compatible glyphs.
-;Glyphs that can't be interpolated are then automatically discarded.
+;trasformed in order to make them interpolables.
+;Glyphs that can't be interpolated are automatically discarded.
 
 ;Adjust the paths so that they point to the files in your computer
 
 
 (define-interpolable-fonts 
-  (light bold) 
-  (read-ufo "/Users/daniele/Downloads/source-sans-pro-master/RomanMM/SourceSansPro_0.ufo")
-  (read-ufo "/Users/daniele/Downloads/source-sans-pro-master/RomanMM/SourceSansPro_1.ufo"))
+  (light (read-ufo "/Users/daniele/Downloads/source-sans-pro-master/RomanMM/SourceSansPro_0.ufo"))
+  (bold (read-ufo "/Users/daniele/Downloads/source-sans-pro-master/RomanMM/SourceSansPro_1.ufo"))) 
+  
 
 light
 
@@ -191,8 +191,6 @@ bold
 
 ;with math.rkt you get also transformations (translation, rotation, ...)
 ;that operate on glyphs (not touching fontinfo, etc.) with the exception of scale
-;To scale glyphs without scaling infos use glyphs-scale
-;warning: these operations are slow
 
 (code+expr
  (rotate bold (/ pi 12))
@@ -219,17 +217,11 @@ bold
  )
 
 (code+expr
- (glyphs-scale bold 2.2 2)
+ (scale bold 2.2 2)
  )
 
-;Once you have done you can write your fonts to ufo
-;You have to get a ufo from the inyterpolable font we are using
 
-(get-ufo (s1 
-             (+ (* 0.6 s1-bold-wide)
-                (* 0.2 s1-light))))
-            
-;Then you can write it with write-ufo (provided by ufo.rkt)
+
 
 
 

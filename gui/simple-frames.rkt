@@ -9,7 +9,7 @@
 
 (provide 
  (contract-out 
-  (animate (->* ((-> real? (or/c font? ffont?)) natural-number/c natural-number/c) (real? real? (-> real? real?)) (or/c font? ffont?))))
+  (animate (->* ((-> real? font?) natural-number/c natural-number/c) (real? real? (-> real? real?)) font?)))
  animate-fonts
  slider-application)
   
@@ -140,14 +140,14 @@
 ; See below for an example
 (define-syntax slider-application
   (syntax-rules (font sliders update)
-    [(_ [font font-proc get-ufo] 
+    [(_ [font font-proc final-proc] 
         [sliders (sl-name sl-min sl-max init) ...]
         [text txt sz])
      (let ([w (world (slider-editor 
                       (string->text txt) sz 
                       (make-immutable-hash (list (cons 'sl-name init) ...))))]
            [f-proc font-proc]
-           [f-ufo get-ufo])
+           [fi-proc final-proc])
        (lambda ()
          (let* ([slider-updater (lambda (f v can)
                                   (begin
@@ -223,7 +223,7 @@
                                            (let ([filepath (put-file "Generate UFO" frame #f "untitled.ufo" "ufo")])
                                              (when filepath
                                                (write-ufo 
-                                                (f-ufo
+                                                (fi-proc
                                                    (apply f-proc 
                                                           (map ((curry get-input) (world-current-state w)) '(sl-name ...))))
                                                 filepath
