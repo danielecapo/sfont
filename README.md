@@ -4,7 +4,7 @@
 The goal of this project is to produce a library to work with fonts in Racket.
 The idea is that using the ability of DrRacket to draw images in the REPL a similar software can be used for teaching and making experiment with 'parametric' definitions of fonts in an interective environment.
 
-**Beware that this project is far from being 'stable' and (at least, I hope) will change in the future.**
+**Beware that this project is far from being 'stable' (it may change without warning).**
 
 You can see three screencasts here:
 
@@ -58,7 +58,7 @@ This means that operations like converting to UFO3 etc., will actually return a 
 ### Read and write UFOs
 
 ```
-(require "ufo.rkt")
+(require sfont)
 ```
 
 To read a UFO:
@@ -120,12 +120,12 @@ The basic usage of space is
 
 ```
 (space f
-	a / 20 60
-	b / 60 20
+	a : 20 60
+	b : 60 20
 	...)
 ```
 
-The form `a / 20 60` should be intuitive, the first is the glyph, after the slash you have the left and right sidebearings.
+The form `a : 20 60` should be intuitive, the first is the glyph, after the slash you have the left and right sidebearings.
 Sidebearings can be expressed in various ways:
 
 `--` 
@@ -154,7 +154,7 @@ You can define groups (but they are not added to the font groups dictionary):
 (space f
 	[groups
 		(rounded-left '(c d e o q))]
-	@ rounded-left / 30 --)
+	@ rounded-left : 30 --)
 ```
 
 You need to place `@` in front of the group names in the spacing forms.
@@ -163,11 +163,11 @@ It is like
 
 ```
 (space f
-	c / 30 --
-	d / 30 --
-	e / 30 --
-	o / 30 --
-	q / 30 --)
+	c : 30 --
+	d : 30 --
+	e : 30 --
+	o : 30 --
+	q : 30 --)
 ```
 
 Another way to do this is to group glyphs in parentheses in the spacing form:
@@ -184,8 +184,8 @@ Another way to do this is to group glyphs in parentheses in the spacing form:
 			(rounded_left '(o b p))]
 	[right-groups
 		    (diagonal_right '(v w y))]
-	@ rounded_left @ diagonal_right / -40
-	o o / 20)
+	@ rounded_left @ diagonal_right : -40
+	o o : 20)
 ```
 
 The kerning groups are added to the font groups with the prefixes public.kern1. and public.kern2., the kern form is simple enough (use `@` before groups, in that way the macro will add the correct prefix for you).
@@ -210,9 +210,6 @@ The function is called with the font, the height of capitals, the space applied 
 (upper-tracy f 700 140 70 11) 
 ```
 
-### Interpolations
-
-A discussion of interpolations is in examples/usemath.rkt.
 
 ### Macros for defining fonts
 

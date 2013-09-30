@@ -792,7 +792,7 @@
 ; produce a pair representing sidebearings measured at y = h
 (define get-sidebearings-at
   (case-lambda
-    [(g h) (let* ([is (intersections-at g)]
+    [(g h) (let* ([is (intersections-at g h)]
                   [a (advance-width (glyph-advance g))])
              (if (null? is)
                  #f
@@ -883,7 +883,7 @@
                                         'ascender)
                               0.67)))])
     (if (hash-has-key? (seq f) 'n)
-        (let ([inters (intersections-at f (seq f 'n) xh/2)])
+        (let ([inters (intersections-at (seq f 'n) f xh/2)])
           (if (> (length inters) 2)
               (vec-length (vec- (second inters)
                                 (first inters)))
@@ -900,7 +900,7 @@
                                         'ascender)
                               0.67)))])
     (if (hash-has-key? (seq f) 'H)
-        (let ([inters (intersections-at f (seq f 'H) xh/2)])
+        (let ([inters (intersections-at (seq f 'H) f xh/2)])
           (if (> (length inters) 2)
               (vec-length (vec- (second inters)
                                 (first inters)))

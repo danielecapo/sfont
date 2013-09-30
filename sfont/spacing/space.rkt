@@ -12,6 +12,7 @@
  kern
  space-glyph
  add-kern
+ ;space-glyphs
  )
  
 ; Spacer
@@ -78,22 +79,21 @@
      (space f [groups] . spacing-forms)]))
 
 (define-syntax space-glyphs
-  (syntax-rules (/ @)
-    [(space-glyphs f (name ...) / l r . spacing-forms)
+  (syntax-rules (: @)
+    [(space-glyphs f (name ...) : l r . spacing-forms)
      (let ([group (list 'name ...)])
-       (space-glyphs f @ group / l r . spacing-forms))]
-    [(space-glyphs f name / l r . spacing-forms)
+       (space-glyphs f @ group : l r . spacing-forms))]
+    [(space-glyphs f name : l r . spacing-forms)
      (let ([fo f])
        (space-glyphs (insert-glyph fo (space-glyph fo (get-glyph fo 'name) l r)) . spacing-forms))]
     [(space-glyphs f) f]
-    [(space-glyphs f @ group / l r . spacing-forms)
+    [(space-glyphs f @ group : l r . spacing-forms)
      (let ([fo f])
        (space-glyphs 
         (foldl (lambda (g fo) 
                  (insert-glyph fo (space-glyph fo (get-glyph fo g) l r)))
                fo group)
         . spacing-forms))]))
-
 
 
 (define-syntax space-glyph
@@ -171,19 +171,19 @@
      (kern f [left-groups] [right-groups] . kern-forms)]))
 
 (define-syntax make-kerns
-  (syntax-rules (/ @)
+  (syntax-rules (: @)
     [(make-kerns f1 #f . kern-forms)
      (let ([k (make-hash)])
        (make-kerns f1 k . kern-forms))]
-    [(make-kerns f1 kh @ l r / v . kern-forms)
+    [(make-kerns f1 kh @ l r : v . kern-forms)
      (make-kerns f1 (add-kern f1 kh (left-kern-group 'l) 'r v) . kern-forms)] 
-    [(make-kerns f1 kh l @ r / v . kern-forms)
+    [(make-kerns f1 kh l @ r : v . kern-forms)
      (make-kerns f1 (add-kern f1 kh 'l (right-kern-group 'r) v) . kern-forms)] 
-    [(make-kerns f1 kh @ l @ r / v . kern-forms)
+    [(make-kerns f1 kh @ l @ r : v . kern-forms)
      (make-kerns f1 (add-kern f1 kh (left-kern-group 'l) (right-kern-group 'r) v) . kern-forms)] 
-    [(make-kerns f1 kh l r / v . kern-forms)
+    [(make-kerns f1 kh l r : v . kern-forms)
      (make-kerns f1 (add-kern f1 kh 'l 'r v) . kern-forms)] 
-    [(make-kerns f1 kh) (make-immutable-hash (hash->list kh))]))
+    [(make-kerns f1 kh) (make-immutable-kerning kh)]))
 
     
 (define-syntax add-kern
@@ -195,7 +195,10 @@
              (hash-set! k l (make-hash (list (cons r v)))))    
          k)]))
 
-
+(define (make-immutable-kerning k)
+  (make-immutable-hash
+   (hash-map k (lambda (k v)
+                 (cons k (make-immutable-hash (hash->list v)))))))
 
 ; define-spacing-rule
 (define-syntax define-spacing-rule 
@@ -222,32 +225,32 @@
    [d min]
    [e o]
    [f (floor (* c-adj o))])
-  a / -- (b mid)
-  b / (a mid) e
-  c / e f
-  d / e (a mid)
-  e / e f
-  f / -- --
-  g / -- --
-  h / (c mid) (b mid)
-  i / (c mid) (a mid)
-  j / (a mid) (a mid)
-  k / (c mid) d
-  l / (c mid) (a mid)
-  m / (a mid) (b mid)
-  n / (a mid) (b mid)
-  o / e e
-  p / (c mid) e
-  q / e (a mid)
-  r / (a mid) d
-  s / -- --
-  t / -- --
-  u / (b mid) (b mid)
-  v / d d
-  w / d d
-  x / d d
-  y / (d xh) (d xh)
-  z / -- --)
+  a : -- (b mid)
+  b : (a mid) e
+  c : e f
+  d : e (a mid)
+  e : e f
+  f : -- --
+  g : -- --
+  h : (c mid) (b mid)
+  i : (c mid) (a mid)
+  j : (a mid) (a mid)
+  k : (c mid) d
+  l : (c mid) (a mid)
+  m : (a mid) (b mid)
+  n : (a mid) (b mid)
+  o : e e
+  p : (c mid) e
+  q : e (a mid)
+  r : (a mid) d
+  s : -- --
+  t : -- --
+  u : (b mid) (b mid)
+  v : d d
+  w : d d
+  x : d d
+  y : (d xh) (d xh)
+  z : -- --)
                          
 (define-spacing-rule
   uppercase-tracy 
@@ -258,32 +261,32 @@
    [c (floor (/ h 2))]
    [d min]
    [e o])
-  A / d d
-  B / (a mid) c
-  C / e c
-  D / (a mid) e
-  E / (a mid) c
-  F / (a mid) c
-  G / e (b (/ mid 2.5))
-  H / (a mid) (a mid)
-  I / (a mid) (a mid)
-  J / d (a mid)
-  K / (a mid) d
-  L / (a mid) d
-  M / (b mid) (a mid)
-  N / (b mid) (b mid)
-  O / e e
-  P / (a mid) e
-  Q / (e mid) (e mid)
-  R / (a mid) d
-  S / -- --
-  T / d d
-  U / (a mid) (b mid)
-  V / d d
-  W / d d
-  X / d d
-  Y / d d
-  Z / c c)
+  A : d d
+  B : (a mid) c
+  C : e c
+  D : (a mid) e
+  E : (a mid) c
+  F : (a mid) c
+  G : e (b (/ mid 2.5))
+  H : (a mid) (a mid)
+  I : (a mid) (a mid)
+  J : d (a mid)
+  K : (a mid) d
+  L : (a mid) d
+  M : (b mid) (a mid)
+  N : (b mid) (b mid)
+  O : e e
+  P : (a mid) e
+  Q : (e mid) (e mid)
+  R : (a mid) d
+  S : -- --
+  T : d d
+  U : (a mid) (b mid)
+  V : d d
+  W : d d
+  X : d d
+  Y : d d
+  Z : c c)
 
 
 ;;;;;;;;;;;
