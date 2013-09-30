@@ -1,6 +1,6 @@
 #lang racket
 (require "../geometry.rkt"
-         "../ufo.rkt"
+         "../main.rkt"
          "../utilities.rkt"
          "../fontpict.rkt"
          "../glyphlist.rkt"

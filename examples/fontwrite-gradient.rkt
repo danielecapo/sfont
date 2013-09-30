@@ -1,8 +1,8 @@
 #lang racket
-(require "../parametric/fontwriter.rkt"
-         "../utilities.rkt"
-         "../ufo.rkt"
-         "../export/type1.rkt")
+(require "../sfont/parametric/fontwriter.rkt"
+         "../sfont/utilities.rkt"
+         "../sfont/main.rkt"
+         "../sfont/export/type1.rkt")
 
 (provide gradients)
 

@@ -1,5 +1,5 @@
 #lang racket
-(require "../ufo.rkt"
+(require "../main.rkt"
          "../geometry.rkt"
          "writepfa.rkt"
          "../utilities.rkt")

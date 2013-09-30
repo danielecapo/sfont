@@ -4,7 +4,7 @@
          "../fontpict.rkt"
          racket/gui/base
          "../math.rkt"
-         "../ufo.rkt"
+         "../main.rkt"
          "../utilities.rkt")
 
 (provide 

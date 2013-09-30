@@ -1,4 +1,6 @@
 compiled/*
 */compiled/*
+sfont/compiled/*
+sfont/*/compiled/*
 *~
 *.ufo

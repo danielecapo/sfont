@@ -1,7 +1,7 @@
 #lang racket
-(require "../parametric/fontwriter.rkt"
-         "../utilities.rkt"
-         "../ufo.rkt")
+(require "../sfont/parametric/fontwriter.rkt"
+         "../sfont/utilities.rkt"
+         "../sfont/main.rkt")
 
 (provide wave-fnt
          mount-fnt)

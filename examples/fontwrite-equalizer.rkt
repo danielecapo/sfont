@@ -1,7 +1,7 @@
 #lang racket
-(require "../parametric/fontwriter.rkt"
-         "../utilities.rkt"
-         "../fontpict.rkt")
+(require "../sfont/parametric/fontwriter.rkt"
+         "../sfont/utilities.rkt"
+         "../sfont/fontpict.rkt")
 
 (provide equalizer)
 

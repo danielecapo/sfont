@@ -1,6 +1,6 @@
 #lang racket
 
-(require "../ufo.rkt"
+(require "../main.rkt"
          "../fontpict.rkt"
          "../geometry.rkt")
 
