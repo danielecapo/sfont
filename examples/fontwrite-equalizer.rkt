@@ -3,6 +3,8 @@
          "../utilities.rkt"
          "../fontpict.rkt")
 
+(provide equalizer)
+
 ; inspired by fontastic http://code.andreaskoller.com/libraries/fontastic/
 (define alphabet-lc '(a b c d e f g h i j k l m n o p q r s t u v w x y z))
 
@@ -38,3 +40,7 @@
                 (eq-glyph name n s space width sb))
               alphabet-lc
               (range 1 (+ 1 (length alphabet-lc)))))))
+
+(equalizer)
+(equalizer #:width 200)
+(equalizer #:s 10)

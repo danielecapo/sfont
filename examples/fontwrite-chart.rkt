@@ -4,6 +4,8 @@
          "../utilities.rkt"
          "../ufo.rkt")
 
+(provide c)
+
 (define (slice cx cy radius angle)
   (if (= angle 0)
       '#f
@@ -75,6 +77,11 @@
  ('nine -> 9)
  ('zero -> 10))
 )
+
+(parameterize ([TEXT (string->text "1 2 3 4 5 6 7 8 9 0")])
+  (print c))
+
+
 ;(chartme)
 ;(chartme #:pos 1)
 ;(chartme #:pos 2)

@@ -4,6 +4,7 @@
          "../ufo.rkt"
          "../export/type1.rkt")
 
+(provide gradients)
 
 (define alphabet-lc '(a b c d e f g h i j k l m n o p q r s t u v w x y z))
 
@@ -154,23 +155,17 @@
               (range 10 (+ 10 (length alphabet-lc))))
          )))
 
-(SIZE 40)
-(TEXT
-   (list alphabet-lc
-         (add-suffix-lon 'vstr alphabet-lc)
-         (add-suffix-lon 'hstr alphabet-lc)
-         (add-suffix-lon 'dstr alphabet-lc)
-         (add-suffix-lon 'dstr1 alphabet-lc)
-         (add-suffix-lon 'ring alphabet-lc)))
-(define sh (gradients #:n 8))
-sh
-(define sh1
-    (struct-copy font sh [fontinfo (let ([i (font-fontinfo sh)])
-                                         (hash-set* i 
-                                                    'postscriptIsFixedPitch #t
-                                                    'postscriptBlueValues '(-10 0 740 750)
-                                                    'postscriptOtherBlues '(-250 -240)
-                                                    'postscriptStemSnapH '(23 45 57)
-                                                    'postscriptStemSnapV '(23 45 57)))]))
-;(write-type1 (ufo->pfa sh1 (cons (vec -150 -250) (vec 1150 750))) "gradients.txt")
+(parameterize ([SIZE 40]
+               [TEXT
+                (list alphabet-lc
+                      (add-suffix-lon 'vstr alphabet-lc)
+                      (add-suffix-lon 'hstr alphabet-lc)
+                      (add-suffix-lon 'dstr alphabet-lc)
+                      (add-suffix-lon 'dstr1 alphabet-lc)
+                      (add-suffix-lon 'ring alphabet-lc))])
+  (let ([sh (gradients #:n 8)])
+    (print sh)))
+
+
+
 
