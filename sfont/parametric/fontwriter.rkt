@@ -214,8 +214,7 @@
        (from (x y) (name o . args))]
       [(name o . args)
        (cond [(list? o) (map (lambda (i) (fn i . args)) o)]
-             [else (fn o . args)])]
-      )))
+             [else (fn o . args)])])))
 
 
 

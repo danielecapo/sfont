@@ -20,8 +20,7 @@
           [fix-components (-> font? font? font?)])
          define-interpolable-fonts
          define-space
-         use-only-glyphs
-         )
+         use-only-glyphs)
    
          
 (define fontmath-object/c
