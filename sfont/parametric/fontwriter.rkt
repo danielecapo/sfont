@@ -4,7 +4,7 @@
          "../utilities.rkt"
          "../fontpict.rkt"
          "../glyphlist.rkt"
-         "../spacing/main.rkt")
+         "../spacing/space.rkt")
 
 
 (provide 

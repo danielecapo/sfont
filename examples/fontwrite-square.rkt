@@ -1,10 +1,10 @@
 #lang racket
 
-(require "../sfont/parametric/main.rkt")
+(require "../sfont/parametric/fontwriter.rkt")
 
 (provide sq)
 
-;An example of the fontwriter 'language'
+;An example of the parametric 'language'
 ;the font macro can be used in two ways:
 ;1. to produce a 'static' font
 ;2. to produce a procedure that can be called with keyword arguments,
