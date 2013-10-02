@@ -4,7 +4,8 @@
          "../main.rkt"
          "../geometry.rkt"
          "../properties.rkt"
-         "../utilities.rkt")
+         "../utilities.rkt"
+         (for-syntax racket/syntax))
 
 (provide (except-out (all-from-out racket) + - * /)
          (contract-out
@@ -268,9 +269,6 @@
                       (match-fonts-contours f0 a)))
                   fs))))
 
-(define-syntax-rule (define-interpolable-fonts (id f) ...)
-  (define-values (id ...)
-    (apply values (get-interpolable-fonts f ...))))
 
 ; Font ... -> Font ...
 (define (get-interpolable-fonts . fs)
@@ -279,28 +277,7 @@
                 (prepare-font f #f #t))
               fs)))
 
-(define-syntax (define-space stx)
-  (syntax-case stx ()
-    [(define-space id (origin [font ...]))
-     (with-syntax ([(fname ...)
-                    (map (lambda (f) 
-                           (datum->syntax stx (string->symbol 
-                                               (format "~a-~a" (syntax->datum #'id)
-                                                       (syntax->datum f)))))
-                         (syntax->list #'(font ...)))])
-       #'(begin
-           (define (id f . fs)
-             (apply values (map (lambda (f) (add origin f)) (cons f fs))))
-           (define fname (sub font origin)) ...))]))
 
-
-
-;(define-syntax-rule (rot exp angle)
-;  (let [(rad-angle (degree->rad angle))]
-;    (parameterize ([current-transformation 
-;                    (matrix-mul (rotation-matrix rad-angle)
-;                                (current-transformation))])
-;      (trans-eval exp))))
 
 ; Font, Font -> Font
 ; Produce a new font with components scale fields imported from f2
@@ -317,8 +294,31 @@
                                                       
 
 
+;;; MACROS
+(define-syntax-rule (define-interpolable-fonts (id f) ...)
+  (define-values (id ...)
+    (apply values (get-interpolable-fonts f ...))))
 
 
-; (define f0 (read-ufo "/Users/daniele/Downloads/source-sans-pro-master/RomanMM/SourceSansPro_0.ufo"))
-; (define f1 (read-ufo "/Users/daniele/Downloads/source-sans-pro-master/RomanMM/SourceSansPro_1.ufo"))
-; (define-interpolable-fonts (a f1) (b f0))
+(define-syntax (define-space stx)
+  (syntax-case stx ()
+    [(define-space id (origin [font ...]))
+     (for-each (lambda (i)
+                 (unless (identifier? i)
+                   (raise-syntax-error #f "Not an identifier" stx i)))
+               (append (list #'id #'origin) (syntax->list #'(font ...))))
+     (with-syntax ([(fname ...)
+                    (map (lambda (f)
+                           (format-id stx "~a-~a" #'id f))
+                         (syntax->list #'(font ...)))])
+       #'(begin
+           (define (id f . fs)
+             (apply values (map (lambda (f) (add origin f)) (cons f fs))))
+           (define fname (sub font origin)) ...))]))
+
+
+
+
+ (define f0 (read-ufo "/Users/daniele/Downloads/source-sans-pro-master/RomanMM/SourceSansPro_0.ufo"))
+ (define f1 (read-ufo "/Users/daniele/Downloads/source-sans-pro-master/RomanMM/SourceSansPro_1.ufo"))
+ (define-interpolable-fonts (a f1) (b f0))
