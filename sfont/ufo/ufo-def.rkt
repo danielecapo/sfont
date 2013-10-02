@@ -119,9 +119,7 @@
   [set-sidebearings-at (case-> (-> glyph? (or/c real? #f) (or/c real? #f) real? glyph?)
                                (-> glyph? font? (or/c real? #f) (or/c real? #f) real? glyph?)
                                (-> glyph? font? name/c (or/c real? #f) (or/c real? #f) real? glyph?))]
-  [adjust-sidebearings (case-> (-> glyph? (or/c real? #f) (or/c real? #f) glyph?)
-                               (-> glyph? font? (or/c real? #f) (or/c real? #f) glyph?)
-                               (-> glyph? font? name/c (or/c real? #f) (or/c real? #f) glyph?))]
+  [adjust-sidebearings (-> glyph? (or/c real? #f) (or/c real? #f) glyph?)]
   [lowercase-stems (-> font? real?)]
   [uppercase-stems (-> font? real?)]
   [correct-directions (-> font? font?)]
@@ -858,20 +856,19 @@
         
 ; Glyph Font Symbol (Number or False) (Number or False) -> Glyph
 ; adjust left and right sidebearings for the glyph
-(define adjust-sidebearings 
-  (case-lambda
-    [(g left right)
-     (let* ([os (get-sidebearings g)])     
-       (if os
-           (set-sidebearings 
-            g 
-            (if left (+ (car os) left) #f)
-            (if right (+ (cdr os) right) #f))
-           g))]
-    [(g f left right) 
-     (adjust-sidebearings (decompose-glyph f g) left right)]
-    [(g f ln left right) 
-     (adjust-sidebearings (decompose-glyph f g ln) left right)]))
+(define (adjust-sidebearings g left right)
+  (let* ([a (glyph-advance g)]
+         [aw (advance-width a)])
+    (if left
+        (struct-copy glyph (translate g left 0)
+                     [advance (struct-copy advance a
+                                           [width (+ aw left (if right right 0))])])
+        (if right
+            (struct-copy glyph g
+                         [advance (struct-copy advance a
+                                               [width (+ aw right)])])
+            g))))
+  
   
 ; Font -> Number
 ; produce the value of lowercase stems from n
