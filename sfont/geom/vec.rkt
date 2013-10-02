@@ -72,7 +72,8 @@
 ; approximae number using the global variable *precision*
 
 (define (approx n) 
-  (if (exact-integer? n) n
+  (if (integer? n) 
+      (exact-round n)
       (* (exact-round (/ n *precision*)) *precision*)))
 
 ;;; Vec

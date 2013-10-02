@@ -155,20 +155,20 @@
     [(_ g left-form right-form)
      #'(sg g #f left-form right-form)]
     [(_ g f left-form right-form)
-     (with-syntax ([gd #'(if f 
-                             (decompose-glyph f g)
-                             g)])
-       (let ([left (syntax-case #'left-form (-- <->)
-                     [-- #'0]
-                     [(<-> l) #'l]
-                     [(l h) #'(- l (car (get-sidebearings-at gd h )))]
-                     [l #'(- l (car (get-sidebearings gd)))])])
-         (with-syntax ([l left])
-           #'(let ([r right-form])
-               (let ([fo f])
-                 (if fo
-                     (adjust-sidebearings g f l r)
-                     (adjust-sidebearings g l r)))))))]))
+     (with-syntax ([gd #'(let ([fo f])
+                           (if fo 
+                               (decompose-glyph fo g)
+                               g))])
+                   
+       (let ([make-adj (lambda (s left?)
+                         (syntax-case s (-- <->)
+                           [-- #'0]
+                           [(<-> l) #'l]
+                           [(l h) #`(- l ((if #,left? car cdr) (get-sidebearings-at gd h)))]
+                           [l #`(- l ((if #,left? car cdr) (get-sidebearings gd)))]))])
+         (with-syntax ([l (make-adj #'left-form #t)]
+                       [r (make-adj #'right-form #f)])
+           #'(adjust-sidebearings g l r))))]))
   
 (define fo (read-ufo "/Users/daniele/Downloads/source-sans-pro-master/RomanMM/SourceSansPro_0.ufo"))
 (define a (seq fo 'a))
