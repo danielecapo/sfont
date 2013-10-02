@@ -1,6 +1,7 @@
 #lang racket
 (require "../main.rkt"
-         "../geometry.rkt")
+         "../geometry.rkt"
+         (for-syntax racket/syntax))
 
 (provide
  (contract-out 
@@ -138,6 +139,39 @@
      (space-glyph (space-glyph g l --)
                   -- r)]))
 
+
+; (space-glyph g left-form right-form) ->
+;   (let ([l ---]
+;         [r ---])
+;    (adjust-sidebearings g l r)
+(define-syntax (sg stx)
+  (syntax-case stx (/--/ --)
+    [(_ g f -- (/--/ aw))
+     #'(sg g -- (/--/ aw))]
+    [(_ g -- (/--/ aw))
+     #'(struct-copy glyph g
+                    [advance (struct-copy advance (glyph-advance g)
+                                          [width aw])])]
+    [(_ g left-form right-form)
+     #'(sg g #f left-form right-form)]
+    [(_ g f left-form right-form)
+     (with-syntax ([gd #'(if f 
+                             (decompose-glyph f g)
+                             g)])
+       (let ([left (syntax-case #'left-form (-- <->)
+                     [-- #'0]
+                     [(<-> l) #'l]
+                     [(l h) #'(- l (car (get-sidebearings-at gd h )))]
+                     [l #'(- l (car (get-sidebearings gd)))])])
+         (with-syntax ([l left])
+           #'(let ([r right-form])
+               (let ([fo f])
+                 (if fo
+                     (adjust-sidebearings g f l r)
+                     (adjust-sidebearings g l r)))))))]))
+  
+(define fo (read-ufo "/Users/daniele/Downloads/source-sans-pro-master/RomanMM/SourceSansPro_0.ufo"))
+(define a (seq fo 'a))
 ; Symbol -> Symbol
 ; add public.kern1 to the group name
 (define (left-kern-group n)
