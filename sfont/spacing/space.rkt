@@ -69,98 +69,64 @@
   (foldl set-space f s))
 
 ; space-macro
-(define-syntax space
-  (syntax-rules (groups)
+(define-syntax (space stx)
+  (syntax-case stx (groups : @)
+    [(space) 
+     (raise-syntax-error #f "Expected Font" stx)]
+    [(space f) #'f]
     [(space f 
             [groups (name glyphs) ...]
             . spacing-forms)
-     (let ([name glyphs] ...)
-       (space-glyphs f . spacing-forms))]
-    [(space f . spacing-forms)
-     (space f [groups] . spacing-forms)]))
-
-(define-syntax space-glyphs
-  (syntax-rules (: @)
-    [(space-glyphs f (name ...) : l r . spacing-forms)
-     (let ([group (list 'name ...)])
-       (space-glyphs f @ group : l r . spacing-forms))]
-    [(space-glyphs f name : l r . spacing-forms)
-     (let ([fo f])
-       (space-glyphs (insert-glyph fo (space-glyph fo (get-glyph fo 'name) l r)) . spacing-forms))]
-    [(space-glyphs f) f]
-    [(space-glyphs f @ group : l r . spacing-forms)
-     (let ([fo f])
-       (space-glyphs 
-        (foldl (lambda (g fo) 
-                 (insert-glyph fo (space-glyph fo (get-glyph fo g) l r)))
-               fo group)
-        . spacing-forms))]))
-
-
-(define-syntax space-glyph
-  (syntax-rules (-- <-> /--/)
-    [(space-glyph f g left right)
-     (let ([gd (decompose-glyph f g)])
-       (space-glyph gd left right))]
-    [(space-glyph g -- --) g]
-    [(space-glyph g (/--/ a) --)
-     (struct-copy glyph g 
-                  [advance (struct-copy advance (glyph-advance g) 
-                                        [width a])])]
-    [(space-glyph g l (/--/ a))
-     (struct-copy glyph (space-glyph g l --) 
-                  [advance (struct-copy advance (glyph-advance g) 
-                                        [width a])])]
-    [(space-glyph g (/--/ a) (<-> r))
-     (let ([delta (- r (- a (advance-width (glyph-advance g))))])
-       (space-glyph (struct-copy glyph g 
-                                   [advance (struct-copy advance (glyph-advance g) 
-                                                         [width a])])
-                    (<-> (- delta)) (<-> delta)))]
-    [(space-glyph g (/--/ a) r)
-     (let* ([gt (space-glyph g -- r)]
-            [l (car (get-sidebearings g))]
-            [at (advance-width (glyph-advance gt))]
-            [delta (- a at)])
-       (space-glyph gt (<-> delta) --))]
-    [(space-glyph g (<-> l) r)
-     (space-glyph (adjust-sidebearings g l #f) -- r)]
-    [(space-glyph g l (<-> r))
-     (space-glyph (adjust-sidebearings g #f r) l --)]
-    [(space-glyph g l (r mr))
-     (space-glyph (set-sidebearings-at g #f r mr) l --)]
-    [(space-glyph g (l ml) r)
-     (space-glyph (set-sidebearings-at g l #f ml) -- r)]
-    [(space-glyph g -- r)
-     (set-sidebearings g #f r)]
-    [(space-glyph g l --)
-     (set-sidebearings g l #f)]
-    [(space-glyph g l r)
-     (space-glyph (space-glyph g l --)
-                  -- r)]))
+     #'(let ([name glyphs] ...)
+         (space f . spacing-forms))]
+    [(space f name : l r . spacing-forms)
+     (unless (identifier? #'name)
+       (raise-syntax-error #f "Expected identifier" stx #'name))
+     #'(let ([fo f])
+         (space (insert-glyph fo (space-glyph ((get-glyph fo 'name) fo) l r)) . spacing-forms))]
+    [(space f @ group : l r . spacing-forms)
+     (unless (identifier? #'group)
+       (raise-syntax-error #f "Expected identifier" stx #'group))
+     #'(let ([fo f])
+         (space 
+          (foldl (lambda (g fo) 
+                   (insert-glyph fo (space-glyph ((get-glyph fo g) fo) l r)))
+                 fo group)
+          . spacing-forms))]
+    [(space f name ... : l r . spacing-forms)
+     (for-each (lambda (n) (when (not (identifier? n))
+                             (raise-syntax-error #f "Expected identifier in inline group" stx n)))
+               (syntax->list #'(name ...)))
+     #'(let ([group (list 'name ...)])
+         (space f @ group : l r . spacing-forms))]))
 
 
-; (space-glyph g left-form right-form) ->
-;   (let ([l ---]
-;         [r ---])
-;    (adjust-sidebearings g l r)
-(define-syntax (sg stx)
+
+(define-syntax (space-glyph stx)
   (syntax-case stx (/--/)
+    [(_) (raise-syntax-error #f "Expected glyph and spacing forms" stx)]
+    [(_ g) (raise-syntax-error #f "Expected spacing forms" stx)]
+    [(_ (g f)) (raise-syntax-error #f "Expected spacing forms" stx)]
+    [(_ g l r x) (raise-syntax-error #f "Expected glyph and spacing forms but given an extra argument" stx #'x)]
     [(_ (g f) left-form (/--/ aw))
      (syntax-case #'aw (--)
        [-- #'(let ([adv (advance-width (glyph-advance g))])
-               (sg (g f) left-form (/--/ adv)))]
-       [w #'(struct-copy glyph (sg (g f) left-form --) 
+               (space-glyph (g f) left-form (/--/ adv)))]
+       [w #'(if (not (real? w))
+                (error "Expected real? given: " w)
+                (struct-copy glyph (space-glyph (g f) left-form --) 
                              [advance (struct-copy advance (glyph-advance g)
-                                                   [width w])])])]
+                                                   [width w])]))])]
     [(_ (g f) (/--/ aw) r)
      (syntax-case #'aw (--)
        [-- #'(let ([adv (advance-width (glyph-advance g))])
-               (sg (g f) (/--/ adv) r))]
-       [w #'(let* ([ng (sg (g f) -- r)]
+               (space-glyph (g f) (/--/ adv) r))]
+       [w #'(if (not (real? w))
+                (error "Expected real? given: " w)
+                (let* ([ng (space-glyph (g f) -- r)]
                    [adv (advance-width (glyph-advance ng))]
                    [diff (- w adv)])
-         (sg (g f) (<-> diff) (/--/ w)))])]
+                  (space-glyph (g f) (<-> diff) (/--/ w))))])]
     [(_ (g f) left-form right-form)
      (with-syntax ([gd #'(let ([fo f])
                            (if fo 
@@ -170,18 +136,23 @@
        (let ([make-adj (lambda (s left?)
                          (syntax-case s (-- <->)
                            [-- #'0]
-                           [(<-> l) #'l]
-                           [(l h) #`(- l ((if #,left? car cdr) (get-sidebearings-at gd h)))]
-                           [l #`(- l ((if #,left? car cdr) (get-sidebearings gd)))]))])
+                           [(<-> l) #'(if (not (real? l))
+                                          (error "Expected real? given: " l)
+                                          l)]
+                           [(l h) #`(cond [(not (real? l))
+                                           (error "Expected real? given: " l)]
+                                          [(not (real? h))
+                                           (error "Expected real? given: " h)]
+                                          [else (- l ((if #,left? car cdr) (get-sidebearings-at gd h)))])]
+                           [l #`(if (not (real? l))
+                                          (error "Expected real? given: " l)
+                                          (- l ((if #,left? car cdr) (get-sidebearings gd))))]))])
          (with-syntax ([l (make-adj #'left-form #t)]
                        [r (make-adj #'right-form #f)])
            #'(adjust-sidebearings g l r))))]
     [(_ g left-form right-form)
-     #'(sg (g #f) left-form right-form)]))
+     #'(space-glyph (g #f) left-form right-form)]))
   
-(define fo (read-ufo "/Users/daniele/Downloads/source-sans-pro-master/RomanMM/SourceSansPro_0.ufo"))
-(define a (seq fo 'a))
-
 
 ; Symbol -> Symbol
 ; add public.kern1 to the group name
