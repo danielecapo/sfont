@@ -61,7 +61,81 @@
      (parse-curves p ...)]))
 
 
+(define-syntax (parse-curves stx)
+  (syntax-case stx (insert)
+    [(_ (insert i) path-element . r)
+     (syntax-case #'path-element (insert @)
+       [(@ insert o) 
+        #'(let* ([b i]
+                 [n (car b)]
+                 [l (last b)])
+            (join-subpaths b (parse-curves (insert (translate* o (vec-x l) (vec-y l))) . r)))]
+       [path-element 
+        #'(let* ([b i]
+            [n (car b)])
+            (join-subpaths b (parse-curves path-element . r)))])]
+    [(_ (x y) path-element . r)
+     (syntax-case #'path-element (@ @° insert)
+       [(insert i) #'(join-subpaths (list (vec x y)) (parse-curves  (insert i) . r))]
+       [(@ insert o) 
+        #'(let ([n (vec x y)])
+            (join-subpaths 
+             (list n) 
+             (parse-curves (insert (translate* o (vec-x n) (vec-y n))) . r)))]
+       [(@ cx cy . t) 
+        #'(let* ([n (vec x y)]
+                 [nc (vec+ n (vec cx cy))])
+            (parse-curves ((vec-x n) (vec-y n))
+                          ((vec-x nc) (vec-y nc) . t)
+                          . r))]
+       [(@° a l . t) 
+        #'(let ([n (vec x y)]
+                [angle a]
+                [len l])
+            (parse-curves (x y) 
+                          (@ (* len (cos angle))
+                             (* len (sin angle))
+                             . t)
+                          . r))]
+       [(cx cy t) 
+        #'(let ([tension t])
+            (parse-curves (x y) (cx cy tension tension) . r))]
+       [(cx cy t t1) 
+        #'(let ([n (vec x y)]
+                [nt (vec cx cy)]
+                [tension t1])
+            (append (list n (vec+ n (vec* (vec- nt n) t)))
+                    (parse-curves ((vec-x nt) (vec-y nt) tension) . r)))]
+       [(x1 y1)
+        #'(cons (vec x y) (cons (vec x1 y1) (parse-curves . r)))]
+       
+       )]
+    [(_ (cx cy t) path-element . r)
+     (syntax-case #'path-element (@ @°)
+       [(@ x1 y1)
+        #'(let* ([nt (vec cx cy)]
+            [n (vec+ nt (vec x1 y1))])
+       (parse-curves ((vec-x nt) (vec-y nt) t)
+            ((vec-x n) (vec-y n)) . r))]
+       [(@° a l)
+        #'(let ([nt (vec cx cy)]
+                [angle a]
+                [len l])
+            (parse-curves (cx cy t) 
+                          (@ (* len (cos angle))
+                             (* len (sin angle)))
+                          . r))]
+       [(x1 y1)
+        #'(let ([n (vec x1 y1)]
+                [nt (vec cx cy)])
+            (cons (vec+ n (vec* (vec- nt n) t)) 
+                  (parse-curves ((vec-x n) (vec-y n)) . r)))])]
+      
+    [(_ (x y))
+     #'(list (vec x y))]
+    [(_) #'()]))
 
+#;
 (define-syntax parse-curves
   (syntax-rules (@ cycle insert @°)
     [(_ (insert i) c ... cycle)
