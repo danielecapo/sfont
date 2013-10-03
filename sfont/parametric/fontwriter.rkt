@@ -135,17 +135,34 @@
     [(_) '()]))
     
    
-(define-syntax ~
-  (syntax-rules (insert cycle)
-    [(_ (insert i) c ... cycle)
-     (let* ([b i]
-            [n (car b)])
-       (parse-lines ((insert b) c ... ((vec-x n) (vec-y n))) ()))]
-    [(_ (x y) c ... cycle)
-     (let ([n (vec x y)])
-       (parse-lines (((vec-x n) (vec-y n)) c ... ((vec-x n) (vec-y n))) ()))]
+
+
+(define-syntax (~ stx)
+  (syntax-case stx (insert cycle)
+    [(_ f c ... cycle)
+     (syntax-case #'f (insert)
+       [(insert i) #'(let* ([b i]
+                            [n (car b)])
+                       (~ (insert b) c ... ((vec-x n) (vec-y n))))]
+       [(x y) #'(let ([n (vec x y)])
+                  (~ ((vec-x n) (vec-y n)) c ... ((vec-x n) (vec-y n))))]
+       [x (raise-syntax-error #f "Expected coordinates or (insert ...)" stx #'x)])]
     [(_ . r)
-     (parse-lines r ())]))
+     (letrec ([p-lines (lambda (ps acc)
+                         (syntax-case ps (--)
+                           [() (datum->syntax 
+                                  stx 
+                                  (cons 'parse-curves (syntax->list acc)))]
+                           [(-- l . r)
+                            (p-lines #'r (datum->syntax 
+                                          stx 
+                                          (append (syntax->list acc) 
+                                                  (list #'(@ 0 0) #'l #'(@ 0 0)))))]
+                           [(f . r) 
+                            (p-lines #'r (datum->syntax stx (append (syntax->list acc) (list #'f))))]
+                           ))])
+       (with-syntax ([p (p-lines #'r #'())])
+         #'p))]))
    
 
 
