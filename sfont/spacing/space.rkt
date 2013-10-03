@@ -145,16 +145,23 @@
 ;         [r ---])
 ;    (adjust-sidebearings g l r)
 (define-syntax (sg stx)
-  (syntax-case stx (/--/ --)
-    [(_ g f -- (/--/ aw))
-     #'(sg g -- (/--/ aw))]
-    [(_ g -- (/--/ aw))
-     #'(struct-copy glyph g
-                    [advance (struct-copy advance (glyph-advance g)
-                                          [width aw])])]
-    [(_ g left-form right-form)
-     #'(sg g #f left-form right-form)]
-    [(_ g f left-form right-form)
+  (syntax-case stx (/--/)
+    [(_ (g f) left-form (/--/ aw))
+     (syntax-case #'aw (--)
+       [-- #'(let ([adv (advance-width (glyph-advance g))])
+               (sg (g f) left-form (/--/ adv)))]
+       [w #'(struct-copy glyph (sg (g f) left-form --) 
+                             [advance (struct-copy advance (glyph-advance g)
+                                                   [width w])])])]
+    [(_ (g f) (/--/ aw) r)
+     (syntax-case #'aw (--)
+       [-- #'(let ([adv (advance-width (glyph-advance g))])
+               (sg (g f) (/--/ adv) r))]
+       [w #'(let* ([ng (sg (g f) -- r)]
+                   [adv (advance-width (glyph-advance ng))]
+                   [diff (- w adv)])
+         (sg (g f) (<-> diff) (/--/ w)))])]
+    [(_ (g f) left-form right-form)
      (with-syntax ([gd #'(let ([fo f])
                            (if fo 
                                (decompose-glyph fo g)
@@ -168,10 +175,14 @@
                            [l #`(- l ((if #,left? car cdr) (get-sidebearings gd)))]))])
          (with-syntax ([l (make-adj #'left-form #t)]
                        [r (make-adj #'right-form #f)])
-           #'(adjust-sidebearings g l r))))]))
+           #'(adjust-sidebearings g l r))))]
+    [(_ g left-form right-form)
+     #'(sg (g #f) left-form right-form)]))
   
 (define fo (read-ufo "/Users/daniele/Downloads/source-sans-pro-master/RomanMM/SourceSansPro_0.ufo"))
 (define a (seq fo 'a))
+
+
 ; Symbol -> Symbol
 ; add public.kern1 to the group name
 (define (left-kern-group n)
