@@ -4,7 +4,8 @@
          "../utilities.rkt"
          "../fontpict.rkt"
          "../glyphlist.rkt"
-         "../spacing/space.rkt")
+         "../spacing/space.rkt"
+         (for-syntax "../geometry.rkt"))
 
 
 (provide 
@@ -36,33 +37,9 @@
              [reflect-x* reflect-x]
              [reflect-y* reflect-y]))
 
-;(define-syntax ~
-;    (syntax-rules (insert cycle)
-;      [(~ (o ...) ())
-;       (path o ...)]
-;      [(~ ((x y) p ...) (o cycle))
-;       (~ ((x y) p ... o (x y)) ())]
-;      [(~ (p ...) (insert . r))
-;       (path p ... (insert . r))]
-;      [(~ (p ...) (o . r))
-;       (~ (p ... o) r)]
-;      [(~ (x y) . r)
-;       (~ ((x y)) r)]))
-
-(define-syntax parse-lines 
-  (syntax-rules (--)
-    [(parse-lines ((x y) . r) ())
-     (parse-lines r ((x y)))]
-    [(parse-lines (-- l . r) (p ... pl))
-     (parse-lines r (p ... pl (@ 0 0) l (@ 0 0)))]
-    [(parse-lines (c . r) (p ...))
-     (parse-lines r (p ... c))]
-    [(parse-lines () (p ...))
-     (parse-curves p ...)]))
-
 
 (define-syntax (parse-curves stx)
-  (syntax-case stx (insert)
+  (syntax-case stx (@ @° insert)
     [(_ (insert i) path-element . r)
      (syntax-case #'path-element (insert @)
        [(@ insert o) 
@@ -70,6 +47,12 @@
                  [n (car b)]
                  [l (last b)])
             (join-subpaths b (parse-curves (insert (translate* o (vec-x l) (vec-y l))) . r)))]
+       [(@ x y)
+        #'(let* ([b i]
+                 [n (car b)]
+                 [l (last b)]
+                 [p (vec+ l (vec x y))])
+            (join-subpaths b (parse-curves ((vec-x p) (vec-y p)) . r)))]
        [path-element 
         #'(let* ([b i]
             [n (car b)])
@@ -107,9 +90,7 @@
             (append (list n (vec+ n (vec* (vec- nt n) t)))
                     (parse-curves ((vec-x nt) (vec-y nt) tension) . r)))]
        [(x1 y1)
-        #'(cons (vec x y) (cons (vec x1 y1) (parse-curves . r)))]
-       
-       )]
+        #'(cons (vec x y) (parse-curves (x1 y1) . r))])]
     [(_ (cx cy t) path-element . r)
      (syntax-case #'path-element (@ @°)
        [(@ x1 y1)
@@ -129,84 +110,15 @@
         #'(let ([n (vec x1 y1)]
                 [nt (vec cx cy)])
             (cons (vec+ n (vec* (vec- nt n) t)) 
-                  (parse-curves ((vec-x n) (vec-y n)) . r)))])]
+                  (parse-curves ((vec-x n) (vec-y n)) . r)))]
+       [path-element 
+        (raise-syntax-error #f "Invalid path element after tension point" stx #'path-element)])]
       
     [(_ (x y))
      #'(list (vec x y))]
+    [(_ (x y . r))
+     (raise-syntax-error #f "Invalid end path element" stx)]
     [(_) #'()]))
-
-#;
-(define-syntax parse-curves
-  (syntax-rules (@ cycle insert @°)
-    [(_ (insert i) c ... cycle)
-     (let* ([b i]
-            [n (car b)])
-       (parse-curves (insert b) c ... ((vec-x n) (vec-y n))))]
-    [(_ (x y) (insert i) . r)
-     (join-subpaths (list (vec x y)) (parse-curves  (insert i) . r))]
-    [(_ (insert i) (@ insert o) . r)
-     (let* ([b i]
-            [n (car b)]
-            [l (last b)])
-       (join-subpaths b (parse-curves (insert (translate* o (vec-x l) (vec-y l))) . r)))]
-    [(_ (insert i) . r)
-     (let* ([b i]
-            [n (car b)])
-       (join-subpaths b (parse-curves . r)))]
-    [(_ (x y) (@ insert o) . r)
-     (let ([n (vec x y)])
-       (join-subpaths (list n) (parse-curves (insert (translate* o (vec-x n) (vec-y n))) . r)))]
-    [(_ (x y) c ... cycle)
-     (let ([n (vec x y)])
-       (parse-curves ((vec-x n) (vec-y n)) c ... ((vec-x n) (vec-y n))))]
-    [(_ (x y) (@ cx cy . t) . r)
-     (let* ([n (vec x y)]
-            [nc (vec+ n (vec cx cy))])
-       (parse-curves ((vec-x n) (vec-y n))
-            ((vec-x nc) (vec-y nc) . t)
-            . r))]
-    [(_ (x y) (@° a l . t) . r)
-     (let ([n (vec x y)]
-           [angle a]
-           [len l])
-       (parse-curves (x y) 
-                     (@ (* len (cos angle))
-                        (* len (sin angle))
-                        . t)
-                     . r))]
-    [(_ (x y) (cx cy t) . r)
-     (let ([tension t])
-       (parse-curves (x y) (cx cy tension tension) . r))]
-    [(_ (x y) (cx cy t t1) . r)
-     (let ([n (vec x y)]
-           [nt (vec cx cy)]
-           [tension t1])
-       (append (list n (vec+ n (vec* (vec- nt n) t)))
-               (parse-curves ((vec-x nt) (vec-y nt) tension) . r)))]
-    [(_ (cx cy t) (@ x1 y1) . r)
-     (let* ([nt (vec cx cy)]
-            [n (vec+ nt (vec x1 y1))])
-       (parse-curves ((vec-x nt) (vec-y nt) t)
-            ((vec-x n) (vec-y n)) . r))]
-    [(_ (cx cy t) (@° a l) . r)
-     (let ([nt (vec cx cy)]
-           [angle a]
-           [len l])
-       (parse-curves (cx cy t) 
-                     (@ (* len (cos angle))
-                        (* len (sin angle)))
-                     . r))]
-    [(_ (cx cy t) (x1 y1) . r)
-     (let ([n (vec x1 y1)]
-           [nt (vec cx cy)])
-       (cons (vec+ n (vec* (vec- nt n) t)) 
-             (parse-curves ((vec-x n) (vec-y n)) . r)))]
-    [(_ (x y) . r)
-     (cons (vec x y) (parse-curves . r))]
-    
-    [(_ (x y))
-     (list (vec x y))]
-    [(_) '()]))
     
    
 
@@ -238,10 +150,6 @@
        (with-syntax ([p (p-lines #'r #'())])
          #'p))]))
    
-
-
-
-
 
 
 ; Bezier, Bezier -> Bezier
