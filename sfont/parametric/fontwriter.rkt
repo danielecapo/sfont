@@ -368,7 +368,18 @@
        [alignments als ...]
        [variables v ...]
        [glyphs glyph ...])
-     (letrec ([find-ascender
+     (letrec ([find-metric
+               (lambda (s metric)
+                 (syntax-case s ()
+                   [() #'#f]
+                   [([n a o tag ...] . as) 
+                    (print (syntax->list #'(tag ...)))
+                    (if (ormap (lambda (t) (eq? metric (syntax->datum t))) (syntax->list #'(tag ...)))
+                        #'n
+                        (find-metric #'as metric))]
+                   ))]
+              
+              [find-ascender
                (lambda (s)
                  (syntax-case s (:font-ascender)
                    [() (raise-syntax-error #f "Font doesn't define an alignment to be used as ascender in fontinfo" #'(alignments als ...))]
