@@ -322,21 +322,31 @@
        (let* (v ...)
          (font 2 "ufo-rkt"
                    (make-immutable-hash
-                    (list (cons 'unitsPerEm (+ (alg ascender-id) (- (alg descender-id))))
-                          (cons 'ascender (alg ascender-id))
-                          (cons 'descender (alg descender-id))
-                          (cons 'familyName (symbol->string (quote name)))
-                          (cons 'postscriptFontName (symbol->string (quote name)))
-                          (cons 'postscriptBlueValues (sort (flatten 
-                                                           (filter ((curry ormap) (negate negative?))
-                                                                   (list (list (alg blue) (ovs blue)) ...)))
-                                                          <))
-                        (cons 'postscriptOtherBlues (sort (flatten 
-                                                           (filter ((curry andmap) negative?)
-                                                                   (list (list (alg blue) (ovs blue)) ...)))
-                                                          <))
-                          (cons 'versionMajor 1)
-                          (cons 'versionMinor 0)))
+                    (let* ([all-blues (list (list (alg blue) (ovs blue)) ...)]
+                           [blues (sort (flatten 
+                                         (filter ((curry ormap) 
+                                                  (negate negative?)) 
+                                                 all-blues))
+                                        <)]
+                           [o-blues (sort (flatten 
+                                           (filter ((curry andmap) negative?)
+                                                   all-blues))
+                                          <)]
+                           [infoa (list (cons 'unitsPerEm (+ (alg ascender-id) (- (alg descender-id))))
+                                        (cons 'ascender (alg ascender-id))
+                                        (cons 'descender (alg descender-id))
+                                        (cons 'familyName (symbol->string (quote name)))
+                                        (cons 'postscriptFontName (symbol->string (quote name)))
+                                        (cons 'versionMajor 1)
+                                        (cons 'versionMinor 0))]
+                           [infob (if (null? blues)
+                                      infoa
+                                      (cons (cons 'postscriptBlueValues blues)
+                                            infoa))])
+                      (if (null? o-blues)
+                          infob
+                          (cons (cons 'postscriptBlueValues blues)
+                                infob))))
                    (make-immutable-hash) 
                    (make-immutable-hash) 
                    #f
