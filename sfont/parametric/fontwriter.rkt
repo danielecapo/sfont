@@ -315,9 +315,12 @@
 
 (define-syntax emit-font-form
   (syntax-rules ()
-    [(emit-font-form name ascender-id descender-id
+    [(emit-font-form name 
+                     ascender-id 
+                     descender-id
+                     (blue ...)
                      (v ...)
-                     glyph ...)
+                     glyph-form ...)
      
        (let* (v ...)
          (font 2 "ufo-rkt"
@@ -327,6 +330,14 @@
                           (cons 'descender (alg descender-id))
                           (cons 'familyName (symbol->string (quote name)))
                           (cons 'postscriptFontName (symbol->string (quote name)))
+                          (cons 'postscriptBlueValues (sort (flatten 
+                                                           (filter ((curry ormap) (negate negative?))
+                                                                   (list (list (alg blue) (ovs blue)) ...)))
+                                                          <))
+                        (cons 'postscriptOtherBlues (sort (flatten 
+                                                           (filter ((curry andmap) negative?)
+                                                                   (list (list (alg blue) (ovs blue)) ...)))
+                                                          <))
                           (cons 'versionMajor 1)
                           (cons 'versionMinor 0)))
                    (make-immutable-hash) 
@@ -334,13 +345,14 @@
                    #f
                    (list 
                     (layer 'public.default #f
-                               (build-glyphs-list glyph ...)))
+                               (build-glyphs-list glyph-form ...)))
                    (make-immutable-hash)
                    #f #f))]))
 
 
 ; (Glyph or (listOf Glyph)) ... -> (listOf Glyph)
-(define (build-glyphs-list . glyphs)
+(define/contract (build-glyphs-list . glyphs)
+  (->* () () #:rest (listof (or/c glyph? (listof glyph?))) (listof glyph?))
   (foldl (lambda (g r) (if (list? g) 
                            (append r g)
                            (append r (list g))))
@@ -367,24 +379,26 @@
     [(font. name
        [alignments als ...]
        [variables v ...]
-       [glyphs glyph ...])
-     (letrec ([find-metric
-               (lambda (s metric)
-                 (syntax-case s ()
-                   [() #'#f]
-                   [([n a o tag ...] . as) 
-                    (print (syntax->list #'(tag ...)))
-                    (if (ormap (lambda (t) (eq? metric (syntax->datum t))) (syntax->list #'(tag ...)))
-                        #'n
-                        (find-metric #'as metric))]
-                   ))]
-              
+       [glyphs glyph-form ...])
+     (for-each (lambda (i) (unless (identifier? i)
+                            (raise-syntax-error #f "Expected identifier" stx #'i)))
+              (cons #'name
+                    (append (map (compose car syntax->list) (syntax->list #'(als ...)))
+                            (map (compose car syntax->list) (syntax->list #'(v ...))))))
+     (letrec ([find-blues
+               (lambda (s acc)
+                 (syntax-case s (:font-ascender :font-descender)
+                   [() acc]
+                   [([n a o :font-ascender] . as) (find-blues #'as acc)]
+                   [([n a o :font-descender] . as) (find-blues #'as acc)]
+                   [([n a o] . as) (find-blues #'as (datum->syntax s (cons #'n (syntax->list acc))))]))]
               [find-ascender
                (lambda (s)
                  (syntax-case s (:font-ascender)
                    [() (raise-syntax-error #f "Font doesn't define an alignment to be used as ascender in fontinfo" #'(alignments als ...))]
                    [([n a o :font-ascender] . as) #'n]
-                   [([n a o . r] . as) (find-ascender #'as)]))]
+                   [([n a o] . as) (find-ascender #'as)]
+                   [([n a o r] . as) (find-ascender #'as)]))]
               [find-descender
                (lambda (s)
                  (syntax-case s (:font-descender)
@@ -392,41 +406,20 @@
                    [([n a o :font-descender] . as) #'n]
                    [([n a o . r] . as) (find-descender #'as)]))])
        (with-syntax ([ascender  (find-ascender  #'(als ...))]
-                     [descender (find-descender #'(als ...))])
-         #'(let-alignment (als ...)
-                          (emit-font-form name 
-                                          ascender 
-                                          descender 
-                                          (v ...) 
-                                          glyph ...))))]
+                     [descender (find-descender #'(als ...))]
+                     [((alg-name a o . r) ...) #'(als ...)]
+                     [(blue ...) (find-blues #'(als ...) #'())])
+         #'(let* ([alg-name (list a o)] ...)
+             (emit-font-form name 
+                             ascender 
+                             descender 
+                             (blue ...)
+                             (v ...) 
+                             glyph-form ...))))]
     [(font. name
        [alignments als ...]
-       [glyphs glyph ...])
-     #'(font. name [alignments als ...] [variables] [glyphs glyph ...])]))
+       [glyphs glyph-form ...])
+     #'(font. name [alignments als ...] [variables] [glyphs glyph-form ...])]))
 
 
 
-(define-syntax (let-alignment stx)
-    (syntax-case stx ()
-      [(let-alignment ([n a o . r] ...) emit-form)
-       #'(let* ([n (list a o)] ...) emit-form)]))
-
-#;
-(define-syntax (find-ascender stx)
-    (syntax-case stx (:use-as-ascender)
-      [(find-ascender ())
-       (error "font doesn't define an alignment to be used as ascender in fontinfo")]
-      [(find-ascender ([n a o :use-as-ascender] . as))
-       #'n]
-      [(find-ascender ([n a o . r] . as))
-       #'(find-ascender as)]))
-#;
-(define-syntax (find-descender stx)
-    (syntax-case stx (:use-as-descender)
-      [(find-descender ())
-       (error "font doesn't define an alignment to be used as ascender in fontinfo")]
-      [(find-descender ([n a o :use-as-descender] . as))
-       #'n]
-      [(find-descender ([n a o . r] . as))
-       #'(find-descender as)]))
-     
