@@ -39,8 +39,8 @@
        
          [base 0 -10]
          [xh x-height 10]
-         [desc* (/ (- x-height 1000) 2) 0 :use-as-descender]
-         [asc* (- x-height (alg desc*)) 0 :use-as-ascender]
+         [desc* (/ (- x-height 1000) 2) 0 :font-descender]
+         [asc* (- x-height (alg desc*)) 0 :font-ascender]
          [dsc (+ (alg desc*) 10) -10]
          [ascender (- (alg asc*) 10) 10])
       (variables

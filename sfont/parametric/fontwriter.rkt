@@ -5,7 +5,7 @@
          "../fontpict.rkt"
          "../glyphlist.rkt"
          "../spacing/space.rkt"
-         (for-syntax "../geometry.rkt"))
+         (for-syntax racket/list))
 
 
 (provide 
@@ -347,40 +347,51 @@
          '()
          glyphs))
 
-(define-syntax (kw-args-lambda stx)
-  (syntax-case stx ()
-    [(kw-args-lambda () (kwargs ...) font-form)
-     #'(lambda (kwargs ...) font-form)]
-    [(kw-args-lambda ([n v] . args) kwargs font-form)
-     (with-syntax ([kw (datum->syntax stx 
-                                      (string->keyword (symbol->string (syntax->datum #'n))))])
-       #'(kw-args-lambda args 
-                       (kw . ([n v] . kwargs))
-                       font-form))]))
 
-(define-syntax font. 
-  (syntax-rules (alignments variables glyphs)
-    [(font. (name params ...) . rest)
-     (kw-args-lambda (params ...) () (font. name . rest))]
+
+(define-syntax (font. stx)
+  (syntax-case stx (alignments variables glyphs)
+    [(font. (name [param dflt] ...) . rest)
+     (for-each (lambda (p) 
+                 (unless (identifier? p)
+                   (raise-syntax-error #f "Expected identifier" stx p)))
+               (syntax->list #'(param ...)))
+     (with-syntax ([kwarglist
+                    (datum->syntax stx
+                                   (append*
+                                    (map (lambda (p d)
+                                          (cons (string->keyword (symbol->string (syntax->datum p))) (list (list p d))))
+                                         (syntax->list #'(param ...))
+                                         (syntax->list #'(dflt  ...)))))])
+       #'(lambda kwarglist (font. name . rest)))]
     [(font. name
-       (alignments als ...)
-       (variables v ...)
-       (glyphs glyph ...))
-     (let-alignment (als ...)
-                    (emit-font-form name 
-                                    (find-ascender (als ...)) 
-                                    (find-descender (als ...)) 
-                                    (v ...) 
-                                    glyph ...))]
+       [alignments als ...]
+       [variables v ...]
+       [glyphs glyph ...])
+     (letrec ([find-ascender
+               (lambda (s)
+                 (syntax-case s (:font-ascender)
+                   [() (raise-syntax-error #f "Font doesn't define an alignment to be used as ascender in fontinfo" #'(alignments als ...))]
+                   [([n a o :font-ascender] . as) #'n]
+                   [([n a o . r] . as) (find-ascender #'as)]))]
+              [find-descender
+               (lambda (s)
+                 (syntax-case s (:font-descender)
+                   [() (raise-syntax-error #f "Font doesn't define an alignment to be used as descender in fontinfo" #'(alignments als ...))]
+                   [([n a o :font-descender] . as) #'n]
+                   [([n a o . r] . as) (find-descender #'as)]))])
+       (with-syntax ([ascender  (find-ascender  #'(als ...))]
+                     [descender (find-descender #'(als ...))])
+         #'(let-alignment (als ...)
+                          (emit-font-form name 
+                                          ascender 
+                                          descender 
+                                          (v ...) 
+                                          glyph ...))))]
     [(font. name
-       (alignments als ...)
-       glyph ...)
-     (let-alignment (als ...)
-                    (emit-font-form name 
-                                    (find-ascender (als ...)) 
-                                    (find-descender (als ...)) 
-                                    () 
-                                    glyph ...))]))
+       [alignments als ...]
+       [glyphs glyph ...])
+     #'(font. name [alignments als ...] [variables] [glyphs glyph ...])]))
 
 
 
@@ -389,7 +400,7 @@
       [(let-alignment ([n a o . r] ...) emit-form)
        #'(let* ([n (list a o)] ...) emit-form)]))
 
-
+#;
 (define-syntax (find-ascender stx)
     (syntax-case stx (:use-as-ascender)
       [(find-ascender ())
@@ -398,7 +409,7 @@
        #'n]
       [(find-ascender ([n a o . r] . as))
        #'(find-ascender as)]))
-
+#;
 (define-syntax (find-descender stx)
     (syntax-case stx (:use-as-descender)
       [(find-descender ())
