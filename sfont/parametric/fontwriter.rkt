@@ -250,36 +250,43 @@
   (let ([u (hash-ref adobe-glyph-list name #f)])
     (if u (list u) '())))
 
-(define-syntax glyph.
-  (syntax-rules (metrics contours locals)
+(define-syntax (glyph. stx)
+  (syntax-case stx (metrics contours locals)
     [(glyph. name 
-            (metrics metric-form ...)
-            [contours contour ...])
-     (glyph. name (locals)
-            (metrics metric-form ...)
-            [contours contour ...])]
-    [(glyph. name (locals [s v] ...)
-            (metrics metric-form ...)
-            [contours contour ...])
-     (let* ([s v] ...)
-       (space-glyph
-        (glyph 1 name (advance 0 0) (unicode name) #f #f '() '() 
-                   (map bezier->contour (build-contour-list contour ...)) '() (make-immutable-hash))
-         metric-form ...))]))
+             [metrics left-form right-form]
+             . contour-form)
+     #'(glyph. name 
+             [locals]
+             [metrics left-form right-form]
+             . contour-form)]
+    [(glyph. name 
+             [locals [s v] ...]
+             [metrics left-form right-form]
+             . contour-form)
+     (with-syntax ([cnts (syntax-case #'contour-form (contours)
+                           [() #'(list)]
+                           [((contours cnt . cnts))
+                            #'(map bezier->contour 
+                                   (build-contour-list cnt . cnts))])])
+     #'(let* ([s v] ...)
+         (space-glyph
+          (glyph 1 name (advance 0 0) (unicode name) #f #f '() '() 
+                   cnts '() (make-immutable-hash))
+         left-form right-form)))]
+    [(glyph. . body) (raise-syntax-error #f "Invalid glyph. definition." stx)]))
 
 
 
 ; (Bezier or (listOf Bezier) ... -> (listOf Bezier)
-(define (build-contour-list . cnts)
-  (if (not (car cnts))
-      '()
-      (foldl (lambda (c r)
-               (append r (if (andmap vec? c)
-                             (list c)
-                             c)))
-             '()
-             cnts)))
-
+(define/contract (build-contour-list . cnts)
+  (->* () () #:rest (listof (or/c bezier/c (listof bezier/c))) (listof bezier/c))
+  (foldl 
+   (lambda (c r)
+           (append r (if (bezier/c c)
+                         (list c)
+                         c)))
+   '()
+   cnts))
 
 
 
