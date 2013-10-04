@@ -113,9 +113,8 @@
                   (parse-curves ((vec-x n) (vec-y n)) . r)))]
        [path-element 
         (raise-syntax-error #f "Invalid path element after tension point" stx #'path-element)])]
-      
-    [(_ (x y))
-     #'(list (vec x y))]
+    [(_ (insert i)) #'i]
+    [(_ (x y)) #'(list (vec x y))]
     [(_ (x y . r))
      (raise-syntax-error #f "Invalid end path element" stx)]
     [(_) #'()]))
@@ -136,9 +135,7 @@
     [(_ . r)
      (letrec ([p-lines (lambda (ps acc)
                          (syntax-case ps (--)
-                           [() (datum->syntax 
-                                  stx 
-                                  (cons 'parse-curves (syntax->list acc)))]
+                           [() acc]
                            [(-- l . r)
                             (p-lines #'r (datum->syntax 
                                           stx 
@@ -147,8 +144,8 @@
                            [(f . r) 
                             (p-lines #'r (datum->syntax stx (append (syntax->list acc) (list #'f))))]
                            ))])
-       (with-syntax ([p (p-lines #'r #'())])
-         #'p))]))
+       (with-syntax ([(path-elts ...) (p-lines #'r #'())])
+         #'(parse-curves path-elts ...)))]))
    
 
 
