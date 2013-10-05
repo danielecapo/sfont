@@ -82,7 +82,7 @@
                       (name/c) 
                       (listof glyph?))]
   [set-layer (-> font? layer? font?)]
-  [get-glyph (->* (font? name/c) (name/c) (or glyph? #f))]
+  [get-glyph (->* ((or/c font? layer?) name/c) (name/c) (or glyph? #f))]
   [get-glyphs (->* (font? (listof name/c)) (name/c) (listof glyph?))]
   [font-glyphs (-> font? (listof glyph?))]
   [remove-glyph (->* (font? name/c) (name/c) font?)]
@@ -574,10 +574,12 @@
                              new-name new-layer))])))
 
 
-; Font Symbol [Symbol] -> Glyph or False
+; (Font or Layer) Symbol [Symbol] -> Glyph or False
 ; Return the given Glyph in the given Layer, Layer defaults to 'public.default
-(define (get-glyph f g [l 'public.default])
-  (let ([la (get-layer f l)])
+(define (get-glyph o g [l 'public.default])
+ (let ([la (cond [(font? o) (get-layer o l)]
+                 [(layer? o ) o]
+                 [else (error "get-glyph: first argument should be a layer or a font")])])
     (if la
         (hash-ref (layer-glyphs la) g #f)
         (error "get-glyph: layer does not exist"))))
