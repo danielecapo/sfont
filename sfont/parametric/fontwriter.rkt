@@ -241,11 +241,7 @@
 ;
 
 
-; Symbol -> (listof Real)
-; produce the unicode code of the glyph using adobe glyph list
-(define (unicode name)
-  (let ([u (hash-ref adobe-glyph-list name #f)])
-    (if u (list u) '())))
+
 
 (define-syntax (glyph. stx)
   (syntax-case stx (metrics contours locals)
