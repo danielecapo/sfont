@@ -1688,71 +1688,8 @@
      (==> (seq ob a) (seq . r))]))
 
 
-(define-syntax in
-  (syntax-rules ()
-    [(in o [field])
-     (let ([lo o])
-       (field lo))]
-    [(in o (field fn))
-     (==> (in o [field]) fn)]
-    [(in o field . r)
-     (==> o 
-          (in field)
-          (in . r))]))
-
 
   
 
 
 
-
-#;    
-(define (build-accessor o f)
-  (string->symbol
-   (~a (cond [(font? o) 'font]
-             [(glyph? o) 'glyph]
-             [(layer? o) 'layer]
-             [(anchor? o) 'anchor]
-             [(advance? o) 'advance]
-             [(component? o) 'component]
-             [(contour? o) 'contour]
-             [(point? o) 'point]
-             [(vec? o) 'vec]
-             [(trans-mat? o) 'trans-mat]
-             [(guideline? o) 'guideline]
-             [(image? o) 'image])
-       "-"
-       f)))
-
-#;
-(define-syntax build-accessor 
-  (syntax-rules ()
-    [(build-accessor ob a)
-     (let ([o ob])
-       (cond [(font? o) (accessor font a)]
-             [(glyph? o) (accessor glyph a)]
-             [(layer? o) (accessor layer a)]
-             [(anchor? o) (accessor anchor a)]
-             [(advance? o) (accessor advance a)]
-             [(component? o) (accessor component a)]
-             [(contour? o) (accessor contour a)]
-             [(point? o) (accessor point a)]
-             [(vec? o) (accessor vec a)]
-             [(trans-mat? o) (accessor trans-mat a)]
-             [(guideline? o) (accessor guideline a)]
-             [(image? o) (accessor image a)]))]))
-
-
-#;
-(define-syntax (accessor stx)
-  (syntax-case stx ()
-      [(accessor t name)
-       (let ([id (lambda (f)
-                   (let ([str (format f (syntax-e #'t) (syntax-e #'name))])
-                     (datum->syntax #'t (string->symbol str))))])
-  
-         (with-syntax ([ac (id "~a-~a" )])
-                       #'ac))]))
-
-
-         
