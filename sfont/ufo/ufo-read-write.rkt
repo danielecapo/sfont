@@ -374,7 +374,7 @@
                                 (aux (cons (cons l name) acc)
                                      rest-layers
                                      (cons name names)))]))])                
-      (reverse (aux '() (font-layers f) '()))))
+      (reverse (aux '() (hash-values (font-layers f)) '()))))
   
   (define layers-names (get-layers-names))
   (define (write-glyphs glyphs glyphsdir)
@@ -392,9 +392,7 @@
                       (build-path glyphsdir "contents.plist"))))
       
   (define (write-layers)
-    (let ((layers-hash (make-immutable-hash 
-                        (map (lambda (l) (cons (layer-name l) l))
-                            (font-layers f)))))
+    (let ((layers-hash (font-layers f)))
       (for-each (lambda (l)
                   (begin
                     (let ([dir (make-ufo-path (cdr l))]
@@ -433,7 +431,7 @@
 
 ; Font String [Boolean] (String -> ...) (String -> ...) -> side effects
 ; write the UFO to the given path
-(define (write-ufo f path #:overwrite [overwrite #t] #:proc-data [proc-data #f] #:proc-images [proc-images #f])
+(define (write-ufo f path #:overwrite [overwrite #f] #:proc-data [proc-data #f] #:proc-images [proc-images #f])
   (let* ([ff (font-format f)]
          [f (if (= ff 3) (font->ufo3 f) (font->ufo2 f))] 
          [writer (writer f path proc-data proc-images)])

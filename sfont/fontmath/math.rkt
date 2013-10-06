@@ -319,6 +319,4 @@
 
 
 
- (define f0 (read-ufo "/Users/daniele/Downloads/source-sans-pro-master/RomanMM/SourceSansPro_0.ufo"))
- (define f1 (read-ufo "/Users/daniele/Downloads/source-sans-pro-master/RomanMM/SourceSansPro_1.ufo"))
- (define-interpolable-fonts (a f1) (b f0))
+ 

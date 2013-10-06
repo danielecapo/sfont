@@ -21,6 +21,8 @@
   [data/c (-> any/c boolean?)]
   [layerinfo/c (-> any/c boolean?)]
   [color/c (-> any/c boolean?)]
+  [foreground name/c]
+  [background name/c]
   [struct font  
   ((format natural-number/c) 
    (creator string?) 
@@ -28,7 +30,7 @@
    (groups groups/c) 
    (kerning kerning/c)
    (features features/c) 
-   (layers (listof layer?)) 
+   (layers (or/c (listof layer?) (hash/c name/c layer? #:immutable #t)))
    (lib lib/c) 
    (data data/c) 
    (images images/c))]
@@ -255,8 +257,15 @@
      (trans r ... reflect-x super-reflect-x id)
      (trans r ... reflect-y super-reflect-y id)]))
   
+
+;;; CONSTANTS
+
+(define foreground 'public.default)
+(define background 'public.background)
+
 ;;;
 ;;; DATA DEFINITIONS
+
 
 ;;; Names
 ;;; font glyph and groups names are symbol
@@ -313,7 +322,21 @@
 ;;; (font Number String HashTable HashTable HashTable String (listOf Layer) HashTable ... ...)
 (struct font 
   (format creator fontinfo groups kerning features layers lib data images)
-  #:transparent
+  #:guard (lambda (format creator fontinfo groups kerning features layers lib data images tn)
+            (values format 
+                    creator 
+                    fontinfo 
+                    groups 
+                    kerning 
+                    features
+                    (if (hash? layers)
+                        (if (immutable? layers)
+                            layers
+                            (make-immutable-hash (hash->list layers)))
+                    (make-immutable-hash (map (lambda (l) (cons (layer-name l) l)) layers)))
+                    lib 
+                    data 
+                    images))
   #:property prop:draw 
   (lambda (f)
     (let ([ascender (dict-ref (font-fontinfo f) 'ascender 750)]
@@ -539,23 +562,22 @@
   (hash-values gh))
 
 ; Font [Symbol] -> Layer or False
-(define (get-layer f [layer 'public.default])
-  (findf (lambda (l) (eq? (layer-name l) layer))
-         (font-layers f)))
+(define (get-layer f [l foreground])
+  (hash-ref (font-layers f) l #f))
 
 ; (Layer -> T) Font -> (listOf T)
 ; apply the procedure to each layer, collect the results in a list 
 (define (map-layers proc f)
-  (map proc (font-layers f)))
+  (map proc (hash-values (font-layers f))))
 
 ; (Layer -> T) Font -> side effects
 ; apply the procedure to each layer
 (define (for-each-layers proc f)
-  (for-each proc (font-layers f)))
+  (for-each proc (hash-values (font-layers f))))
 
 ; (Glyph -> Boolean) (Font or Layer)-> (listOf Glyphs)
 ; filter the list of glyphs in the layer with the procedure
-(define (filter-glyphs proc o [l 'public.default])
+(define (filter-glyphs proc o [l foreground])
   (let ([la (cond [(font? o) (get-layer o l)]
                   [(layer? o ) o]
                   [else (error "map-glyphs: first argument should be a layer or a font")])])
@@ -567,16 +589,12 @@
   (let ((layers (font-layers f))
         (new-name (layer-name new-layer)))
     (struct-copy font f
-                 [layers
-                  (dict-values
-                   (dict-set (map-layers 
-                              (lambda (l) (cons (layer-name l) l)) f)
-                             new-name new-layer))])))
+                 [layers (hash-set layers new-name new-layer)])))
 
 
 ; (Font or Layer) Symbol [Symbol] -> Glyph or False
-; Return the given Glyph in the given Layer, Layer defaults to 'public.default
-(define (get-glyph o g [l 'public.default])
+; Return the given Glyph in the given Layer, Layer defaults to foreground
+(define (get-glyph o g [l foreground])
  (let ([la (cond [(font? o) (get-layer o l)]
                  [(layer? o ) o]
                  [else (error "get-glyph: first argument should be a layer or a font")])])
@@ -586,8 +604,8 @@
 
 
 ; Font (listOf Symbol) [Symbol] -> (listOf Glyph)
-; Return the given Glyphs in the given Layer, Layer defaults to 'public.default
-(define (get-glyphs f gs [l 'public.default])
+; Return the given Glyphs in the given Layer, Layer defaults to foreground
+(define (get-glyphs f gs [l foreground])
   (filter identity
           (map (lambda (g) (get-glyph f g l)) gs)))
 
@@ -597,14 +615,14 @@
         
 ; Font Symbol [Symbol] -> Font
 ; produce a new font with the glyph removed from the given layer
-(define (remove-glyph f g [layername 'public.default])
+(define (remove-glyph f g [layername foreground])
   (let ((l (get-layer f layername)))
     (set-layer f (struct-copy layer l 
                               [glyphs (hash-remove (layer-glyphs l) g)]))))
     
 ; Font Glyph [Symbol] -> Font
 ; produce a new font with the glyph inserted in the given layer
-(define (insert-glyph f g [layername 'public.default])
+(define (insert-glyph f g [layername foreground])
   (let ((l (get-layer f layername)))
     (set-layer f (struct-copy layer l 
                               [glyphs (hash-set (layer-glyphs l)
@@ -625,7 +643,7 @@
 ; apply the procedure to each glyph in the layer, collects the result in a list
 ; If o is a font, it will select the layer passed named
 ; If Sorted is true the function will be applied to a sorted (alphabetically) list of glyphs
-(define (map-glyphs proc o [l 'public.default] #:sorted [sorted #f])
+(define (map-glyphs proc o [l foreground] #:sorted [sorted #f])
   (let ([la (cond [(font? o) (get-layer o l)]
                   [(layer? o ) o]
                   [else (error "map-glyphs: the second argument should be a layer or a font")])])
@@ -639,7 +657,7 @@
 ; apply the procedure to each glyph in the layer
 ; If o is a font, it will select the layer passed named
 ; If Sorted is true the function will be applied to a sorted (alphabetically) list of glyphs
-(define (for-each-glyphs proc o [layer 'public.default] #:sorted [sorted #f])
+(define (for-each-glyphs proc o [layer foreground] #:sorted [sorted #f])
   (let ([l (cond [(font? o) (get-layer o layer)]
                  [(layer? o ) o]
                  [else (error "for-each-glyphs: the second  argument should be a layer or a font")])])
@@ -684,7 +702,7 @@
 (define (font->ufo2 f)
   (struct-copy font f [format 2] [data #f] [images #f]
                [layers (list 
-                        (layer 'public.default #f 
+                        (layer foreground #f 
                                (map-glyphs glyph->glyph1 f)))]))
 ; Font -> Font
 ; produce a new font that try to be compatible with ufo3 spec     
@@ -700,7 +718,7 @@
 
 ; Font Glyph [Symbol] -> Glyph
 ; decompose glyph components to outlines
-(define (decompose-glyph f g [ln 'public.default])
+(define (decompose-glyph f g [ln foreground])
   (define (decompose-base c)
     (decompose-glyph f (get-glyph f (component-base c) ln) ln))
   (let* ([cs (glyph-components g)])
@@ -714,7 +732,7 @@
 
 ; Font Symbol -> Layer
 ; produces a new layer with glyphs decomposed
-(define (decompose-layer f [ln 'public.default])
+(define (decompose-layer f [ln foreground])
   (struct-copy layer (get-layer f ln)
                [glyphs (map-glyphs (lambda (g) 
                                      (decompose-glyph f g ln))
@@ -724,8 +742,9 @@
 ; produces a new font with all layers decomposed
 (define (decompose-font f)
   (struct-copy font f
-               [layers (map-layers (lambda (l) (decompose-layer f (layer-name l)))
-                                   f)]))
+               [layers (map-layers 
+                        (lambda (l) (decompose-layer f (layer-name l)))
+                        f)]))
 
 ; Glyph [Font] [Symbol] -> BoundingBox
 ; produces the Bounding Box for the given glyph
@@ -734,7 +753,7 @@
     [(g f ln)
      (glyph-bounding-box (decompose-glyph f g ln))]
     [(g f)
-     (glyph-bounding-box g f 'public.default)]
+     (glyph-bounding-box g f foreground)]
     [(g)
      (let ([cs (glyph-contours g)])
        (if (null? cs)
@@ -746,7 +765,7 @@
 
 ; Font [Symbol] [Boolean] -> BoundingBox
 ; produces the Bounding Box for the given font
-(define (font-bounding-box f [ln 'public.default] [components #t])
+(define (font-bounding-box f [ln foreground] [components #t])
   (apply combine-bounding-boxes
          (map-glyphs 
           (lambda (g) (if components 
@@ -797,7 +816,7 @@
              (if (null? is)
                  #f
                  (cons (vec-x (car is)) (- a (vec-x (last is))))))]
-    [(g f h) (get-sidebearings-at g f 'public.default h)]
+    [(g f h) (get-sidebearings-at g f foreground h)]
     [(g f ln h) (get-sidebearings-at (decompose-glyph f g ln) h)]))
            
 
@@ -810,7 +829,7 @@
                  (lambda (c) 
                    (bezier-signed-area (contour->bezier c) 3 precision))
                  g))]
-    [(g f precision) (glyph-signed-area g f 'public.default precision)]
+    [(g f precision) (glyph-signed-area g f foreground precision)]
     [(g f ln precision) (glyph-signed-area (decompose-glyph f g ln) precision)]))
   
 
@@ -1662,7 +1681,7 @@
                   (sequence-ref (seq ob) a)))])]            
     [(seq ob)
      (let ([o ob])
-       (cond [(font? o) (layer-glyphs (get-layer o 'public.default))]
+       (cond [(font? o) (layer-glyphs (get-layer o foreground))]
              [(glyph? o) (glyph-contours o)]
              [(layer? o) (layer-glyphs o)]
              [(contour? o) (contour-points o)]))]
