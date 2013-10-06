@@ -25,38 +25,6 @@
  in-layers)
   
   
-  
-; Now, I want to remove the duplicaton of 'fonts'
-
-
-; Make two interpolable font
-; make every glyph interpolable remove the non interpolable ones
-; remove reference to removed glyphs from kerning and groups
-; remove kerning-pair not presents in both fonts
-; remove info not present in both fonts
-
-
-; make every glyph interpolable remove the non interpolable ones
-; if the glyph is not present in both fonts remove it
-; if the number of contours is different in the two fonts remove the glyph
-; remove line from contours
-; order contours
-; if the contours don't match remove the glyph
-; - remove all the reference to the removed glyph in components
-; sort components
-; remove components if not in both glyph
-; sort anchors
-; remove anchors if not in both glyph
-
-; remove kerning-pair not presents in both fonts
-; for every left kerning name
-; - if not present in both fonts remove it
-; - otherwise
-;   - collect every right name in the first font
-;   - collect every right name in the second font
-;   - remove every kerning entry whose right name is not in both fonts
-
-; remove info not present in both fonts
 
 
 ; Font Font Boolean Boolean -> Font
