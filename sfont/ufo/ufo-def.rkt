@@ -392,7 +392,6 @@
 ;;; (layer Symbol HashTable HashTable)
 ;;; Layer can be build from a list of Glyphs or from an HashTable (Name . Glyph)
 (struct layer (name info glyphs) 
-  #:transparent
   #:guard (lambda (name info glyphs tn)
             (values name
                     info

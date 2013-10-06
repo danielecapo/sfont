@@ -11,8 +11,8 @@
          fupdate)
 
    
-
-(define (lookup o field . args)
+; (listof Pairs) Any/c Symbol Any/c ... -> Any/c
+(define (lookup dic o field . args)
   (letrec ([aux (lambda (t)
                   (if (null? t)
                       (error "The object can be accessed")
@@ -22,31 +22,20 @@
                                 (apply (cadr ac) o args)
                                 (error "Invalid field")))
                           (aux (cdr t)))))])
-    (aux navigator)))
+    (aux dic)))
 
-(define (lookup-set o field . args)
-  (letrec ([aux (lambda (t)
-                  (if (null? t)
-                      (error (format "The object ~a can't be accessed" o))
-                      (if ((caar t) o)
-                          (let ([ac (assoc field (cdar t))])
-                            (if ac 
-                                (apply (cadr ac) o args)
-                                (error "Invalid field")))
-                          (aux (cdr t)))))])
-    (aux setter)))
 
 (define-syntax (fref stx)
   (syntax-case stx (--> @)
     [(_ o (field --> proc0 . procs)) 
-     #'((apply compose (reverse (list proc0 . procs)))  (lookup o 'field))]
+     #'((apply compose (reverse (list proc0 . procs)))  (lookup getter o 'field))]
     [(_ o (field @ i)) 
-     #'(sequence-ref (lookup o 'field) i)]
-    [(_ o (field arg0 . args)) #'(lookup o 'field arg0 . args)]
+     #'(sequence-ref (lookup getter o 'field) i)]
+    [(_ o (field arg0 . args)) #'(lookup getter o 'field arg0 . args)]
     [(_ o field) 
      (unless (identifier? #'field) 
        (raise-syntax-error #f "Expected identifier" stx #'field))
-     #'(lookup o 'field)]
+     #'(lookup getter o 'field)]
     [(_ o field0 field ...) #'(==> (fref o field0) (fref field ...))]))
 
 (define (set-in-sequence s i v)
@@ -64,11 +53,11 @@
     [(_ (o (field @ i)) v)
      #'(fset (o field) (set-in-sequence (fref o field) i v))]
     [(_ (o (field arg0 . args)) v)
-     #'((lookup-set o 'field arg0 . args) v)]
+     #'((lookup setter o 'field arg0 . args) v)]
     [(_ (o field) v) 
      (unless (identifier? #'field) 
        (raise-syntax-error #f "Expected identifier" stx #'field))
-     #'((lookup-set o 'field) v)]
+     #'((lookup setter o 'field) v)]
     [(_ (o field0 field ...) v) 
      #'(fset (o field0) 
                  (fset ((fref o field0) field ...) v))]
@@ -80,78 +69,36 @@
      #'(fset (o field0 field ...)
                  (proc (fref o field0 field ...)))]))
 
-(define navigator
-  `((,font? 
-     (format     ,font-format)
-     (creator    ,font-creator)
-     (fontinfo   ,font-fontinfo)
-     (groups     ,font-groups)
-     (kerning    ,font-kerning)
-     (features   ,font-features)
-     (layers     ,font-layers)
-     (lib        ,font-lib)
-     (data       ,font-data)
-     (images     ,font-images)
-     (layer      ,get-layer)
-     (glyph      ,get-glyph))
-    (,layer?
-     (name       ,layer-name)
-     (info       ,layer-info)
-     (glyphs     ,layer-glyphs)
-     (glyph      ,get-glyph))
-   (,glyph?
-    (format      ,glyph-format)
-    (name        ,glyph-name)
-    (advance     ,glyph-advance)
-    (unicodes    ,glyph-unicodes)
-    (note        ,glyph-note)
-    (image       ,glyph-image)
-    (guidelines  ,glyph-guidelines)
-    (anchors     ,glyph-anchors)
-    (contours    ,glyph-contours)
-    (components  ,glyph-components)
-    (lib         ,glyph-lib))
-   (,advance?
-    (width       ,advance-width)
-    (height      ,advance-height))
-   (,image?
-    (filename   ,image-filename)
-    (matrix     ,image-matrix)
-    (color      ,image-color))
-   (,guideline? 
-    (pos        ,guideline-pos) 
-    (angle      ,guideline-angle) 
-    (name       ,guideline-name)
-    (color      ,guideline-color) 
-    (identifier ,guideline-identifier))
-   (,anchor?
-    (pos        ,anchor-pos)
-    (name       ,anchor-name)
-    (color      ,anchor-color)
-    (identifier ,anchor-identifier))
-   (,contour?
-    (identifier ,contour-identifier)
-    (points     ,contour-points))
-   (,component?
-    (base       ,component-base)
-    (matrix     ,component-matrix)
-    (identifier ,component-identifier))
-   (,point? 
-    (pos        ,point-pos)
-    (type       ,point-type)
-    (smooth     ,point-smooth)
-    (name       ,point-name)
-    (identifier ,point-identifier))
-   (,vec? 
-    (x          ,vec-x)
-    (y          ,vec-y))
-   (,trans-mat?
-    (x          ,trans-mat-x)
-    (xy         ,trans-mat-xy)
-    (yx         ,trans-mat-yx)
-    (y          ,trans-mat-y)
-    (x-offset   ,trans-mat-x-offset)
-    (y-offset   ,trans-mat-y-offset))))
+
+(define-syntax (getters stx)
+  (syntax-case stx ()
+    [(_ str field ...)
+     (with-syntax ([pred (format-id stx "~a?" #'str)]
+                   [(acc ...) (map (lambda (f) (format-id stx "~a-~a" #'str f)) (syntax->list #'(field ...)))])
+     #'(list pred (list 'field acc) ...))]))
+
+(define getter
+  (list
+   (getters point pos type smooth name identifier)
+   (getters contour identifier points) 
+   (getters component base matrix identifier)
+   (getters anchor pos name color identifier)
+   (getters guideline pos angle name color identifier)
+   (getters image filename matrix color)
+   (getters advance width height)
+   (getters glyph format name advance unicodes note image
+            guidelines anchors contours components lib)
+   (append (setters layer name info glyphs)
+           `((glyph ,get-glyph)))
+   (append (setters font format creator fontinfo groups kerning 
+                    features layers lib data images)
+           `((glyph ,get-glyph)
+             (layer ,get-layer)))
+                                                                  
+   (getters vec x y)
+   (getters trans-mat x xy yx y x-offset y-offset)))
+
+
 
 
 (define-syntax (setters stx)
@@ -160,12 +107,7 @@
      (with-syntax ([pred (format-id stx "~a?" #'str)])
      #'(list pred (list 'field (lambda (o) (lambda (v) (struct-copy str o [field v])))) ...))]))
              
-(define-syntax (getters stx)
-  (syntax-case stx ()
-    [(_ str field ...)
-     (with-syntax ([pred (format-id stx "~a?" #'str)]
-                   [(acc ...) (map (lambda (f) (format-id stx "~a-~a" #'str f)) (syntax->list #'(field ...)))])
-     #'(list pred (list 'field acc) ...))]))
+
              
         
 ; (Font or Layer) Symbol Symbol-> (Glyph -> Font)
