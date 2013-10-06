@@ -434,19 +434,62 @@
 ; Font String [Boolean] (String -> ...) (String -> ...) -> side effects
 ; write the UFO to the given path
 (define (write-ufo f path #:overwrite [overwrite #t] #:proc-data [proc-data #f] #:proc-images [proc-images #f])
+  (unless (and (filename-extension path) 
+               (string=? (bytes->string/utf-8 (filename-extension path))
+                         "ufo"))
+    (error (format "Expected ufo extension, but given ~a" path)))
   (let* ([ff (font-format f)]
          [f (if (= ff 3) (font->ufo3 f) (font->ufo2 f))] 
          [writer (writer f path proc-data proc-images)])
     (if (and (directory-exists? path) (not overwrite))
         #f
         (begin
-          (when (directory-exists? path)
-            (delete-directory/files path))
-          (make-directory path)
+          (if (directory-exists? path)
+              (clean-ufo-dir path)
+              (make-directory path))
           (cond [(= ff 2) (write-ufo2 writer)]
                 [(= ff 3) (write-ufo3 writer)]
                 [#t (error "I can only write Ufo 2 and Ufo 3 files")])))))
 
+; PathString -> Void
+; Delete ufo files from ufo dir
+(define (clean-ufo-dir path)
+  (begin
+    (unless (and (filename-extension path) 
+                 (string=? (bytes->string/utf-8 (filename-extension path))
+                           "ufo"))
+      (error (format "Expected ufo extension, but given ~a" path)))
+    (unless (directory-exists? path)
+      (error (format "The path ~a does not exist" path)))
+    (let ([files (map (curry build-path path)
+                      (list "metainfo.plist"
+                            "fontinfo.plist"
+                            "groups.plist"
+                            "kerning.plist"
+                            "features.fea"
+                            "lib.plist"
+                            "layercontents.plist"))]
+          [dirs (map (curry build-path path)
+                     (list "glyphs" "images" "data"))]
+          [gdirs (map (curry build-path path)
+                      (filter (lambda (s)
+                                (and (> (string-length s) 7)
+                                     (string=? "glyphs."
+                                               (substring s 0 7))))
+                              (map path->string (directory-list path))))])
+      (begin
+        (for-each (lambda (f) (when (file-exists? f)
+                                (delete-file f)))
+                  files)
+        (for-each (lambda (d) (when (directory-exists? d)
+                                (delete-directory/files d)))
+                  dirs)
+        (for-each (lambda (d) (when (directory-exists? d)
+                                (delete-directory/files d)))
+                  gdirs)))))
+      
+         
+    
 ; ufoWriter -> side effects
 ; write an UFO2 with the UfoWriter
 (define (write-ufo2 writer)
