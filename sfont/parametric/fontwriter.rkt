@@ -2,8 +2,6 @@
 (require "../geometry.rkt"
          "../main.rkt"
          "../utilities.rkt"
-         "../fontpict.rkt"
-         "../glyphlist.rkt"
          "../spacing/space.rkt"
          (for-syntax racket/list))
 

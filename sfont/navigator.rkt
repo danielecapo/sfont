@@ -4,7 +4,6 @@
          "geometry.rkt"
          "utilities.rkt"
          (for-syntax racket/syntax))
-(require "../sfont-examples/fontwrite-square.rkt")
 
 (provide fref
          fset

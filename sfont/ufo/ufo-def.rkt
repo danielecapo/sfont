@@ -997,10 +997,9 @@
 ; Image -> Image
 ; Round the coordinates of the image 
 (define (image-round i)
-  (with-precision 
-   (1)
-   (struct-copy image i
-                [matrix (struct-copy trans-mat (image-matrix i))])))
+  (parameterize ([precision 1]) 
+    (struct-copy image i
+                 [matrix (struct-copy trans-mat (image-matrix i))])))
                        
 ; Guideline -> Guideline
 ; Round the coordinates of the guideline 
@@ -1023,8 +1022,7 @@
 ; Component -> Component
 ; Round the coordinates of the component 
 (define (component-round c)
-  (with-precision 
-   (1)
+  (parameterize ([precision 1]) 
    (struct-copy component c 
                 [matrix (struct-copy trans-mat (component-matrix c))])))
 

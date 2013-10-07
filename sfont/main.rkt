@@ -14,4 +14,6 @@
           make-contour
           make-point)
          (all-from-out "ufo/ufo-read-write.rkt")
-         )
+         SIZE
+         TEXT
+         show-kerning?)

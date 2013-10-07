@@ -1,7 +1,6 @@
 #lang racket
 
 (require "../main.rkt"
-         "../fontpict.rkt"
          "../geometry.rkt")
 
 

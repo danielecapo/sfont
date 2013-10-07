@@ -9,10 +9,8 @@
 
 (provide 
  (all-from-out "geometric-generic.rkt")
- with-precision
  (contract-out
-  [*precision* real?]
-  [set-precision! (-> real? any/c)]
+  [precision parameter?]
   [approx (-> real? real?)]
   [struct vec ((x real?)
                (y real?))]
@@ -47,8 +45,7 @@
   [intersect-hor (-> real? vec? vec? (or/c vec? #f))]
   [intersect-vert (-> real? vec? vec? (or/c vec? #f))]
   [pass-through-hor? (-> real? vec? vec? boolean?)]
-  [pass-through-vert? (-> real? vec? vec? boolean?)])
- )
+  [pass-through-vert? (-> real? vec? vec? boolean?)]))
   
 
 
@@ -56,17 +53,9 @@
 ;;; DEFINITIONS 
 ;;; *precision* is a variable used to approximate numbers
 
-(define *precision* 0.0001)
+(define precision (make-parameter 0.0001))
 
-(define (set-precision! p) (set! *precision* p))
 
-(define-syntax-rule (with-precision (precision) body ...)
-  (let ([old-precision *precision*])
-    (begin (set-precision! precision)
-           (let ([result body ...])
-             (begin
-               (set-precision! old-precision)
-               result)))))
 
 ; Real -> Real
 ; approximae number using the global variable *precision*
@@ -74,7 +63,7 @@
 (define (approx n) 
   (if (integer? n) 
       (exact-round n)
-      (* (exact-round (/ n *precision*)) *precision*)))
+      (* (exact-round (/ n (precision))) (precision))))
 
 ;;; Vec
 ;;; (vec Real Real)
@@ -199,8 +188,7 @@
 ; Vec -> Vec
 ; round to exact integer the vector
 (define (vec-round v)
-  (with-precision 
-   (1)
+  (parameterize ([precision 1]) 
    (struct-copy vec v)))
 
 ; Vec Vec -> Vec
