@@ -1,6 +1,7 @@
 #lang racket
 
-(require "../sfont/parametric/fontwriter.rkt")
+(require "../sfont/parametric/fontwriter.rkt"
+         "../sfont/main.rkt")
 
 (provide sq)
 

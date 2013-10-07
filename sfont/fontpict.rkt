@@ -191,6 +191,6 @@
                   [(> h 0) (/ 400 h)]
                   [else 1])])
     (dc
-     (lambda (dc dx dy) (draw-glyph-dc dc g f x-min y-max))
-       (* f w) (* f (if upm upm h)))))
+     (lambda (dc dx dy) (draw-glyph-dc dc g f x-min by-max))
+       (* f w) (* f h))))
       

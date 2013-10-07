@@ -415,7 +415,7 @@
                    (cons (vec 0 0) (vec 0 0))
                    (apply combine-bounding-boxes
                           (map bezier-bounding-box cs)))])
-      (pictf:glyph (draw-glyph g) bb)))
+      (pictf:glyph (draw-glyph g) bb 750 1000)))
   #:methods gen:geometric
   [(define/generic super-transform transform)
    (define/generic super-translate translate)
