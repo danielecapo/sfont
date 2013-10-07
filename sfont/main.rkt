@@ -16,4 +16,7 @@
          (all-from-out "ufo/ufo-read-write.rkt")
          SIZE
          TEXT
-         show-kerning?)
+         PEN
+         show-kerning?
+         set-contour-view!
+         with-contour-view)
