@@ -11,7 +11,7 @@
 ;2. to produce a procedure that can be called with keyword arguments,
 ;these arguments are the parameters of the font
 ;
-;The example here show the second form.
+;The example here shows the second form.
 ;The font is divided in four areas
 ;1. name and parameters
 ;2. alignments 
