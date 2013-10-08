@@ -227,6 +227,15 @@
        (map (lambda (v) (vec* v f)) b ))]
     [(list (? real? x) ...)
      (apply * x)]
+    [(list (? vec? v) ...)
+     (foldl (lambda (v1 v2)
+              (let* ([c1 (make-rectangular (vec-x v1) (vec-y v1))]
+                     [c2 (make-rectangular (vec-x v2) (vec-y v2))]
+                     [c (* c1 c2)])
+                (vec (real-part c) (imag-part c))))
+            a as)]
+    [(list (? bezier/c b) ...)
+     (foldl (lambda (b1 b2) (map prod b1 b2)) a as)]
     [_ (error "Invalid operands for product")]))
 
 ; FontMathObject Real ... -> FontMathObject
