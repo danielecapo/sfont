@@ -67,6 +67,11 @@
       (insert-glyph f (set-sidebearings g f nleft nright))))
   (foldl set-space f s))
 
+; Font Symbol (listof Symbol) -> Font
+(define (add-to-groups f g gs)
+  (struct-copy font f 
+               [groups (hash-set (font-groups f) g gs)]))
+
 ; space macro
 ; The error messages should be more helpful
 (define-syntax (space stx)
@@ -77,8 +82,18 @@
     [(space f 
             [groups (name glyphs) ...]
             . spacing-forms)
-     #'(let ([name glyphs] ...)
-         (space f . spacing-forms))]
+     #'(let ([f1 (foldl (lambda (n g f) (add-to-groups f n g))
+                        f
+                        (list 'name ...) 
+                        (list glyphs ...))])
+         (let ([name glyphs] ...)
+           (space f1 . spacing-forms)))]
+    [(space f (name ...) : l r . spacing-forms)
+     (for-each (lambda (n) (when (not (identifier? n))
+                             (raise-syntax-error #f "Expected identifier in inline group" stx n)))
+               (syntax->list #'(name ...)))
+     #'(let ([group (list 'name ...)])
+         (space f @ group : l r . spacing-forms))]
     [(space f name : l r . spacing-forms)
      (unless (identifier? #'name)
        (raise-syntax-error #f "Expected identifier" stx #'name))
@@ -87,18 +102,13 @@
     [(space f @ group : l r . spacing-forms)
      (unless (identifier? #'group)
        (raise-syntax-error #f "Expected identifier" stx #'group))
-     #'(let ([fo f])
+     #'(let* ([fo f]
+              [gr (hash-ref (font-groups f) 'group #f)])
          (space 
           (foldl (lambda (g fo) 
                    (insert-glyph fo (space-glyph ((get-glyph fo g) fo) l r)))
-                 fo group)
-          . spacing-forms))]
-    [(space f name ... : l r . spacing-forms)
-     (for-each (lambda (n) (when (not (identifier? n))
-                             (raise-syntax-error #f "Expected identifier in inline group" stx n)))
-               (syntax->list #'(name ...)))
-     #'(let ([group (list 'name ...)])
-         (space f @ group : l r . spacing-forms))]))
+                 fo (if gr gr group))
+          . spacing-forms))]))
 
 
 

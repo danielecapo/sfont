@@ -179,7 +179,7 @@ It is like
 Another way to do this is to group glyphs in parentheses in the spacing form:
 
 ```
-(c d e o q) / 30 --
+(c d e o q) : 30 --
 ```	
 
 To change a single glyph you can use `space-glyph`:
