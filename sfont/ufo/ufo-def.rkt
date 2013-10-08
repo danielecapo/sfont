@@ -192,6 +192,9 @@
   [kern-groups2->3 (-> font? font?)]
   [kerning-group-names (-> font? (cons/c (listof name/c) (listof name/c)))]
   [valid-kerning-group-name? (-> name/c (or/c 'left 'right) boolean?)]
+  [left-kerning-group? (-> name/c boolean?)]
+  [right-kerning-group? (-> name/c boolean?)]
+  [kerning-group? (-> name/c boolean?)]
   [update-kerning-group-name (-> name/c (or/c 'left 'right) name/c)]
   [lookup-kerning-pair (-> font? name/c name/c (values real? boolean?))]
   [kerning-value (-> font? name/c name/c real?)]
@@ -1583,6 +1586,22 @@
            (starts-with? ns "public.kern1.")]
           [(eq? side 'right)
            (starts-with? ns "public.kern2.")])))
+
+; Symbol -> Boolean
+; True if the name is a valid left kerning group name
+(define (left-kerning-group? n)
+  (starts-with? (symbol->string n) "public.kern1."))
+
+; Symbol -> Boolean
+; True if the name is a valid right kerning group name
+(define (right-kerning-group? n)
+  (starts-with? (symbol->string n) "public.kern2."))
+
+; Symbol -> Boolean
+; True if the name is a kerning group 
+(define (kerning-group? n)
+  (or (left-kerning-group? n)
+      (right-kerning-group? n)))
 
 ; String String-> Boolean
 ; True if the string starts with the prefix
