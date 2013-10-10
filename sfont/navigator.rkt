@@ -87,9 +87,9 @@
    (getters advance width height)
    (getters glyph format name advance unicodes note image
             guidelines anchors contours components lib)
-   (append (setters layer name info glyphs)
+   (append (getters layer name info glyphs)
            `((glyph ,get-glyph)))
-   (append (setters font format creator fontinfo groups kerning 
+   (append (getters font format creator fontinfo groups kerning 
                     features layers lib data images)
            `((glyph ,get-glyph)
              (layer ,get-layer)))
