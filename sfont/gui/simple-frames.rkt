@@ -52,31 +52,6 @@
                     bms)
           (font-proc end))))))
 
-;(define (animate font-proc width height [start 0] [end 100] [inc-proc ((curry +) 10)])
-;    (let* ([w (world (font-proc start))]
-;           ;[area-height (* (display-size) (+ 1 (lines (display-text)) (* (- 1.2 1) (lines (display-text)))))]
-;           [frame (new frame%
-;                      [label "Viewer"]
-;                      [width width]
-;                      [height height])]
-;           [canv (new canvas% 
-;                   [parent frame]
-;                   [paint-callback
-;                    (lambda (canvas dc)
-;                      (send dc set-initial-matrix (vector 1 0 0 1 0 0))
-;                      (send dc set-smoothing 'smoothed)
-;                      ((get-drawing-proc (world-current-state w)) dc 1.2 (display-text) (display-size)))])])
-;      (letrec ([aux (lambda (c)
-;                      (if (> c end)
-;                          (world-current-state w)
-;                          (begin
-;                            (set-world-current-state! w (font-proc c))
-;                            (send canv refresh-now)
-;                            (aux (inc-proc c)))))])
-;        (begin 
-;          (send frame show #t)
-;          (aux (inc-proc start))))))
-
 ; (animate-fonts font1 font2 font3 ...)
 ; the fonts should be ready for interpolation (see usemath example)
 ; They are interpolated in series: font1 ----> font2 ----> font3 ...
