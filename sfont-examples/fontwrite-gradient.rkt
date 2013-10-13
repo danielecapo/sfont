@@ -150,8 +150,8 @@
               (add-suffix-lon 'ring alphabet-lc)
               (range 10 (+ 10 (length alphabet-lc))))]))
 
-(parameterize ([SIZE 40]
-               [TEXT
+(parameterize ([display-size 40]
+               [display-text
                 (list alphabet-lc
                       (add-suffix-lon 'vstr alphabet-lc)
                       (add-suffix-lon 'hstr alphabet-lc)

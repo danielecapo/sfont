@@ -5,9 +5,9 @@
          "geometry.rkt"
          "utilities.rkt")
 
-(provide SIZE
-         TEXT
-         PEN
+(provide display-size
+         display-text
+         display-pen
          show-kerning?
          set-contour-view! 
          with-contour-view
@@ -18,21 +18,21 @@
          unique-letters)
 
 ;;; Global variables
-(define PEN (make-parameter (new pen% [style 'transparent])))
+(define display-pen (make-parameter (new pen% [style 'transparent])))
 
 
-(define SIZE (make-parameter 100))
-(define TEXT (make-parameter '((a b c d e f g h i j k l m n o p q r s t u v w x y z))))
+(define display-size (make-parameter 100))
+(define display-text (make-parameter '((a b c d e f g h i j k l m n o p q r s t u v w x y z))))
 (define show-kerning? (make-parameter #t))
 
 
 (define (set-contour-view! b) 
   (if b 
-      (PEN (new pen% [color "red"]))
-      (PEN (new pen% [style 'transparent]))))
+      (display-pen (new pen% [color "red"]))
+      (display-pen (new pen% [style 'transparent]))))
 
 (define-syntax-rule (with-contour-view . body)
-  (parameterize ([PEN (new pen% [color "red"])])
+  (parameterize ([display-pen (new pen% [color "red"])])
     . body))
 
 ;;; Line is one of:
@@ -63,8 +63,8 @@
 
       
 (define-syntax-rule (with-sample-text (text size) body)
-  (let ([t (TEXT)]
-        [s (SIZE)])
+  (let ([t (display-text)]
+        [s (display-size)])
     (begin
       (set-sample-text! text)
       (set-sample-size! size)
@@ -114,11 +114,11 @@
 
 ; DC Number Number Number (listOf DrawableGlyph) ((Symbol Symbol) -> Number) -> void
 ; draw the font in the drawing context     
-(define (draw-font-dc dc ascender descender leading glyphs [kerning (lambda (p) 0)] [size (SIZE)] [text (TEXT)])
+(define (draw-font-dc dc ascender descender leading glyphs [kerning (lambda (p) 0)] [size (display-size)] [text (display-text)])
   (let ([f (/  size (+ ascender (- descender)))])
     (begin
       (send dc set-brush "black" 'solid)
-      (send dc set-pen (PEN))
+      (send dc set-pen (display-pen))
       (send dc scale f (- f))
       (send dc translate 0 (- (/ (* size -0.5) f) ascender))                      
       (for-each (lambda (l) 
@@ -130,11 +130,11 @@
                 text))))
 
 ; Number Number (listOf DrawableGlyph) ((Symbol Symbol) -> Number) -> pict
-; draw the current (TEXT)
+; draw the current (display-text)
 (define (pictf:font ascender descender glyphs [kerning (lambda (p) 0)])
    (let* ([leading 1.2]
-          [n-lines (lines (TEXT))] 
-          [area-height (* (SIZE) (+ 1 n-lines (* (- leading 1) (- n-lines 1))))])
+          [n-lines (lines (display-text))] 
+          [area-height (* (display-size) (+ 1 n-lines (* (- leading 1) (- n-lines 1))))])
      (dc
       (lambda (dc dx dy)
         (draw-font-dc dc ascender descender leading glyphs kerning))
@@ -154,24 +154,24 @@
 
 #; 
 (define (pictf:font ascender descender . glyphs)
-   (let* ([letters (TEXT)]
-          [f (/  (SIZE) (+ ascender (- descender)))]     
+   (let* ([letters (display-text)]
+          [f (/  (display-size) (+ ascender (- descender)))]     
           [glyphs-to-display (filter identity (map (lambda (g) (assoc g glyphs)) letters))])
      (dc
       (lambda (dc dx dy)
          (begin
            (send dc set-brush "black" 'solid)
-           (send dc set-pen (PEN))
+           (send dc set-pen (display-pen))
            (send dc scale f (- f))
-           (send dc translate 0 (- (/ (* (SIZE) -0.5) f) ascender))                      
+           (send dc translate 0 (- (/ (* (display-size) -0.5) f) ascender))                      
            (for-each (lambda (g) (pictf:draw-glyph dc g)) glyphs-to-display )))
-      1300 (* (SIZE) 2))))
+      1300 (* (display-size) 2))))
 
 
 (define (draw-glyph-dc dc g f x-min y-max)
   (begin
     (send dc set-brush "black" 'solid)
-    (send dc set-pen (PEN))
+    (send dc set-pen (display-pen))
     (send dc scale f (- f))
     (send dc translate (- x-min) (- y-max))
     (pictf:draw-glyph dc g)))

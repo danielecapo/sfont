@@ -14,9 +14,9 @@
           make-contour
           make-point)
          (all-from-out "ufo/ufo-read-write.rkt")
-         SIZE
-         TEXT
-         PEN
+         display-size
+         display-text
+         display-pen
          show-kerning?
          set-contour-view!
          with-contour-view)

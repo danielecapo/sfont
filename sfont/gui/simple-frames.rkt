@@ -39,7 +39,7 @@
                                [dc (new bitmap-dc% [bitmap img])])
                           (begin
                             (send dc set-smoothing 'smoothed)
-                            ((get-drawing-proc (font-proc i)) dc 1.2 (TEXT) (SIZE)) 
+                            ((get-drawing-proc (font-proc i)) dc 1.2 (display-text) (display-size)) 
                             (cons img (aux (inc-proc i)))))))])
       (let ([bms (aux start)])
         (begin
@@ -54,7 +54,7 @@
 
 ;(define (animate font-proc width height [start 0] [end 100] [inc-proc ((curry +) 10)])
 ;    (let* ([w (world (font-proc start))]
-;           ;[area-height (* (SIZE) (+ 1 (lines (TEXT)) (* (- 1.2 1) (lines (TEXT)))))]
+;           ;[area-height (* (display-size) (+ 1 (lines (display-text)) (* (- 1.2 1) (lines (display-text)))))]
 ;           [frame (new frame%
 ;                      [label "Viewer"]
 ;                      [width width]
@@ -65,7 +65,7 @@
 ;                    (lambda (canvas dc)
 ;                      (send dc set-initial-matrix (vector 1 0 0 1 0 0))
 ;                      (send dc set-smoothing 'smoothed)
-;                      ((get-drawing-proc (world-current-state w)) dc 1.2 (TEXT) (SIZE)))])])
+;                      ((get-drawing-proc (world-current-state w)) dc 1.2 (display-text) (display-size)))])])
 ;      (letrec ([aux (lambda (c)
 ;                      (if (> c end)
 ;                          (world-current-state w)
@@ -198,9 +198,9 @@
                              (send dc set-smoothing 'smoothed)
                              (let* ([e (world-current-state w)]
                                     [is (map ((curry get-input) e) '(sl-name ...))])
-                               (parameterize ([TEXT (slider-editor-text e)]
-                                              [SIZE (slider-editor-size e)])
-                                 ((get-drawing-proc (apply f-proc is)) dc 1.2 (TEXT) (SIZE)))))])]
+                               (parameterize ([display-text (slider-editor-text e)]
+                                              [display-size (slider-editor-size e)])
+                                 ((get-drawing-proc (apply f-proc is)) dc 1.2 (display-text) (display-size)))))])]
                 [t (new text-field%
                         [label "Text"]
                         [parent tf]
