@@ -16,16 +16,15 @@
       draw-fn)
      (font. (name params ...)
            (alignments
-            [ascender asc 0 :use-as-ascender]
-            [descender desc 0 :use-as-descender])
-           (variables)
-           (glyphs
+            [ascender asc 0 :font-ascender]
+            [descender desc 0 :font-descender])
+           [glyphs
             (map (lambda (n)
                    (glyph. n 
                           (metrics -- (/--/ w))
                           [contours
                            (draw-fn)]))
-                 alphabet-lc)))]))
+                 alphabet-lc)])]))
 
 (define wave-fnt
   (random-font 

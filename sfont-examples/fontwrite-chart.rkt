@@ -22,19 +22,19 @@
         (alignments
          [base 0 -10]
          [xh 550 10]
-         [asc 775 0 :use-as-ascender]
-         [desc -225 0 :use-as-descender])
+         [asc 775 0 :font-ascender]
+         [desc -225 0 :font-descender])
         (variables
          [mid-v (/ (alg xh) 2)]
          [width (+ (alg xh) 100)]
          [mid-h (/ width 2)]
          [radius (+ mid-v (ovs-height xh) (abs (ovs-height base)))]
          [slicer (chart-slicer mid-h mid-v radius (/ pi 5))])
-        (glyphs
+        [glyphs
          (glyph. 'a
-                (metrics -- (/--/ width))
+                [metrics -- (/--/ width)]
                 [contours
-                 (slicer pos angle)]))))
+                 (slicer pos angle)])]))
 
 
 (define-syntax chart-font
@@ -44,23 +44,21 @@
            (alignments
             [base 0 -10]
             [xh 550 10]
-            [asc 775 0 :use-as-ascender]
-            [desc -225 0 :use-as-descender])
+            [asc 775 0 :font-ascender]
+            [desc -225 0 :font-descender])
            (variables
             [mid-v (/ (alg xh) 2)]
             [width (+ (alg xh) 100)]
             [mid-h (/ width 2)]
             [radius (+ mid-v (ovs-height xh) (abs (ovs-height base)))]
             [slicer (chart-slicer mid-h mid-v radius (/ (* 2 pi) divider))])
-           (glyphs
+           [glyphs
             (glyph. 'space
-                   (metrics -- (/--/ width))
-                   [contours #f])
+                   [metrics -- (/--/ width)])
             (glyph. g
-                   (metrics -- (/--/ 0))
+                   [metrics -- (/--/ 0)]
                    [contours
-                    (slicer (foldl + 0 (range ampl)) ampl)]) ...
-           ))]))
+                    (slicer (foldl + 0 (range ampl)) ampl)]) ...])]))
  
 
 (define c

@@ -15,7 +15,8 @@
   [pi/4 real?]
   [pi/6 real?]
   [2pi real?]
-  [string->text (-> string? (listof (listof symbol?)))]))
+  [string->text (-> string? (listof (listof symbol?)))]
+  [unicode (-> symbol? (listof natural-number/c))]))
 
 
 ; n-groups
@@ -96,3 +97,9 @@
 ; produce a text from a string
 (define (string->text s)
   (map string->line (string-split s "\n")))
+
+; Symbol -> (listof Real)
+; produce the unicode code of the glyph using adobe glyph list
+(define (unicode name)
+  (let ([u (hash-ref adobe-glyph-list name #f)])
+    (if u (list u) '())))

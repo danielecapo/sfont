@@ -374,7 +374,7 @@
                                 (aux (cons (cons l name) acc)
                                      rest-layers
                                      (cons name names)))]))])                
-      (reverse (aux '() (font-layers f) '()))))
+      (reverse (aux '() (hash-values (font-layers f)) '()))))
   
   (define layers-names (get-layers-names))
   (define (write-glyphs glyphs glyphsdir)
@@ -392,9 +392,7 @@
                       (build-path glyphsdir "contents.plist"))))
       
   (define (write-layers)
-    (let ((layers-hash (make-immutable-hash 
-                        (map (lambda (l) (cons (layer-name l) l))
-                            (font-layers f)))))
+    (let ((layers-hash (font-layers f)))
       (for-each (lambda (l)
                   (begin
                     (let ([dir (make-ufo-path (cdr l))]
@@ -487,9 +485,7 @@
         (for-each (lambda (d) (when (directory-exists? d)
                                 (delete-directory/files d)))
                   gdirs)))))
-      
-         
-    
+
 ; ufoWriter -> side effects
 ; write an UFO2 with the UfoWriter
 (define (write-ufo2 writer)

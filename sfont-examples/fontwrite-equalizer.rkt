@@ -18,7 +18,7 @@
 ; produce a glyph with n lines 
 (define (eq-glyph name n s sp w sb)
   (glyph. name
-   (metrics sb sb)
+   [metrics sb sb]
    [contours 
     (map (lambda (p)
            (translate (line w s) 0 (* p sp)))
@@ -28,14 +28,13 @@
   (font. (equalizer [width 300] [sb 20] [s 5])
         (alignments
          [base 0 0]
-         [ascender 750 0 :use-as-ascender]
-         [descender -250 0 :use-as-descender])
+         [ascender 750 0 :font-ascender]
+         [descender -250 0 :font-descender])
         (variables
          [space 28])
         (glyphs
          (glyph. 'space
-                (metrics -- (/--/ (+ width sb sb)))
-                [contours #f])
+                [metrics -- (/--/ (+ width sb sb))])
          (map (lambda (name n)
                 (eq-glyph name n s space width sb))
               alphabet-lc

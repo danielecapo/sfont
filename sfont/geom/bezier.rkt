@@ -102,10 +102,10 @@
 ; Segment -> Boolean
 ; True if the points are aligned
 (define (line-segment? s)
-  (with-precision (0.1)
-                  (if (< (length s) 3) #t
-                      (andmap (lambda (i) (aligned? (car s) (cadr s) i))
-                              (cddr s)))))
+  (parameterize ([precision 0.1])
+    (if (< (length s) 3) #t
+        (andmap (lambda (i) (aligned? (car s) (cadr s) i))
+                (cddr s)))))
 
 ; CubicSegment -> CubicSegment 
 ; If it is a line of a cubic segment place the offcurve points at the endpoints

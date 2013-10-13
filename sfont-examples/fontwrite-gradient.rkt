@@ -1,8 +1,7 @@
 #lang racket
 (require "../sfont/parametric/fontwriter.rkt"
          "../sfont/utilities.rkt"
-         "../sfont/main.rkt"
-         "../sfont/export/type1.rkt")
+         "../sfont/main.rkt")
 
 (provide gradients)
 
@@ -117,18 +116,15 @@
 
 (define gradients
   (font. (gradients [n 20])
-        (alignments
+        [alignments
          [base 0 0]
-         [ascender 750 0 :use-as-ascender]
-         [descender -250 0 :use-as-descender])
-        (variables)
-        (glyphs
+         [ascender 750 0 :font-ascender]
+         [descender -250 0 :font-descender]]
+        [glyphs
          (glyph. 'space
-                (metrics -- (/--/ 1000))
-                [contours #f])
+                (metrics -- (/--/ 1000)))
          (glyph. '.notdef
-                (metrics -- (/--/ 0))
-                [contours #f])
+                (metrics -- (/--/ 0)))
          (map (lambda (name r)
                 (dots-glyph name n (* 1.3 r)))
               alphabet-lc
@@ -152,8 +148,7 @@
          (map (lambda (name r)
                 (rings-glyph name n (* 1.7 r)))
               (add-suffix-lon 'ring alphabet-lc)
-              (range 10 (+ 10 (length alphabet-lc))))
-         )))
+              (range 10 (+ 10 (length alphabet-lc))))]))
 
 (parameterize ([SIZE 40]
                [TEXT

@@ -142,11 +142,17 @@ adjust the sidebearing by v
 
 You can mix the various forms in left and right sidebearings
 
-`a / 30 (60 200)`
-it means: set the left sidebearing to 30, set the right sidebearing (measured at height 200) to 60
+`a : 30 (60 200)`
+set the left sidebearing to 30, set the right sidebearing (measured at height 200) to 60
 
-`z / (/--/ 300) 40`
-it means: set the advance width to 300 with the right sidebearing to 40
+`z : (/--/ 300) 40`
+set the advance width to 300 with the right sidebearing set to 40
+
+`z : -- (/--/ 300)`
+set the advance width to 300
+
+`z : 40 (/--/ --)`
+set the left sidebearing to 40 and keep the current advance width
 
 You can define groups (but they are not added to the font groups dictionary):
 
@@ -173,17 +179,22 @@ It is like
 Another way to do this is to group glyphs in parentheses in the spacing form:
 
 ```
-(c d e o q) / 30 --
+(c d e o q) : 30 --
 ```	
+
+To change a single glyph you can use `space-glyph`:
+`(space-glyph g 20 (<-> -20))`
+the left and right spacing forms are the same we have seen before.
+If the glyph has components you have to pass the 'context' (the font) to `space-glyph` (because the actual curves of the base glyphs are stored in the font).
+`(space-glyph (g f) 20 (<-> -20))`
 	
 ### Kern macro
 
 ```
 (kern fo
-	[left-groups 
-			(rounded_left '(o b p))]
-	[right-groups
-		    (diagonal_right '(v w y))]
+	[groups 
+		(left  (rounded_left '(o b p)))
+		(right (diagonal_right '(v w y)))]
 	@ rounded_left @ diagonal_right : -40
 	o o : 20)
 ```

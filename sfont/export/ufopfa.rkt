@@ -84,7 +84,7 @@
 
 ; Font -> Type1
 (define (ufo->type1 f [fbbox #f])
-  (let* ([l (decompose-layer f 'public.default)]
+  (let* ([l (decompose-layer f foreground)]
          [charstrings (map-glyphs ufoglyph->t1charstring l)]
          [gbs (filter (lambda (b) (not (null? b))) (map cddr charstrings))]
          [info (font-fontinfo f)]

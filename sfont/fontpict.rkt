@@ -3,13 +3,14 @@
 
 (require racket/draw
          "geometry.rkt"
-         "utilities.rkt"
-         "glyphlist.rkt")
+         "utilities.rkt")
 
 (provide SIZE
          TEXT
+         PEN
          show-kerning?
-         set-contour-view!  
+         set-contour-view! 
+         with-contour-view
          pictf:font
          pictf:glyph
          draw-font-dc
@@ -29,6 +30,10 @@
   (if b 
       (PEN (new pen% [color "red"]))
       (PEN (new pen% [style 'transparent]))))
+
+(define-syntax-rule (with-contour-view . body)
+  (parameterize ([PEN (new pen% [color "red"])])
+    . body))
 
 ;;; Line is one of:
 ;;; - nil
@@ -186,6 +191,6 @@
                   [(> h 0) (/ 400 h)]
                   [else 1])])
     (dc
-     (lambda (dc dx dy) (draw-glyph-dc dc g f x-min y-max))
-       (* f w) (* f (if upm upm h)))))
+     (lambda (dc dx dy) (draw-glyph-dc dc g f x-min by-max))
+       (* f w) (* f h))))
       

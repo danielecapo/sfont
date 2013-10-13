@@ -1,9 +1,7 @@
 #lang racket
 
 (require "draw-property.rkt"
-         "../fontpict.rkt"
          racket/gui/base
-         "../math.rkt"
          "../main.rkt"
          "../utilities.rkt")
 
@@ -24,7 +22,7 @@
 ; Default value mean that time start at 0, ends at 100 with increments of 10
 
 ; I understand this is not a good way to do this, probably one can use the slideshow language 
-(define (animate font-proc  width height [start 0] [end 100] [inc-proc ((curry +) 10)])
+(define (animate font-proc  width height [start 0] [end 100] [inc-proc (curry + 10)])
     (let* ([w (world (make-bitmap width height))]
            [frame (new frame%
                       [label "Viewer"]
@@ -241,7 +239,7 @@
              (send frame show #t)))))]))
 
 
-;(require "../examples/fontwrite-square.rkt")
+;(require "../../sfont-examples/fontwrite-square.rkt")
 ;
 ;(define (sq-proc weight width)
 ;    (sq #:weight (/ weight 1000) #:width (/ width 1000)))

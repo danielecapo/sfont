@@ -2,9 +2,8 @@
 (require "../geometry.rkt"
          "../main.rkt"
          "../utilities.rkt"
-         "../fontpict.rkt"
-         "../glyphlist.rkt"
-         "../spacing/space.rkt")
+         "../spacing/space.rkt"
+         (for-syntax racket/list))
 
 
 (provide 
@@ -36,121 +35,116 @@
              [reflect-x* reflect-x]
              [reflect-y* reflect-y]))
 
-;(define-syntax ~
-;    (syntax-rules (insert cycle)
-;      [(~ (o ...) ())
-;       (path o ...)]
-;      [(~ ((x y) p ...) (o cycle))
-;       (~ ((x y) p ... o (x y)) ())]
-;      [(~ (p ...) (insert . r))
-;       (path p ... (insert . r))]
-;      [(~ (p ...) (o . r))
-;       (~ (p ... o) r)]
-;      [(~ (x y) . r)
-;       (~ ((x y)) r)]))
 
-(define-syntax parse-lines 
-  (syntax-rules (--)
-    [(parse-lines ((x y) . r) ())
-     (parse-lines r ((x y)))]
-    [(parse-lines (-- l . r) (p ... pl))
-     (parse-lines r (p ... pl (@ 0 0) l (@ 0 0)))]
-    [(parse-lines (c . r) (p ...))
-     (parse-lines r (p ... c))]
-    [(parse-lines () (p ...))
-     (parse-curves p ...)]))
-
-
-
-(define-syntax parse-curves
-  (syntax-rules (@ cycle insert @°)
-    [(_ (insert i) c ... cycle)
-     (let* ([b i]
+(define-syntax (parse-curves stx)
+  (syntax-case stx (@ @° insert)
+    [(_ (insert i) path-element . r)
+     (syntax-case #'path-element (insert @)
+       [(@ insert o) 
+        #'(let* ([b i]
+                 [n (car b)]
+                 [l (last b)])
+            (join-subpaths b (parse-curves (insert (translate* o (vec-x l) (vec-y l))) . r)))]
+       [(@ x y)
+        #'(let* ([b i]
+                 [n (car b)]
+                 [l (last b)]
+                 [p (vec+ l (vec x y))])
+            (join-subpaths b (parse-curves ((vec-x p) (vec-y p)) . r)))]
+       [path-element 
+        #'(let* ([b i]
             [n (car b)])
-       (parse-curves (insert b) c ... ((vec-x n) (vec-y n))))]
-    [(_ (x y) (insert i) . r)
-     (join-subpaths (list (vec x y)) (parse-curves  (insert i) . r))]
-    [(_ (insert i) (@ insert o) . r)
-     (let* ([b i]
-            [n (car b)]
-            [l (last b)])
-       (join-subpaths b (parse-curves (insert (translate* o (vec-x l) (vec-y l))) . r)))]
-    [(_ (insert i) . r)
-     (let* ([b i]
-            [n (car b)])
-       (join-subpaths b (parse-curves . r)))]
-    [(_ (x y) (@ insert o) . r)
-     (let ([n (vec x y)])
-       (join-subpaths (list n) (parse-curves (insert (translate* o (vec-x n) (vec-y n))) . r)))]
-    [(_ (x y) c ... cycle)
-     (let ([n (vec x y)])
-       (parse-curves ((vec-x n) (vec-y n)) c ... ((vec-x n) (vec-y n))))]
-    [(_ (x y) (@ cx cy . t) . r)
-     (let* ([n (vec x y)]
-            [nc (vec+ n (vec cx cy))])
-       (parse-curves ((vec-x n) (vec-y n))
-            ((vec-x nc) (vec-y nc) . t)
-            . r))]
-    [(_ (x y) (@° a l . t) . r)
-     (let ([n (vec x y)]
-           [angle a]
-           [len l])
-       (parse-curves (x y) 
-                     (@ (* len (cos angle))
-                        (* len (sin angle))
-                        . t)
-                     . r))]
-    [(_ (x y) (cx cy t) . r)
-     (let ([tension t])
-       (parse-curves (x y) (cx cy tension tension) . r))]
-    [(_ (x y) (cx cy t t1) . r)
-     (let ([n (vec x y)]
-           [nt (vec cx cy)]
-           [tension t1])
-       (append (list n (vec+ n (vec* (vec- nt n) t)))
-               (parse-curves ((vec-x nt) (vec-y nt) tension) . r)))]
-    [(_ (cx cy t) (@ x1 y1) . r)
-     (let* ([nt (vec cx cy)]
+            (join-subpaths b (parse-curves path-element . r)))])]
+    [(_ (x y) path-element . r)
+     (syntax-case #'path-element (@ @° insert)
+       [(insert i) #'(join-subpaths (list (vec x y)) (parse-curves  (insert i) . r))]
+       [(@ insert o) 
+        #'(let ([n (vec x y)])
+            (join-subpaths 
+             (list n) 
+             (parse-curves (insert (translate* o (vec-x n) (vec-y n))) . r)))]
+       [(@ cx cy . t) 
+        #'(let* ([n (vec x y)]
+                 [nc (vec+ n (vec cx cy))])
+            (parse-curves ((vec-x n) (vec-y n))
+                          ((vec-x nc) (vec-y nc) . t)
+                          . r))]
+       [(@° a l . t) 
+        #'(let ([n (vec x y)]
+                [angle a]
+                [len l])
+            (parse-curves (x y) 
+                          (@ (* len (cos angle))
+                             (* len (sin angle))
+                             . t)
+                          . r))]
+       [(cx cy t) 
+        #'(let ([tension t])
+            (parse-curves (x y) (cx cy tension tension) . r))]
+       [(cx cy t t1) 
+        #'(let ([n (vec x y)]
+                [nt (vec cx cy)]
+                [tension t1])
+            (append (list n (vec+ n (vec* (vec- nt n) t)))
+                    (parse-curves ((vec-x nt) (vec-y nt) tension) . r)))]
+       [(x1 y1)
+        #'(cons (vec x y) (parse-curves (x1 y1) . r))])]
+    [(_ (cx cy t) path-element . r)
+     (syntax-case #'path-element (@ @°)
+       [(@ x1 y1)
+        #'(let* ([nt (vec cx cy)]
             [n (vec+ nt (vec x1 y1))])
        (parse-curves ((vec-x nt) (vec-y nt) t)
             ((vec-x n) (vec-y n)) . r))]
-    [(_ (cx cy t) (@° a l) . r)
-     (let ([nt (vec cx cy)]
-           [angle a]
-           [len l])
-       (parse-curves (cx cy t) 
-                     (@ (* len (cos angle))
-                        (* len (sin angle)))
-                     . r))]
-    [(_ (cx cy t) (x1 y1) . r)
-     (let ([n (vec x1 y1)]
-           [nt (vec cx cy)])
-       (cons (vec+ n (vec* (vec- nt n) t)) 
-             (parse-curves ((vec-x n) (vec-y n)) . r)))]
-    [(_ (x y) . r)
-     (cons (vec x y) (parse-curves . r))]
-    
-    [(_ (x y))
-     (list (vec x y))]
-    [(_) '()]))
+       [(@° a l)
+        #'(let ([nt (vec cx cy)]
+                [angle a]
+                [len l])
+            (parse-curves (cx cy t) 
+                          (@ (* len (cos angle))
+                             (* len (sin angle)))
+                          . r))]
+       [(x1 y1)
+        #'(let ([n (vec x1 y1)]
+                [nt (vec cx cy)])
+            (cons (vec+ n (vec* (vec- nt n) t)) 
+                  (parse-curves ((vec-x n) (vec-y n)) . r)))]
+       [path-element 
+        (raise-syntax-error #f "Invalid path element after tension point" stx #'path-element)])]
+    [(_ (insert i)) #'i]
+    [(_ (x y)) #'(list (vec x y))]
+    [(_ (x y . r))
+     (raise-syntax-error #f "Invalid end path element" stx)]
+    [(_) #'()]))
     
    
-(define-syntax ~
-  (syntax-rules (insert cycle)
-    [(_ (insert i) c ... cycle)
-     (let* ([b i]
-            [n (car b)])
-       (parse-lines ((insert b) c ... ((vec-x n) (vec-y n))) ()))]
-    [(_ (x y) c ... cycle)
-     (let ([n (vec x y)])
-       (parse-lines (((vec-x n) (vec-y n)) c ... ((vec-x n) (vec-y n))) ()))]
+
+
+(define-syntax (~ stx)
+  (syntax-case stx (insert cycle)
+    [(_ f c ... cycle)
+     (syntax-case #'f (insert)
+       [(insert i) #'(let* ([b i]
+                            [n (car b)])
+                       (~ (insert b) c ... ((vec-x n) (vec-y n))))]
+       [(x y) #'(let ([n (vec x y)])
+                  (~ ((vec-x n) (vec-y n)) c ... ((vec-x n) (vec-y n))))]
+       [x (raise-syntax-error #f "Expected coordinates or (insert ...)" stx #'x)])]
     [(_ . r)
-     (parse-lines r ())]))
+     (letrec ([p-lines (lambda (ps acc)
+                         (syntax-case ps (--)
+                           [() acc]
+                           [(-- l . r)
+                            (p-lines #'r (datum->syntax 
+                                          stx 
+                                          (append (syntax->list acc) 
+                                                  (list #'(@ 0 0) #'l #'(@ 0 0)))))]
+                           [(f . r) 
+                            (p-lines #'r (datum->syntax stx (append (syntax->list acc) (list #'f))))]
+                           ))])
+       (with-syntax ([(path-elts ...) (p-lines #'r #'())])
+         #'(parse-curves path-elts ...)))]))
    
-
-
-
-
 
 
 ; Bezier, Bezier -> Bezier
@@ -245,42 +239,45 @@
 ;
 
 
-; Symbol -> (listof Real)
-; produce the unicode code of the glyph using adobe glyph list
-(define (unicode name)
-  (let ([u (hash-ref adobe-glyph-list name #f)])
-    (if u (list u) '())))
 
-(define-syntax glyph.
-  (syntax-rules (metrics contours locals)
+
+(define-syntax (glyph. stx)
+  (syntax-case stx (metrics contours locals)
     [(glyph. name 
-            (metrics metric-form ...)
-            [contours contour ...])
-     (glyph. name (locals)
-            (metrics metric-form ...)
-            [contours contour ...])]
-    [(glyph. name (locals [s v] ...)
-            (metrics metric-form ...)
-            [contours contour ...])
-     (let* ([s v] ...)
-       (space-glyph
-        (glyph 1 name (advance 0 0) (unicode name) #f #f '() '() 
-                   (map bezier->contour (build-contour-list contour ...)) '() (make-immutable-hash))
-         metric-form ...))]))
+             [metrics left-form right-form]
+             . contour-form)
+     #'(glyph. name 
+             [locals]
+             [metrics left-form right-form]
+             . contour-form)]
+    [(glyph. name 
+             [locals [s v] ...]
+             [metrics left-form right-form]
+             . contour-form)
+     (with-syntax ([cnts (syntax-case #'contour-form (contours)
+                           [() #'(list)]
+                           [((contours cnt . cnts))
+                            #'(map bezier->contour 
+                                   (build-contour-list cnt . cnts))])])
+     #'(let* ([s v] ...)
+         (space-glyph
+          (glyph 1 name (advance 0 0) (unicode name) #f #f '() '() 
+                   cnts '() (make-immutable-hash))
+         left-form right-form)))]
+    [(glyph. . body) (raise-syntax-error #f "Invalid glyph. definition." stx)]))
 
 
 
 ; (Bezier or (listOf Bezier) ... -> (listOf Bezier)
-(define (build-contour-list . cnts)
-  (if (not (car cnts))
-      '()
-      (foldl (lambda (c r)
-               (append r (if (andmap vec? c)
-                             (list c)
-                             c)))
-             '()
-             cnts)))
-
+(define/contract (build-contour-list . cnts)
+  (->* () () #:rest (listof (or/c bezier/c (listof bezier/c))) (listof bezier/c))
+  (foldl 
+   (lambda (c r)
+           (append r (if (bezier/c c)
+                         (list c)
+                         c)))
+   '()
+   cnts))
 
 
 
@@ -309,96 +306,121 @@
 
 (define-syntax emit-font-form
   (syntax-rules ()
-    [(emit-font-form name ascender-id descender-id
+    [(emit-font-form name 
+                     ascender-id 
+                     descender-id
+                     (blue ...)
                      (v ...)
-                     glyph ...)
+                     glyph-form ...)
      
        (let* (v ...)
          (font 2 "ufo-rkt"
                    (make-immutable-hash
-                    (list (cons 'unitsPerEm (+ (alg ascender-id) (- (alg descender-id))))
-                          (cons 'ascender (alg ascender-id))
-                          (cons 'descender (alg descender-id))
-                          (cons 'familyName (symbol->string (quote name)))
-                          (cons 'postscriptFontName (symbol->string (quote name)))
-                          (cons 'versionMajor 1)
-                          (cons 'versionMinor 0)))
+                    (let* ([all-blues (list (list (alg blue) (ovs blue)) ...)]
+                           [blues (sort (flatten 
+                                         (filter ((curry ormap) 
+                                                  (negate negative?)) 
+                                                 all-blues))
+                                        <)]
+                           [o-blues (sort (flatten 
+                                           (filter ((curry andmap) negative?)
+                                                   all-blues))
+                                          <)]
+                           [infoa (list (cons 'unitsPerEm (+ (alg ascender-id) (- (alg descender-id))))
+                                        (cons 'ascender (alg ascender-id))
+                                        (cons 'descender (alg descender-id))
+                                        (cons 'familyName (symbol->string (quote name)))
+                                        (cons 'postscriptFontName (symbol->string (quote name)))
+                                        (cons 'versionMajor 1)
+                                        (cons 'versionMinor 0))]
+                           [infob (if (null? blues)
+                                      infoa
+                                      (cons (cons 'postscriptBlueValues blues)
+                                            infoa))])
+                      (if (null? o-blues)
+                          infob
+                          (cons (cons 'postscriptBlueValues blues)
+                                infob))))
                    (make-immutable-hash) 
                    (make-immutable-hash) 
                    #f
                    (list 
                     (layer 'public.default #f
-                               (build-glyphs-list glyph ...)))
+                               (build-glyphs-list glyph-form ...)))
                    (make-immutable-hash)
                    #f #f))]))
 
 
 ; (Glyph or (listOf Glyph)) ... -> (listOf Glyph)
-(define (build-glyphs-list . glyphs)
+(define/contract (build-glyphs-list . glyphs)
+  (->* () () #:rest (listof (or/c glyph? (listof glyph?))) (listof glyph?))
   (foldl (lambda (g r) (if (list? g) 
                            (append r g)
                            (append r (list g))))
          '()
          glyphs))
 
-(define-syntax (kw-args-lambda stx)
-  (syntax-case stx ()
-    [(kw-args-lambda () (kwargs ...) font-form)
-     #'(lambda (kwargs ...) font-form)]
-    [(kw-args-lambda ([n v] . args) kwargs font-form)
-     (with-syntax ([kw (datum->syntax stx 
-                                      (string->keyword (symbol->string (syntax->datum #'n))))])
-       #'(kw-args-lambda args 
-                       (kw . ([n v] . kwargs))
-                       font-form))]))
 
-(define-syntax font. 
-  (syntax-rules (alignments variables glyphs)
-    [(font. (name params ...) . rest)
-     (kw-args-lambda (params ...) () (font. name . rest))]
+
+(define-syntax (font. stx)
+  (syntax-case stx (alignments variables glyphs)
+    [(font. (name [param dflt] ...) . rest)
+     (for-each (lambda (p) 
+                 (unless (identifier? p)
+                   (raise-syntax-error #f "Expected identifier" stx p)))
+               (syntax->list #'(param ...)))
+     (with-syntax ([kwarglist
+                    (datum->syntax stx
+                                   (append*
+                                    (map (lambda (p d)
+                                          (cons (string->keyword (symbol->string (syntax->datum p))) (list (list p d))))
+                                         (syntax->list #'(param ...))
+                                         (syntax->list #'(dflt  ...)))))])
+       #'(lambda kwarglist (font. name . rest)))]
     [(font. name
-       (alignments als ...)
-       (variables v ...)
-       (glyphs glyph ...))
-     (let-alignment (als ...)
-                    (emit-font-form name 
-                                    (find-ascender (als ...)) 
-                                    (find-descender (als ...)) 
-                                    (v ...) 
-                                    glyph ...))]
+       [alignments als ...]
+       [variables v ...]
+       [glyphs glyph-form ...])
+     (for-each (lambda (i) (unless (identifier? i)
+                            (raise-syntax-error #f "Expected identifier" stx #'i)))
+              (cons #'name
+                    (append (map (compose car syntax->list) (syntax->list #'(als ...)))
+                            (map (compose car syntax->list) (syntax->list #'(v ...))))))
+     (letrec ([find-blues
+               (lambda (s acc)
+                 (syntax-case s (:font-ascender :font-descender)
+                   [() acc]
+                   [([n a o :font-ascender] . as) (find-blues #'as acc)]
+                   [([n a o :font-descender] . as) (find-blues #'as acc)]
+                   [([n a o] . as) (find-blues #'as (datum->syntax s (cons #'n (syntax->list acc))))]))]
+              [find-ascender
+               (lambda (s)
+                 (syntax-case s (:font-ascender)
+                   [() (raise-syntax-error #f "Font doesn't define an alignment to be used as ascender in fontinfo" #'(alignments als ...))]
+                   [([n a o :font-ascender] . as) #'n]
+                   [([n a o] . as) (find-ascender #'as)]
+                   [([n a o r] . as) (find-ascender #'as)]))]
+              [find-descender
+               (lambda (s)
+                 (syntax-case s (:font-descender)
+                   [() (raise-syntax-error #f "Font doesn't define an alignment to be used as descender in fontinfo" #'(alignments als ...))]
+                   [([n a o :font-descender] . as) #'n]
+                   [([n a o . r] . as) (find-descender #'as)]))])
+       (with-syntax ([ascender  (find-ascender  #'(als ...))]
+                     [descender (find-descender #'(als ...))]
+                     [((alg-name a o . r) ...) #'(als ...)]
+                     [(blue ...) (find-blues #'(als ...) #'())])
+         #'(let* ([alg-name (list a o)] ...)
+             (emit-font-form name 
+                             ascender 
+                             descender 
+                             (blue ...)
+                             (v ...) 
+                             glyph-form ...))))]
     [(font. name
-       (alignments als ...)
-       glyph ...)
-     (let-alignment (als ...)
-                    (emit-font-form name 
-                                    (find-ascender (als ...)) 
-                                    (find-descender (als ...)) 
-                                    () 
-                                    glyph ...))]))
+       [alignments als ...]
+       [glyphs glyph-form ...])
+     #'(font. name [alignments als ...] [variables] [glyphs glyph-form ...])]))
 
 
 
-(define-syntax (let-alignment stx)
-    (syntax-case stx ()
-      [(let-alignment ([n a o . r] ...) emit-form)
-       #'(let* ([n (list a o)] ...) emit-form)]))
-
-
-(define-syntax (find-ascender stx)
-    (syntax-case stx (:use-as-ascender)
-      [(find-ascender ())
-       (error "font doesn't define an alignment to be used as ascender in fontinfo")]
-      [(find-ascender ([n a o :use-as-ascender] . as))
-       #'n]
-      [(find-ascender ([n a o . r] . as))
-       #'(find-ascender as)]))
-
-(define-syntax (find-descender stx)
-    (syntax-case stx (:use-as-descender)
-      [(find-descender ())
-       (error "font doesn't define an alignment to be used as ascender in fontinfo")]
-      [(find-descender ([n a o :use-as-descender] . as))
-       #'n]
-      [(find-descender ([n a o . r] . as))
-       #'(find-descender as)]))
-     
