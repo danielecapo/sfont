@@ -17,7 +17,16 @@
 ; Example
 ; (cons (vec 0 0) (vec 40 20))
 
-(define bounding-box/c (flat-named-contract 'bounding-box/c (or/c #f (cons/c vec? vec?))))
+(define bounding-box/c 
+  (flat-named-contract 'bounding-box/c 
+                       (lambda (bb)
+                         (or #f (and (cons? bb)
+                                     (vec? (car bb))
+                                     (vec? (cdr bb))
+                                     (>= (vec-x (cdr bb))
+                                         (vec-x (car bb)))
+                                     (>= (vec-y (cdr bb))
+                                         (vec-y (car bb))))))))
 
 ; (cons Vec Vec) -> BoundingBox
 ; find the Bounding box of the line 

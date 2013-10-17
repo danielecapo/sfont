@@ -134,7 +134,7 @@
               (reverse (map last stages)))))]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;; WARNING: the following procedures should be rewritten and it's not provided
+;;;; WARNING: the following procedures should be rewritten and are not provided
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ; Segment Vec -> (Segment or Null) (Segment or Null)
@@ -326,6 +326,25 @@
 (define (clockwise b)
   (if (clockwise? b) b (reverse b)))
 
+; ClosedBezier -> ClosedBezier
+; produces a new counter-clockwise bezier 
+(define (c-clockwise b)
+  (if (not (clockwise? b)) b (reverse b)))
+
+; ClosedBezier Vec -> Boolean
+; true if the point represented by vec is inside the bezier (or on the boundary)
+(define (point-inside-bezier? v b)
+  (let ([ints (bezier-intersect-hor (vec-y v) b)])
+    (if (null? ints)
+        #f
+        (if (odd? 
+             (length
+              (filter (lambda (i)
+                        (>= (vec-x v) (vec-x i)))
+                      ints)))
+            #t
+            #f))))
+
 ; CubicBezier CubicBezier -> (listOf Vec)
 (define (cubic-bezier-intersections b1 b2)
   (let* ([ss1 (segments b1 3)]
@@ -426,39 +445,43 @@
 ; produce the list of intesection between the Bezier segment and the horizontal line y=h
 (define (segment-intersect-hor h s)
   (remove-duplicates
-   (let ([bb (segment-bounding-box s)])
-     (if (or (< h (vec-y (car bb)))
-             (> h (vec-y (cdr bb))))
-         '()
-         (let* ([ep (end-points s)]
-                [v (vec- (cdr ep) (car ep))])
-           (if (and (end-points-at-extrema? s)
-                    (< (vec-length v) 0.002))
-               (list (intersect-hor h (car ep) (cdr ep)))
-               (let-values ([(sa sb) (split s 0.5)])
-                 (append (segment-intersect-hor h sa)
-                         (segment-intersect-hor h sb)))))))))
-
-
+   (let* ([ep (end-points s)]
+          [vd (vec- (cdr ep) (car ep))]
+          [bb (segment-bounding-box s)])
+       (cond [(or (< h (vec-y (car bb)))
+                  (> h (vec-y (cdr bb))))
+              null]
+             [(= (vec-y (car ep)) h) (list (car ep))]
+             [(= (vec-y (cdr ep)) h) (list (cdr ep))]
+             [(and (end-points-at-extrema? s)
+                   (< (vec-length vd) 0.002)
+                   (pass-through-hor? h (car ep) (cdr ep)))
+              (list (intersect-hor h (car ep) (cdr ep)))]
+             [else (let-values ([(sa sb) (split s 0.5)])
+                     (append (segment-intersect-hor h sa)
+                             (segment-intersect-hor h sb)))]))))
+  
 
 ; Number Segment -> (listOf Vec)
 ; produce the list of intesection between the Bezier segment and the vertical line x=v
 (define (segment-intersect-vert v s)
   (remove-duplicates
-   (let ([bb (segment-bounding-box s)])
-     (if (or (< v (vec-x (car bb)))
-             (> v (vec-x (cdr bb))))
-         '()
-         (let* ([ep (end-points s)]
-                [vd (vec- (cdr ep) (car ep))])
-           (if (and (end-points-at-extrema? s)
-                    (< (vec-length vd) 0.002))
-               (list (intersect-vert v (car ep) (cdr ep)))
-               (let-values ([(sa sb) (split s 0.5)])
-                 (append (segment-intersect-vert v sa)
-                         (segment-intersect-vert v sb)))))))))
-
-
+   (let* ([ep (end-points s)]
+          [vd (vec- (cdr ep) (car ep))]
+          [bb (segment-bounding-box s)])
+       (cond [(or (< v (vec-x (car bb)))
+                  (> v (vec-x (cdr bb))))
+              null]
+             [(= (vec-x (car ep)) v) (list (car ep))]
+             [(= (vec-x (cdr ep)) v) (list (cdr ep))]
+             [(and (end-points-at-extrema? s)
+                   (< (vec-length vd) 0.002)
+                   (pass-through-vert? v (car ep) (cdr ep)))
+              (list (intersect-vert v (car ep) (cdr ep)))]
+             [else (let-values ([(sa sb) (split s 0.5)])
+                     (append (segment-intersect-vert v sa)
+                             (segment-intersect-vert v sb)))]))))
+ 
 
 ; Real Bezier Natural -> (listOf Vec)
 ; produce the list of intesection between the Bezier curve (of nth order) and the horizontal line y=h
@@ -483,7 +506,7 @@
 
 
 ; Number, Bezier, Natural -> BoundingBox
-; produce the BoundingBox (of zero height) define by the min and max intersection of the bezier curve 
+; produce the BoundingBox (of zero height) defined by the min and max intersection of the bezier curve 
 ; with horizontal line y = h
 (define (bezier-boundaries-hor h b [n 3])
   (let ([sorted-intersections 
