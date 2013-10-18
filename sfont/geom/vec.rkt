@@ -223,8 +223,8 @@
          [lb (vec-length vb)])
     (if (or (= 0 la) (= 0 lb))
         #t
-        (equal? (vec* va (/ 1 la))
-                (vec* vb (/ 1 lb))))))
+        (vec= (vec* va (/ 1 la))
+              (vec* vb (/ 1 lb))))))
 
 
 

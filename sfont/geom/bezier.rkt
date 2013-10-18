@@ -133,26 +133,185 @@
               (map car stages)
               (reverse (map last stages)))))]))
 
+
+; Bezier Bezier -> (listof Bezier)
+; produce a list of Beziers subtracting the second curve from the first
+(define (bezier-subtract b1 b2)
+  (let ([bb1 (c-clockwise b1)]
+        [bb2 (clockwise b2)])
+    (let ([ints (cubic-bezier-intersections bb1 bb2)])
+      (if (> (length ints) 1)
+          (let* ([marks1 (mark-bezier-with-points bb1 ints)]
+                [marks2 (mark-bezier-with-points bb2 ints)]
+                [bc1 (remove-parts-inside marks1 bb2)]
+                [bc2 (remove-parts-outside marks2 bb1)]
+                [r (join-parts bc1 bc2)])
+            (if (clockwise? b1)
+                (map clockwise r)
+                (map c-clockwise r)))
+          (if (point-inside-bezier? (car bb2) b1)
+              (if (clockwise? b1) 
+                  (list b1 b2)
+                  (list b1 bb2))
+              (list b1))))))
+
+; MarkedSegments Marked-Segments -> (listof Bezier)
+
+(define (join-parts m1 m2)
+  (letrec ([aux 
+            (lambda (a b acc)
+              
+              (match a
+                [(list-rest (? vec? v) (? bezier/c bs) (? vec? v1) r)
+                 (let ([next (cond [(null? acc) (list bs)]
+                                   [(closed? (car acc))
+                                    (cons bs acc)]
+                                   [else (cons (append (car acc) (cdr bs))
+                                               (cdr acc))])])
+                  
+                   (if (or (= (length b) 1) (closed? (car next)))
+                       (aux b r next)
+                       (aux (find-mark b v1) r next)))] 
+                
+                [(list-rest (? vec? v) (? vec? v1) r)
+                 (if (closed? (car acc))
+                     (aux r b acc)
+                     (aux (find-mark b v) (cdr a) acc))]
+                [(list (? vec? v)) 
+                 (if (closed? (car acc))
+                     acc
+                     (aux (find-mark b v) (cdr a) acc))]
+                [(list) acc]))])
+  
+  
+    (aux (join-between-marks m1)
+         (join-between-marks m2)
+         null)))
+
+(define (join-between-marks m)
+  (reverse
+   (foldl (lambda (m acc)
+            (if (vec? m)
+                (cons m acc)
+                (cond [(null? acc)
+                       m]
+                      [(vec? (car acc))
+                       (cons m acc)]
+                      [else (cons (append (car acc) (cdr m)) (cdr acc))])))
+          null
+          (set-mark-first m))))
+
+(define (set-mark-first m)
+  (if (and (vec? (car m)) (bezier/c (cadr m)))
+      m
+      (set-mark-first (append (cdr m) (list (car m))))))
+
+(define (find-mark m v)
+  (if (and (vec? (car m))
+           (vec= (car m) v))
+      m
+      (find-mark (append (cdr m) (list (car m))) v)))
+    
+
+(define (remove-parts-inside m b)
+  (filter (lambda (s)
+            (or (vec? s)
+                (not (point-inside-bezier? (point-at s 0.5) b))))
+          m))
+
+(define (remove-parts-outside m b)
+  (filter (lambda (s)
+            (or (vec? s)
+                (point-inside-bezier? (point-at s 0.5) b)))
+          m))
+
+(define (mark-bezier-with-points b ints)
+  (let ([s (split-bezier-with-points b ints)])
+    (foldl (lambda (seg acc)
+             (if (member (car seg) ints)
+                 (append acc (cons (car seg) (list seg)))
+                 (append acc (list seg))))
+           null
+           s)))
+
+(define (split-bezier-with-points b ints)
+  (foldl (lambda (i acc)
+           (append*
+            (map (lambda (s)
+                   (let-values ([(s1 s2) (split-at-point s i)])
+                     
+                     (if (or (null? s1) (null? s2))
+                         (list s)
+                         (list (append (drop-right s1 1)
+                                       (list i))
+                               (cons i (cdr s2))))))
+                 acc)))
+         (segments b)
+         ints))
+
+
+
+; Segment Vec -> (Segment or Null) (Segment or Null)
+; split the segment at coordinates v
+(define (split-at-point s v)
+  (cond [(line-segment? s) (split-line-segment-at-point s v)]
+        [else (split-curve-segment-at-point s v)]))
+  
+
+; LineSegment Vec -> (Segment or Null) (Segment or Null)
+(define (split-line-segment-at-point s v)
+  (let ([ep (end-points s)])
+    (cond [(vec-approx= (car ep) v)
+           (values null s)]
+          [(vec-approx= (cdr ep) v)
+           (values s null)]
+          [else (let* ([d1 (vec- (cdr ep) (car ep))]
+                       [d2 (vec- v (car ep))])
+                  
+                  (if (parameterize ([precision 1])
+                        (and
+                         (>= (vec-length d1) (vec-length d2))
+                         (vec-approx= (vec* d1 
+                                            (/ (vec-length d2)
+                                               (vec-length d1))) 
+                                      d2)))
+                      (values (list (car ep) (car ep) v v)
+                              (list v v (cdr ep) (cdr ep)))
+                      (values null null)))])))
+    
+  
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; WARNING: the following procedures should be rewritten and are not provided
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+
+  
+
+
+
 ; Segment Vec -> (Segment or Null) (Segment or Null)
 ; Split a segment at coordinates v
-(define (split-at-point s v)
+(define (split-curve-segment-at-point s v)
   (letrec ([aux (lambda (s1 start end)
 ;                  (print start)
 ;                  (print " ")
 ;                  (print end)
 ;                  (newline)
-                  (cond [(not (inside-bounding-box? v (segment-bounding-box s1))) #f]
-                        [(vec-approx= (car s1) v) start]
-                        [(vec-approx= (last s1) v) end]
-                        [(= (approx start) (approx end)) start]
-                        [else (let-values ([(a b) (split s1 0.5)])
-                                (let ([fa (aux a start (+ start (* 0.5 (- end start))))])
-                                  (if fa fa
-                                      (aux b (+ start (* 0.5 (- end start))) end))))]))])
+                  
+                    (cond [(parameterize ([precision 1]) 
+                             (vec-approx= (car s1) v)) 
+                           start]
+                          [(parameterize ([precision 1]) 
+                             (vec-approx= (last s1) v))
+                           end]
+                          ;[(parameterize ([precision 0.1]) 
+                          ;   (= (approx start) (approx end)))
+                          ; start]
+                          [(not (inside-bounding-box? v (segment-bounding-box s1))) #f]
+                          [else (let-values ([(a b) (split s1 0.5)])
+                                  (let ([fa (aux a start (+ start (* 0.5 (- end start))))])
+                                    (if fa fa
+                                        (aux b (+ start (* 0.5 (- end start))) end))))]))])
     (let ([f (aux s 0 1)])
       (if f (split s f) (values null null)))))
 
@@ -177,49 +336,7 @@
           (values (apply join-beziers (cdr s2))
                   (apply join-beziers (append s3 (car s2))))))))
 
-; Bezier Bezier -> Bezier
-; subtract the second shape from the first
-(define (bezier-subtract b1 b2)
-  (if (or (not (closed? b1))
-          (not (closed? b2)))
-      (error "I can only subtract closed beziers")
-      (let* ([a (if (clockwise? b1) (reverse b1) b1)]
-             [b (if (clockwise? b2) b2 (reverse b2))]
-             [is (cubic-bezier-intersections a b)])
-        (if (not (= (length is) 2))
-            (error "I can subtract shapes that intersect in two points")
-            (let-values ([(a1 a2) (apply split-bezier-between a is)]
-                         [(b1 b2) (apply split-bezier-between b is)])
-              (let* ([ak (filter (lambda (i) (not (include-bounding-box?
-                                                  (bezier-bounding-box b)
-                                                  (bezier-bounding-box i))))
-                                 (list a1 a2))]
-                     [bk (filter (lambda (i) (include-bounding-box?
-                                              (bezier-bounding-box a)
-                                              (bezier-bounding-box i)))
-                                 (list b1 b2))]
-                     [ak1 (if (and (> (length ak) 1)
-                                   (= (length bk) 1))
-                              (list (car (sort ak < #:key (lambda (i) 
-                                                            (+
-                                                             (vec-length (vec- (first i) (last (car bk))))
-                                                             (vec-length (vec- (last i) (first (car bk)))))))))
-                              ak)]
-                     [bk1 (if (and (> (length bk) 1)
-                                   (= (length ak) 1))
-                              (list (car (sort bk < #:key (lambda (i)
-                                                            (+
-                                                             (vec-length (vec- (first i) (last (car ak))))
-                                                             (vec-length (vec- (last i) (first (car ak)))))))))
-                              bk)])
-                (if (and (= (length bk1) 1)
-                         (= (length ak1) 1))
-                    (apply join-beziers
-                           (map canonical-line-segment
-                                (segments (append (drop-right (car ak1) 1)
-                                                  (drop-right (car bk1) 1)
-                                                  (list (car (car ak1)))))))
-                    (error "bezier subtraction: something went wrong"))))))))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -331,7 +448,7 @@
 (define (c-clockwise b)
   (if (not (clockwise? b)) b (reverse b)))
 
-; ClosedBezier Vec -> Boolean
+; Vec ClosedBezier -> Boolean
 ; true if the point represented by vec is inside the bezier (or on the boundary)
 (define (point-inside-bezier? v b)
   (let ([ints (bezier-intersect-hor (vec-y v) b)])
@@ -361,6 +478,7 @@
 ; CubicSegment CubicSegment -> (listOf Vec)
 ; produce a list of intersections between two bezier segments
 (define (cubic-segment-intersections s1 s2)
+  
   (let ([bb1 (segment-bounding-box s1)]
         [bb2 (segment-bounding-box s2)]
         [ep1 (end-points s1)]
@@ -431,13 +549,13 @@
                     (rotate (translate v (- (vec-x f)) (- (vec-y f))) 
                             (- a)))
                   s)])
-    (filter (lambda (v)
-              (and (>= (vec-x v) (vec-x (car (segment-bounding-box l))))
-                   (<= (vec-x v) (vec-x (cdr (segment-bounding-box l))))
-                   (>= (vec-y v) (vec-y (car (segment-bounding-box l))))
-                   (<= (vec-y v) (vec-y (cdr (segment-bounding-box l))))))
-               (map (lambda (v) (translate (rotate v a) (vec-x f) (vec-y f)))
-                    (segment-intersect-hor 0 ts)))))
+     (filter (lambda (v)
+               (< (- (+ (vec-length (vec- v (car l)))
+                        (vec-length (vec- (last l) v)))
+                     (vec-length (vec- (last l) (car l))))
+                  0.01))
+              (map (lambda (v) (translate (rotate v a) (vec-x f) (vec-y f)))
+                   (segment-intersect-hor 0 ts)))))
     
 
 
@@ -569,4 +687,8 @@
 
 
 
-                 
+                
+
+(line-segment-intersections 
+   (list (vec -21.2132 -49.4975) (vec -21.2132 -49.4975) (vec 120.2082 91.9239) (vec 120.2082 91.9239))
+(list (vec 100 0) (vec 100 55.191500000000005) (vec 55.191500000000005 100) (vec 0 100)))
