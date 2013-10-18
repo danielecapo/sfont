@@ -14,7 +14,10 @@
   [arc (-> real? real? real? real? bezier/c)]
   [alg (-> alignment/c real?)]
   [ovs (-> alignment/c real?)]
-  [ovs-height (-> alignment/c real?)])
+  [ovs-height (-> alignment/c real?)]
+  [remove~ (->* (bezier/c) () #:rest (listof (and/c bezier/c closed?)) (listof (and/c bezier/c closed?)))]
+  [join~ (->* (bezier/c) () #:rest (listof (and/c bezier/c closed?)) (listof (and/c bezier/c closed?)))]
+  )
  glyph.
  font.
  from
@@ -151,6 +154,33 @@
              (append (list p p (car p2)) p2)))]
         [else (cons (car p1) (join-subpaths (cdr p1) p2))]))
 
+
+; Bezier  Bezier ... -> (listof Bezier)
+(define (remove~ pt . from-pt)
+  (foldl (lambda (p acc)
+           (append acc (bezier-subtract p pt)))
+         null
+         from-pt))
+ 
+; Bezier  Bezier ... -> (listof Bezier)
+(define (join~ pt . pts)
+  (if (null? pts)
+      (list pt)
+      (let* ([bb (bezier-bounding-box pt)]
+             [overlaps 
+              (filter (lambda (pi) 
+                        (overlap-bounding-boxes?  bb (bezier-bounding-box pi))) 
+                      pts)]
+             [non-overlaps
+              (set->list (set-subtract (list->set pts) (list->set overlaps)))])
+        (if (null? overlaps)
+            (append (list pt)
+                    (apply join~ pts))
+            (let ([j (bezier-union pt (car overlaps))])
+              (if (= (length j) 1)
+                  (apply join~ (car j) (append (cdr overlaps) non-overlaps))
+                  (append (list (car overlaps))
+                          (apply join~ pt (append (cdr overlaps) non-overlaps)))))))))
  
 
 ; Real, Real, Real, Real -> Bezier
