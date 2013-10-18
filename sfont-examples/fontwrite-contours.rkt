@@ -1,5 +1,6 @@
 #lang racket
 (require "../sfont/parametric/fontwriter.rkt"
+         "../sfont/geometry.rkt"
          "../sfont/utilities.rkt")
 
 ;Contours examples
@@ -126,27 +127,27 @@
 
 (code+expr
  (print-beziers
-  (translate (rect 0 0 400 600) 300 0)))
+  (translate. (rect 0 0 400 600) 300 0)))
 
 (code+expr
  (print-beziers
-  (rotate (rect 0 0 400 600) (° 30))))
+  (rotate. (rect 0 0 400 600) (° 30))))
 
 (code+expr
  (print-beziers
-  (skew-x (rect 0 0 400 600) (° 30))))
+  (skew-x. (rect 0 0 400 600) (° 30))))
 
 (code+expr
  (print-beziers
-  (skew-y (rect 0 0 400 600) (° 30))))
+  (skew-y. (rect 0 0 400 600) (° 30))))
 
 (code+expr
  (print-beziers
-  (reflect-x (arc 0 0 500 (° 60)))))
+  (reflect-x. (arc 0 0 500 (° 60)))))
 
 (code+expr
  (print-beziers
-  (reflect-y (arc 0 0 500 (° 60)))))
+  (reflect-y. (arc 0 0 500 (° 60)))))
 
 
 ; transformations can be done relative to a point in two ways 
@@ -154,17 +155,17 @@
 (code+expr
  (print-beziers
   (rect 0 0 400 600)
-  (from (0 0) (rotate (rect 0 0 400 600) (° 90)))))
+  (from (0 0) (rotate. (rect 0 0 400 600) (° 90)))))
 
 
 
 (print-beziers
  (rect 0 0 400 600)
- (from (0 300) (rotate (rect 0 0 400 600) (° 90))))
+ (from (0 300) (rotate. (rect 0 0 400 600) (° 90))))
 
 
 
 (print-beziers
  (rect 0 0 400 600)
- (rotate (rect 0 0 400 600) from (200 0) (° 90)))
+ (rotate. (rect 0 0 400 600) from (200 0) (° 90)))
 

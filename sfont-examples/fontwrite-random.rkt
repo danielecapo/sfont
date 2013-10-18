@@ -34,10 +34,10 @@
                      [s/3 (/ s 3)]
                      [rnd (lambda () (random (inexact->exact (round (* err s/3)))))]
                      [side (lambda () (~ (0 0) (s/3 (rnd)) ((* s/3 2) (rnd)) (s 0)))])
-                (translate (~ (insert (side)) 
-                              (@ insert (rotate (side) pi/2))
-                              (@ insert (rotate (side) pi))
-                              (@ insert (rotate (side) (* 3 pi/2))))
+                (translate. (~ (insert (side)) 
+                              (@ insert (rotate. (side) pi/2))
+                              (@ insert (rotate. (side) pi))
+                              (@ insert (rotate. (side) (* 3 pi/2))))
                               
                            80 0)))))
 
@@ -46,7 +46,7 @@
    (mount [r 1])
    [ascender 750 descender -250 width 700]
    (lambda () (let* ([s 540])
-                (translate (~ (0 0) -- (s 0) -- ((- s (random r)) (- 750 (random r)))
+                (translate. (~ (0 0) -- (s 0) -- ((- s (random r)) (- 750 (random r)))
                               -- ((random r) (- 750 (random r))) -- cycle)
                            80 0)))))
   

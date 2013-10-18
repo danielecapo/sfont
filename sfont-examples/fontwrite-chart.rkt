@@ -1,6 +1,7 @@
 #lang racket
 
 (require "../sfont/parametric/fontwriter.rkt"
+         "../sfont/geometry.rkt"
          "../sfont/utilities.rkt"
          "../sfont/main.rkt")
 
@@ -13,9 +14,9 @@
 
 (define (chart-slicer cx cy radius un)
   (lambda (pos ampl)
-    (rotate (slice cx cy radius (* ampl un))
-            from (cx cy)
-            (* pos un))))
+    (rotate. (slice cx cy radius (* ampl un))
+             from (cx cy)
+             (* pos un))))
 
 (define chartme
   (font. (chart [pos 0] [angle 1])

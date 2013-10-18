@@ -1,6 +1,7 @@
 #lang racket
 (require "../sfont/parametric/fontwriter.rkt"
          "../sfont/utilities.rkt"
+         "../sfont/geometry.rkt"
          "../sfont/main.rkt")
 
 (provide gradients)
@@ -45,7 +46,7 @@
 ; Number Number -> Bezier
 ; produce an inclined rectangle whose width is l and height is s
 (define (dline l s a)
-  (skew-x (vline l s) a))
+  (skew-x. (vline l s) a))
 
 ; Number Number Number Number -> Bezier
 ; produce a ring with center x, y, radius r and thickness s
@@ -65,8 +66,8 @@
             (foldl append '()
                    (map (lambda (p)
                           (if (even? p)
-                              (map (lambda (o) (translate o  (/ s 2) (+ (* p s) (/ s 2) -250))) (draw-row (- 1000 s) (- n 1) r))
-                              (map (lambda (o) (translate o  s (+ (* p s) (/ s 2) -250))) (draw-row (- 1000 s) (- n 1) r))))
+                              (map (lambda (o) (translate. o  (/ s 2) (+ (* p s) (/ s 2) -250))) (draw-row (- 1000 s) (- n 1) r))
+                              (map (lambda (o) (translate. o  s (+ (* p s) (/ s 2) -250))) (draw-row (- 1000 s) (- n 1) r))))
                         (range n)))])))
 
 ; Symbol Number Number -> Ufo:Glyph
@@ -77,7 +78,7 @@
            [metrics -- (/--/ 1000)]
            [contours 
             (map (lambda (p)
-                   (translate (vline 1000 r) (+ (/ s 2) (* p s)) -250))
+                   (translate. (vline 1000 r) (+ (/ s 2) (* p s)) -250))
                  (range n))])))
 
 ; Symbol Number Number -> Ufo:Glyph
@@ -88,7 +89,7 @@
            [metrics -- (/--/ 1000)]
            [contours 
             (map (lambda (p)
-                   (translate (dline 1000 r a) (+ (/ s 2) (* p s)) -250))
+                   (translate. (dline 1000 r a) (+ (/ s 2) (* p s)) -250))
                  (range n))])))
 
 ; Symbol Number Number -> Ufo:Glyph
@@ -99,7 +100,7 @@
            [metrics -- (/--/ 1000)]
            [contours 
             (map (lambda (p)
-                   (translate (hline 1000 r) 0 (+ (/ s 2) (* p s) -250)))
+                   (translate. (hline 1000 r) 0 (+ (/ s 2) (* p s) -250)))
                  (range n))])))
 
 ; Symbol Number Number -> Ufo:Glyph

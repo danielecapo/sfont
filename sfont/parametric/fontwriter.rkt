@@ -19,21 +19,13 @@
  font.
  from
  ~
- (except-out (all-from-out "../geometry.rkt")
-             translate
-             rotate
-             scale
-             skew-x
-             skew-y
-             reflect-x
-             reflect-y)
- (rename-out [translate* translate]
-             [rotate* rotate]
-             [scale* scale]
-             [skew-x* skew-x]
-             [skew-y* skew-y]
-             [reflect-x* reflect-x]
-             [reflect-y* reflect-y]))
+ translate.
+ rotate.
+ scale.
+ skew-x.
+ skew-y.
+ reflect-x.
+ reflect-y.)
 
 
 (define-syntax (parse-curves stx)
@@ -44,7 +36,7 @@
         #'(let* ([b i]
                  [n (car b)]
                  [l (last b)])
-            (join-subpaths b (parse-curves (insert (translate* o (vec-x l) (vec-y l))) . r)))]
+            (join-subpaths b (parse-curves (insert (translate. o (vec-x l) (vec-y l))) . r)))]
        [(@ x y)
         #'(let* ([b i]
                  [n (car b)]
@@ -62,7 +54,7 @@
         #'(let ([n (vec x y)])
             (join-subpaths 
              (list n) 
-             (parse-curves (insert (translate* o (vec-x n) (vec-y n))) . r)))]
+             (parse-curves (insert (translate. o (vec-x n) (vec-y n))) . r)))]
        [(@ cx cy . t) 
         #'(let* ([n (vec x y)]
                  [nc (vec+ n (vec cx cy))])
@@ -197,7 +189,7 @@
           [(> a 2pi) (error "arc: angle is greater than 2pi")]
           [(> a pi/2) (join-subpaths seg 
                                      (from (cx cy) 
-                                           (rotate* (arc cx cy r (- a pi/2))
+                                           (rotate. (arc cx cy r (- a pi/2))
                                                     pi/2)))])))
 
 ; Syntax for defining geometric transformations
@@ -212,17 +204,17 @@
 
 
 
-(define-transform translate* translate)
-(define-transform rotate* rotate)
-(define-transform scale* scale)
-(define-transform skew-x* skew-x)
-(define-transform skew-y* skew-y)
-(define-transform reflect-x* reflect-x)
-(define-transform reflect-y* reflect-y)
+(define-transform translate. translate)
+(define-transform rotate. rotate)
+(define-transform scale. scale)
+(define-transform skew-x. skew-x)
+(define-transform skew-y. skew-y)
+(define-transform reflect-x. reflect-x)
+(define-transform reflect-y. reflect-y)
 
 
 (define-syntax-rule (from (x y) (fn o . args))
-  (translate* (fn (translate* o (- x) (- y)) . args)
+  (translate. (fn (translate. o (- x) (- y)) . args)
               x y))
 
 

@@ -99,7 +99,7 @@
                (metrics space (/--/ (+ gw space space)))
                [contours
                 (map (lambda (c) (from ((+ space (/ gw 2)) (/ x-height 2))
-                                       (rotate c pi)))
+                                       (rotate. c pi)))
                      a-cnt)])
         (glyph. 'o
                (metrics space space)

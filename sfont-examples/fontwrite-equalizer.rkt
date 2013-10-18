@@ -1,6 +1,7 @@
 #lang racket
 (require "../sfont/parametric/fontwriter.rkt"
          "../sfont/utilities.rkt"
+         "../sfont/geometry.rkt"
          "../sfont/fontpict.rkt")
 
 (provide equalizer)
@@ -21,7 +22,7 @@
    [metrics sb sb]
    [contours 
     (map (lambda (p)
-           (translate (line w s) 0 (* p sp)))
+           (translate. (line w s) 0 (* p sp)))
          (range n))]))
 
 (define equalizer
