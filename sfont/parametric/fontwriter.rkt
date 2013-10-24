@@ -443,6 +443,3 @@
        [alignments als ...]
        [glyphs glyph-form ...])
      #'(font. name [alignments als ...] [variables] [glyphs glyph-form ...])]))
-
-
-

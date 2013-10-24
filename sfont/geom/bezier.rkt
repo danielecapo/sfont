@@ -206,7 +206,6 @@
 (define (join-parts m1 m2)
   (letrec ([aux 
             (lambda (a b acc)
-              
               (match a
                 [(list-rest (? vec? v) (? bezier/c bs) (? vec? v1) r)
                  (let ([next (cond [(null? acc) (list bs)]
@@ -279,7 +278,7 @@
 (define (mark-bezier-with-points b ints)
   (let ([s (split-bezier-with-points b ints)])
     (foldl (lambda (seg acc)
-             (if (member (car seg) ints)
+             (if (memf (curry vec= (car seg)) ints)
                  (append acc (cons (car seg) (list seg)))
                  (append acc (list seg))))
            null
