@@ -12,15 +12,21 @@
   [read-ufo (->* (path-string?) 
                  (#:proc-data (-> any/c any) #:proc-images (-> any/c any))
                  font?)]
-  [write-ufo (->* (font? path-string?) 
-                  (#:overwrite boolean? 
-                   #:proc-data (or/c #f (-> any/c any)) 
-                   #:proc-images (or/c #f (-> any/c any)))
-                  any)]
-  
-  [read-glif-file (->* (path-string?) ((or/c string? #f)) glyph?)]
-  [write-glif-file (-> glyph? path-string? any)]
+;  [write-ufo (->* (font? path-string?) 
+;                  (#:overwrite boolean? 
+;                   #:proc-data (or/c #f (-> any/c any)) 
+;                   #:proc-images (or/c #f (-> any/c any)))
+;                  any)]
+;  
+;  [read-glif-file (->* (path-string?) ((or/c string? #f)) glyph?)]
+;  [write-glif-file (-> glyph? path-string? any)]
   ))
+
+
+(struct glif (format name advance unicodes 
+              note image guidelines anchors 
+              contours components lib))
+
 
 ; (listOf (Symbol . T)) -> (listOf keyword)
 ; produce a list of keywords from a key-value pairs list
@@ -77,9 +83,9 @@
          
   (aux null null null os))
 
-; Xexpr [Symbol or False] -> Glyph
+; Xexpr [Symbol or False] -> Glif
 ; produce a Glyph from a xexpr representation, if name is not false ovveride the glyph name
-(define (xexpr->glyph x [name #f])
+(define (xexpr->glif x [name #f])
   (define (aux acc elts)
     (match elts
       [(list) acc]
@@ -87,44 +93,44 @@
        (match elt
          
          [(list 'advance args) 
-          (aux (struct-copy glyph acc 
+          (aux (struct-copy glif acc 
                             [advance (apply-with-kws make-advance args)])
                restelts)]
          [(list 'unicode (list (list 'hex hex)))
-          (aux (struct-copy glyph acc 
-                            [unicodes (append (glyph-unicodes acc) (list (string->unicode hex)))])
+          (aux (struct-copy glif acc 
+                            [unicodes (append (glif-unicodes acc) (list (string->unicode hex)))])
                restelts)]
          [(list 'note null n)
-          (aux (struct-copy glyph acc [note n])
+          (aux (struct-copy glif acc [note n])
                restelts)]
          [(list 'image args)
-          (aux (struct-copy glyph acc 
+          (aux (struct-copy glif acc 
                             [image (apply-with-kws make-image args)])
                restelts)]
          [(list 'guideline args)
-          (aux (struct-copy glyph acc 
+          (aux (struct-copy glif acc 
                             [guidelines (cons (apply-with-kws make-guideline args)
-                                              (glyph-guidelines acc))])
+                                              (glif-guidelines acc))])
                restelts)]
          [(list 'anchor args)
-          (aux (struct-copy glyph acc 
+          (aux (struct-copy glif acc 
                             [anchors (cons (apply-with-kws make-anchor args)
-                                              (glyph-anchors acc))])
+                                              (glif-anchors acc))])
                restelts)]
          [(list-rest 'outline null outlines)
           (let-values ([(contours components anchors) (parse-outlines outlines)])
-            (aux (struct-copy glyph
-                              (struct-copy glyph acc [contours contours])
+            (aux (struct-copy glif
+                              (struct-copy glif acc [contours contours])
                               [components components]
-                              [anchors (append (glyph-anchors acc) anchors)])
+                              [anchors (append (glif-anchors acc) anchors)])
                  restelts))]
          [(list 'lib null d)
-          (aux (struct-copy glyph acc 
+          (aux (struct-copy glif acc 
                             [lib (xexpr->dict d)])
                restelts)]
          
          [_ acc])]))
-  (aux (glyph (string->number (se-path* '(glyph #:format) x))
+  (aux (glif (string->number (se-path* '(glyph #:format) x))
               (if name name (string->symbol (se-path* '(glyph #:name) x)))
               (make-advance) null #f #f null null null null (make-immutable-hash))
        (se-path*/list '(glyph) x)))
@@ -133,8 +139,9 @@
 (define-syntax-rule (not-default val defaultvalue expr)
     (if (equal? val defaultvalue) '() (list expr)))
 
-; Glyph -> Xexpr
+; Glif -> Xexpr
 ; produce an Xexpr representation of the glyph
+#;
 (define (glyph->xexpr g)
   (letrec [(aux 
             (lambda (g)
@@ -207,10 +214,10 @@
              (glyph->glyph1 g)
              (glyph->glyph2 g)))))
              
-; String [Symbol or False] -> Glyph
+; String [Symbol or False] -> Glif
 ; produce a Glyph read from path, if name is not false ovveride the glyph name
 (define (read-glif-file path [name #f])
-  (xexpr->glyph
+  (xexpr->glif
    (xml->xexpr 
    ((eliminate-whitespace 
      '(glyph advance unicode image guideline anchor 
@@ -222,6 +229,7 @@
 
 ; Glyph String -> side effects
 ; write the glyph to path
+#;
 (define (write-glif-file g path)
   (call-with-output-file
       path
@@ -238,6 +246,36 @@
                     o)))
     #:exists 'replace))
 
+; Glif Symbol -> Layer 
+(define (glif->layer g n)
+  (match g
+    [(glif _ _ _ _ _ _ guidelines anchors contours components _)
+     (layer n guidelines anchors contours components)]))
+
+; Glif -> Glyph
+(define (glif->glyph g)
+  (match g
+    [(glif format name advance unicodes 
+           note image _ _ _ _ lib)
+     (glyph format name advance unicodes note image 
+            null lib)]))
+
+; (listof Glyph) (listof (Cons Symbol (HashTable Symbol Glif)))
+(define (add-layers-to-glyphs glyphs layer-glifs)
+  (map (lambda (g)
+         (foldl (lambda (l ga)
+                  (let ([glifl (hash-ref (cdr l) (glyph-name g) #f)])
+                    (if glifl
+                        (struct-copy glyph ga
+                                     [layers (hash-set (glyph-layers ga) 
+                                                       (car l) 
+                                                       (glif->layer glifl (car l)))])
+                        glifl)))
+                g
+                layer-glifs))
+       glyphs))
+                        
+;
 
 ; String (String -> T1) (String -> T2) -> UfoReader
 ; produce a reader for the ufo file in path
@@ -265,17 +303,43 @@
      (build-path (make-ufo-path glyphsdir) "layerinfo.plist")))
   (define (read-layers)
     (let ([layers (read-from-plist (make-ufo-path "layercontents.plist"))])
-      (map (lambda (l) 
-             (layer (string->symbol (car l))
-                    (read-layerinfo (cadr l)) 
-                    (read-glyphs (cadr l))))
+      (map (lambda (l)
+             (let ([info (read-layerinfo (cadr l))])
+               (if info
+                   (layer-info
+                    (string->symbol (car l))
+                    (if (dict-ref info 'color #f)
+                        (ensure-color (dict-ref info 'color))
+                        #f)
+                    (dict-ref info 'lib (make-immutable-hash)))
+                   (layer-info (string->symbol (car l)) #f (make-immutable-hash)))))
            (if layers layers (list (list "public.default" "glyphs"))))))
+  (define (read-layer-glifs)
+    (let ([layers (read-from-plist (make-ufo-path "layercontents.plist"))])
+      (map (lambda (l) (cons (string->symbol (car l)) (read-glifs (cadr l))))          
+           (if layers layers (list (list "public.default" "glyphs"))))))
+  (define (read-glifs glifsdir)
+    (let* ([glifspath (make-ufo-path glifsdir)]
+           [contents (read-from-plist (build-path glifspath "contents.plist"))])
+      (make-hash (map (lambda (g) (cons (glif-name g) g))
+                      (hash-map contents
+                                (lambda (k v) (read-glif-file (build-path glifspath v) k)))))))
+;      (map (lambda (l) 
+;             (layer (string->symbol (car l))
+;                    (read-layerinfo (cadr l)) 
+;                    (read-glyphs (cadr l))))
+;           (if layers layers (list (list "public.default" "glyphs"))))))
           
-  (define (read-glyphs glyphsdir)
-    (let* ([glyphspath (make-ufo-path glyphsdir)]
-           [contents (read-from-plist (build-path glyphspath "contents.plist"))])
-      (hash-map contents
-                (lambda (k v) (read-glif-file (build-path glyphspath v) k)))))
+  (define (read-glyphs)
+    (let* ([layer-glifs (read-layer-glifs)]
+           [glyphs (hash-map (dict-ref layer-glifs foreground)
+                           (lambda (k v)
+                             (glif->glyph v)))])
+      (add-layers-to-glyphs glyphs layer-glifs)))
+;    (let* ([glyphspath (make-ufo-path glyphsdir)]
+;           [contents (read-from-plist (build-path glyphspath "contents.plist"))])
+;      (hash-map contents
+;                (lambda (k v) (read-glif-file (build-path glyphspath v) k)))))
            
   (define (read-from-directory path [proc #f])
     (if proc
@@ -291,6 +355,7 @@
             (cons 'lib (lambda () (let ([l (read-from-plist (make-ufo-path "lib.plist"))])
                                     (if l l (make-immutable-hash)))))
             (cons 'layers read-layers)
+            (cons 'glyphs read-glyphs)
             (cons 'data (lambda () (read-from-directory (make-ufo-path "data") proc-data)))
             (cons 'images (lambda () (read-from-directory (make-ufo-path "images") proc-images))))])
     (lambda (k) (dict-ref s k))))
@@ -313,14 +378,15 @@
 ; produce a font from an UFO2 file
 (define (read-ufo2 creator reader)
   (font 2 creator
-            ((reader 'info))
-            ((reader 'groups))
-            ((reader 'kerning))
-            ((reader 'features))
-            ((reader 'layers))
-            ((reader 'lib))
-            #f
-            #f))
+        ((reader 'info))
+        ((reader 'groups))
+        ((reader 'kerning))
+        ((reader 'features))
+        ((reader 'glyphs))
+        ((reader 'layers))
+        ((reader 'lib))
+        #f
+        #f))
 
 ; String UfoReader -> Font
 ; produce a font from an UFO3 file
@@ -330,185 +396,186 @@
             ((reader 'groups))
             ((reader 'kerning))
             ((reader 'features))
+            ((reader 'glyphs))
             ((reader 'layers))
             ((reader 'lib))
             ((reader 'data))
             ((reader 'images))))
 
-; Font String (String -> ...) (String -> ...) -> UfoWriter
-; produce a writer for the ufo file in path
-(define (writer f path [proc-data #f] [proc-images #f])
-  (define (make-ufo-path file)
-    (build-path path file))
-  (define (write-on-plist dict path)
-    (when (and dict (> (dict-count dict) 0))
-      (write-dict dict path)))
-  (define (write-directory dir path [proc #f])
-    (when dir
-      (if proc
-          (proc path)
-          (copy-directory/files dir path))))
-  (define (write-on-text-file text path)
-    (when text
-      (let ([text (string-trim text)])
-        (when (and (string? text) (not (string=? "" text)))
-          (call-with-output-file path 
-            (lambda (o)
-              (write-string text o)))))))
-  (define (write-groups)
-    (write-on-plist (make-immutable-hash
-                     (hash-map (font-groups f)
-                               (lambda (name content)
-                                 (cons name (map symbol->string content)))))
-                    (make-ufo-path "groups.plist")))
-  (define (get-layers-names)
-    (letrec ([aux (lambda (acc layers names)
-                    (match layers
-                      [(list) acc]
-                      [(list-rest (layer 'public.default _ _) rest-layers)
-                       (aux (cons (cons 'public.default "glyphs") acc)
-                            rest-layers
-                            (cons "glyphs" names))]
-                      [(list-rest (layer l _ _) rest-layers)
-                       (let ([name (namesymbol->filename l "glyphs." "" names)])
-                                (aux (cons (cons l name) acc)
-                                     rest-layers
-                                     (cons name names)))]))])                
-      (reverse (aux '() (hash-values (font-layers f)) '()))))
-  
-  (define layers-names (get-layers-names))
-  (define (write-glyphs glyphs glyphsdir)
-    (letrec ([aux (lambda (glyphs acc names)
-                    (match glyphs
-                      [(list) (make-immutable-hash (reverse acc))]
-                      [(list-rest g rest-glyphs)
-                       (let ([name (namesymbol->filename (glyph-name g) "" ".glif" names)])
-                          (begin
-                            (write-glif-file g (build-path glyphsdir name))
-                            (aux rest-glyphs 
-                                 (cons (cons (glyph-name g) name) acc)
-                                 (cons name names))))]))])
-      (write-on-plist (aux  glyphs '() '())
-                      (build-path glyphsdir "contents.plist"))))
-      
-  (define (write-layers)
-    (let ((layers-hash (font-layers f)))
-      (for-each (lambda (l)
-                  (begin
-                    (let ([dir (make-ufo-path (cdr l))]
-                          [la (dict-ref layers-hash (car l))])
-                      (make-directory dir)
-                      (write-glyphs (hash-values (layer-glyphs la)) dir)
-                      (write-layerinfo (layer-info la) dir))))
-                layers-names)))
-  (define (write-layerinfo info dir)
-    (write-on-plist info (build-path dir "layerinfo.plist")))
-  (define (write-layercontents)
-    (write-on-plist 
-     (map (lambda (layer) (list (symbol->string (car layer)) (cdr layer)))
-          layers-names)
-     (make-ufo-path "layercontents.plist")))
-  (let ([s (list 
-            (cons 'meta (lambda () 
-                          (write-on-plist (hash 'creator (font-creator f)
-                                                'formatVersion (font-format f))
-                                          (make-ufo-path "metainfo.plist"))))
-            (cons 'info (lambda () 
-                          (write-on-plist (font-fontinfo f) 
-                                          (make-ufo-path "fontinfo.plist"))))
-            (cons 'groups write-groups)
-            (cons 'kerning (lambda () (write-on-plist (font-kerning f) 
-                                                      (make-ufo-path "kerning.plist"))))
-            (cons 'features (lambda () (write-on-text-file (font-features f)
-                                                           (make-ufo-path "features.fea"))))
-            (cons 'lib (lambda () (write-on-plist (font-lib f) 
-                                                  (make-ufo-path "lib.plist"))))
-            (cons 'layers write-layers)
-            (cons 'layercontents write-layercontents)
-            (cons 'data (lambda () (write-directory (font-data f) (make-ufo-path "data") proc-data)))
-            (cons 'images (lambda () (write-directory (font-images f) (make-ufo-path "images") proc-images))))])
-    (lambda (k) (dict-ref s k))))
-
-; Font String [Boolean] (String -> ...) (String -> ...) -> side effects
-; write the UFO to the given path
-(define (write-ufo f path #:overwrite [overwrite #t] #:proc-data [proc-data #f] #:proc-images [proc-images #f])
-  (unless (and (filename-extension path) 
-               (string=? (bytes->string/utf-8 (filename-extension path))
-                         "ufo"))
-    (error (format "Expected ufo extension, but given ~a" path)))
-  (let* ([ff (font-format f)]
-         [f (if (= ff 3) (font->ufo3 f) (font->ufo2 f))] 
-         [writer (writer f path proc-data proc-images)])
-    (if (and (directory-exists? path) (not overwrite))
-        #f
-        (begin
-          (if (directory-exists? path)
-              (clean-ufo-dir path)
-              (make-directory path))
-          (cond [(= ff 2) (write-ufo2 writer)]
-                [(= ff 3) (write-ufo3 writer)]
-                [#t (error "I can only write Ufo 2 and Ufo 3 files")])))))
-
-; PathString -> Void
-; Delete ufo files from ufo dir
-(define (clean-ufo-dir path)
-  (begin
-    (unless (and (filename-extension path) 
-                 (string=? (bytes->string/utf-8 (filename-extension path))
-                           "ufo"))
-      (error (format "Expected ufo extension, but given ~a" path)))
-    (unless (directory-exists? path)
-      (error (format "The path ~a does not exist" path)))
-    (let ([files (map (curry build-path path)
-                      (list "metainfo.plist"
-                            "fontinfo.plist"
-                            "groups.plist"
-                            "kerning.plist"
-                            "features.fea"
-                            "lib.plist"
-                            "layercontents.plist"))]
-          [dirs (map (curry build-path path)
-                     (list "glyphs" "images" "data"))]
-          [gdirs (map (curry build-path path)
-                      (filter (lambda (s)
-                                (and (> (string-length s) 7)
-                                     (string=? "glyphs."
-                                               (substring s 0 7))))
-                              (map path->string (directory-list path))))])
-      (begin
-        (for-each (lambda (f) (when (file-exists? f)
-                                (delete-file f)))
-                  files)
-        (for-each (lambda (d) (when (directory-exists? d)
-                                (delete-directory/files d)))
-                  dirs)
-        (for-each (lambda (d) (when (directory-exists? d)
-                                (delete-directory/files d)))
-                  gdirs)))))
-
-; ufoWriter -> side effects
-; write an UFO2 with the UfoWriter
-(define (write-ufo2 writer)
-  (begin
-    ((writer 'meta))
-    ((writer 'info))
-    ((writer 'groups))
-    ((writer 'kerning))
-    ((writer 'features))
-    ((writer 'layers))
-    ((writer 'lib))))
-
-; ufoWriter -> side effects
-; write an UFO3 with the UfoWriter
-(define (write-ufo3 writer)
-  (begin
-    ((writer 'meta))
-    ((writer 'info))
-    ((writer 'groups))
-    ((writer 'kerning))
-    ((writer 'features))
-    ((writer 'layers))
-    ((writer 'lib))
-    ((writer 'layercontents))
-    ((writer 'data))
-    ((writer 'images))))
+;; Font String (String -> ...) (String -> ...) -> UfoWriter
+;; produce a writer for the ufo file in path
+;(define (writer f path [proc-data #f] [proc-images #f])
+;  (define (make-ufo-path file)
+;    (build-path path file))
+;  (define (write-on-plist dict path)
+;    (when (and dict (> (dict-count dict) 0))
+;      (write-dict dict path)))
+;  (define (write-directory dir path [proc #f])
+;    (when dir
+;      (if proc
+;          (proc path)
+;          (copy-directory/files dir path))))
+;  (define (write-on-text-file text path)
+;    (when text
+;      (let ([text (string-trim text)])
+;        (when (and (string? text) (not (string=? "" text)))
+;          (call-with-output-file path 
+;            (lambda (o)
+;              (write-string text o)))))))
+;  (define (write-groups)
+;    (write-on-plist (make-immutable-hash
+;                     (hash-map (font-groups f)
+;                               (lambda (name content)
+;                                 (cons name (map symbol->string content)))))
+;                    (make-ufo-path "groups.plist")))
+;  (define (get-layers-names)
+;    (letrec ([aux (lambda (acc layers names)
+;                    (match layers
+;                      [(list) acc]
+;                      [(list-rest (layer 'public.default _ _) rest-layers)
+;                       (aux (cons (cons 'public.default "glyphs") acc)
+;                            rest-layers
+;                            (cons "glyphs" names))]
+;                      [(list-rest (layer l _ _) rest-layers)
+;                       (let ([name (namesymbol->filename l "glyphs." "" names)])
+;                                (aux (cons (cons l name) acc)
+;                                     rest-layers
+;                                     (cons name names)))]))])                
+;      (reverse (aux '() (hash-values (font-layers f)) '()))))
+;  
+;  (define layers-names (get-layers-names))
+;  (define (write-glyphs glyphs glyphsdir)
+;    (letrec ([aux (lambda (glyphs acc names)
+;                    (match glyphs
+;                      [(list) (make-immutable-hash (reverse acc))]
+;                      [(list-rest g rest-glyphs)
+;                       (let ([name (namesymbol->filename (glyph-name g) "" ".glif" names)])
+;                          (begin
+;                            (write-glif-file g (build-path glyphsdir name))
+;                            (aux rest-glyphs 
+;                                 (cons (cons (glyph-name g) name) acc)
+;                                 (cons name names))))]))])
+;      (write-on-plist (aux  glyphs '() '())
+;                      (build-path glyphsdir "contents.plist"))))
+;      
+;  (define (write-layers)
+;    (let ((layers-hash (font-layers f)))
+;      (for-each (lambda (l)
+;                  (begin
+;                    (let ([dir (make-ufo-path (cdr l))]
+;                          [la (dict-ref layers-hash (car l))])
+;                      (make-directory dir)
+;                      (write-glyphs (hash-values (layer-glyphs la)) dir)
+;                      (write-layerinfo (layer-info la) dir))))
+;                layers-names)))
+;  (define (write-layerinfo info dir)
+;    (write-on-plist info (build-path dir "layerinfo.plist")))
+;  (define (write-layercontents)
+;    (write-on-plist 
+;     (map (lambda (layer) (list (symbol->string (car layer)) (cdr layer)))
+;          layers-names)
+;     (make-ufo-path "layercontents.plist")))
+;  (let ([s (list 
+;            (cons 'meta (lambda () 
+;                          (write-on-plist (hash 'creator (font-creator f)
+;                                                'formatVersion (font-format f))
+;                                          (make-ufo-path "metainfo.plist"))))
+;            (cons 'info (lambda () 
+;                          (write-on-plist (font-fontinfo f) 
+;                                          (make-ufo-path "fontinfo.plist"))))
+;            (cons 'groups write-groups)
+;            (cons 'kerning (lambda () (write-on-plist (font-kerning f) 
+;                                                      (make-ufo-path "kerning.plist"))))
+;            (cons 'features (lambda () (write-on-text-file (font-features f)
+;                                                           (make-ufo-path "features.fea"))))
+;            (cons 'lib (lambda () (write-on-plist (font-lib f) 
+;                                                  (make-ufo-path "lib.plist"))))
+;            (cons 'layers write-layers)
+;            (cons 'layercontents write-layercontents)
+;            (cons 'data (lambda () (write-directory (font-data f) (make-ufo-path "data") proc-data)))
+;            (cons 'images (lambda () (write-directory (font-images f) (make-ufo-path "images") proc-images))))])
+;    (lambda (k) (dict-ref s k))))
+;
+;; Font String [Boolean] (String -> ...) (String -> ...) -> side effects
+;; write the UFO to the given path
+;(define (write-ufo f path #:overwrite [overwrite #t] #:proc-data [proc-data #f] #:proc-images [proc-images #f])
+;  (unless (and (filename-extension path) 
+;               (string=? (bytes->string/utf-8 (filename-extension path))
+;                         "ufo"))
+;    (error (format "Expected ufo extension, but given ~a" path)))
+;  (let* ([ff (font-format f)]
+;         [f (if (= ff 3) (font->ufo3 f) (font->ufo2 f))] 
+;         [writer (writer f path proc-data proc-images)])
+;    (if (and (directory-exists? path) (not overwrite))
+;        #f
+;        (begin
+;          (if (directory-exists? path)
+;              (clean-ufo-dir path)
+;              (make-directory path))
+;          (cond [(= ff 2) (write-ufo2 writer)]
+;                [(= ff 3) (write-ufo3 writer)]
+;                [#t (error "I can only write Ufo 2 and Ufo 3 files")])))))
+;
+;; PathString -> Void
+;; Delete ufo files from ufo dir
+;(define (clean-ufo-dir path)
+;  (begin
+;    (unless (and (filename-extension path) 
+;                 (string=? (bytes->string/utf-8 (filename-extension path))
+;                           "ufo"))
+;      (error (format "Expected ufo extension, but given ~a" path)))
+;    (unless (directory-exists? path)
+;      (error (format "The path ~a does not exist" path)))
+;    (let ([files (map (curry build-path path)
+;                      (list "metainfo.plist"
+;                            "fontinfo.plist"
+;                            "groups.plist"
+;                            "kerning.plist"
+;                            "features.fea"
+;                            "lib.plist"
+;                            "layercontents.plist"))]
+;          [dirs (map (curry build-path path)
+;                     (list "glyphs" "images" "data"))]
+;          [gdirs (map (curry build-path path)
+;                      (filter (lambda (s)
+;                                (and (> (string-length s) 7)
+;                                     (string=? "glyphs."
+;                                               (substring s 0 7))))
+;                              (map path->string (directory-list path))))])
+;      (begin
+;        (for-each (lambda (f) (when (file-exists? f)
+;                                (delete-file f)))
+;                  files)
+;        (for-each (lambda (d) (when (directory-exists? d)
+;                                (delete-directory/files d)))
+;                  dirs)
+;        (for-each (lambda (d) (when (directory-exists? d)
+;                                (delete-directory/files d)))
+;                  gdirs)))))
+;
+;; ufoWriter -> side effects
+;; write an UFO2 with the UfoWriter
+;(define (write-ufo2 writer)
+;  (begin
+;    ((writer 'meta))
+;    ((writer 'info))
+;    ((writer 'groups))
+;    ((writer 'kerning))
+;    ((writer 'features))
+;    ((writer 'layers))
+;    ((writer 'lib))))
+;
+;; ufoWriter -> side effects
+;; write an UFO3 with the UfoWriter
+;(define (write-ufo3 writer)
+;  (begin
+;    ((writer 'meta))
+;    ((writer 'info))
+;    ((writer 'groups))
+;    ((writer 'kerning))
+;    ((writer 'features))
+;    ((writer 'layers))
+;    ((writer 'lib))
+;    ((writer 'layercontents))
+;    ((writer 'data))
+;    ((writer 'images))))

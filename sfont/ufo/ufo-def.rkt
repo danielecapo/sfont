@@ -398,11 +398,13 @@
 ;;; LayerInfo
 ;;; (layer Symbol Color HashTable)
 ;;; represents information about the layer
-(struct layer-info (name color lib))
+(struct layer-info (name color lib) 
+  #:transparent)
 
 ;;; Layer
 ;;; (layer Symbol (listOf Guideline) (listOf Anchor) (listOf Contour) (listOf Component))
 (struct layer (name guidelines anchors contours components)
+  #:transparent
   #:methods gen:geometric
   [(define/generic super-transform transform)
    (define/generic super-translate translate)
