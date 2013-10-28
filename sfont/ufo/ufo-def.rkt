@@ -25,9 +25,7 @@
   [background name/c]
   [sfont-creator string?]
   [struct font  
-  ((format natural-number/c) 
-   (creator string?) 
-   (fontinfo fontinfo/c) 
+  ((fontinfo fontinfo/c) 
    (groups groups/c) 
    (kerning kerning/c)
    (features features/c) 
@@ -47,8 +45,7 @@
      (contours (listof contour?))
      (components (listof component?)))]
   [struct glyph 
-    ((format natural-number/c)
-     (name name/c) 
+    ((name name/c) 
      (advance advance?)
      (unicodes (listof natural-number/c))
      (note (or/c string? #f))
@@ -96,8 +93,8 @@
   [font-glyphs-list (-> font? (listof glyph?))]
   [sort-glyph-list (->* ((listof glyph?)) (#:key (-> glyph? any/c) #:pred (-> any/c any/c boolean?)) (listof glyph?))]
   [map-kerning (-> (-> real? real?) kerning/c kerning/c)]
-  [font->ufo2 (-> font? font?)]
-  [font->ufo3 (-> font? font?)]
+ ; [font->ufo2 (-> font? font?)]
+ ; [font->ufo3 (-> font? font?)]
   [decompose-glyph (-> font? glyph? glyph?)]
   [decompose-font (-> font? font?)]
   [glyph-bounding-box (case-> (-> glyph? font? bounding-box/c)
@@ -172,8 +169,9 @@
   [for-each-anchors (-> (-> anchor? any) (or/c glyph? layer?) any)]
   [map-points (-> (-> point? any/c) contour? (listof any/c))]
   [for-each-points (-> (-> point? any) contour? any)]
-  [glyph->glyph1 (-> glyph? glyph?)]
-  [glyph->glyph2 (-> glyph? glyph?)]
+  [layer->layer1 (-> layer? layer?)]
+ ; [glyph->glyph1 (-> glyph? glyph?)]
+ ; [glyph->glyph2 (-> glyph? glyph?)]
   [anchor->contour (-> anchor? contour?)]
   [contour->bezier (-> contour? bezier/c)]
   [bezier->contour (-> bezier/c contour?)]
@@ -317,11 +315,9 @@
 ;;; Font
 ;;; (font Number String HashTable HashTable HashTable String (listOf Glyph) (listOf Layer) HashTable ... ...)
 (struct font 
-  (format creator fontinfo groups kerning features glyphs layers lib data images)
-  #:guard (lambda (format creator fontinfo groups kerning features glyphs layers lib data images tn)
-            (values format 
-                    creator 
-                    fontinfo 
+  (fontinfo groups kerning features glyphs layers lib data images)
+  #:guard (lambda (fontinfo groups kerning features glyphs layers lib data images tn)
+            (values fontinfo 
                     groups 
                     kerning 
                     features
@@ -446,9 +442,9 @@
  
 ;;; Glyph
 ;;; (glyph Natural Symbol Advance (listOf Unicode) String Image (listOf Layer) HashTable)
-(struct glyph (format name advance unicodes note image layers lib) 
-  #:guard (lambda (format name advance unicodes note image layers lib tn) 
-            (values format name advance unicodes note image
+(struct glyph (name advance unicodes note image layers lib) 
+  #:guard (lambda (name advance unicodes note image layers lib tn) 
+            (values name advance unicodes note image
              (if (hash? layers)
                  (if (immutable? layers)
                      layers
@@ -690,17 +686,17 @@
                        (make-immutable-hash
                         (hash-map kr (lambda (r v) (cons r (proc v))))))))))
 
-; Font -> Font
-; produce a new font that try to be compatible with ufo2 specs
-(define (font->ufo2 f)
-  (struct-copy font f [format 2] [data #f] [images #f]
-               [glyphs (map-glyphs glyph->glyph1 f)]))
-; Font -> Font
-; produce a new font that try to be compatible with ufo3 spec     
-(define (font->ufo3 f) 
-  (struct-copy font (kern-groups2->3 f)
-               [format 3]
-               [glyphs (map-glyphs glyph->glyph2 f)]))
+;; Font -> Font
+;; produce a new font that try to be compatible with ufo2 specs
+;(define (font->ufo2 f)
+;  (struct-copy font f [format 2] [data #f] [images #f]
+;               [glyphs (map-glyphs glyph->glyph1 f)]))
+;; Font -> Font
+;; produce a new font that try to be compatible with ufo3 spec     
+;(define (font->ufo3 f) 
+;  (struct-copy font (kern-groups2->3 f)
+;               [format 3]
+;               [glyphs (map-glyphs glyph->glyph2 f)]))
 
 ; Font Glyph -> Glyph
 ; decompose glyph components to outlines
@@ -1173,15 +1169,15 @@
                        rest-pts)
                   (list start)))))
 
-; Glyph -> Glyph
-; Produce a new glyph hat try to be compatible with glif1 specs
-(define (glyph->glyph1 g)
-  (match g
-    [(glyph format name advance (list codes ...) 
-            note image layers lib)
-     (glyph 1 name advance codes #f #f 
-            (list (layer->layer1 (get-layer g foreground)))
-            lib)]))
+;; Glyph -> Glyph
+;; Produce a new glyph hat try to be compatible with glif1 specs
+;(define (glyph->glyph1 g)
+;  (match g
+;    [(glyph format name advance (list codes ...) 
+;            note image layers lib)
+;     (glyph 1 name advance codes #f #f 
+;            (list (layer->layer1 (get-layer g foreground)))
+;            lib)]))
 
 ; Layer -> Layer
 ; produce a new layer compatible with glif1 spec
@@ -1204,10 +1200,10 @@
                 (map-components (lambda (c) (struct-copy component c [identifier #f]))
                                 l)]))
 
-; Glyph -> Glyph
-; Produce a new glyph hat try to be compatible with glif2 specs
-(define (glyph->glyph2 g)
-  (struct-copy glyph g [format 2]))
+;; Glyph -> Glyph
+;; Produce a new glyph hat try to be compatible with glif2 specs
+;(define (glyph->glyph2 g)
+;  (struct-copy glyph g [format 2]))
 
 ; Anchor -> Contour
 ; produce a contour with one point only that is used by convention in Glif1 to define an anchor

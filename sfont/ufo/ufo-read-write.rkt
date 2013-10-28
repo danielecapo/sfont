@@ -13,10 +13,11 @@
                  (#:proc-data (-> any/c any) #:proc-images (-> any/c any))
                  font?)]
   [write-ufo (->* (font? path-string?) 
-                 (#:overwrite boolean? 
-                   #:proc-data (or/c #f (-> any/c any)) 
-                   #:proc-images (or/c #f (-> any/c any)))
-                  any)]
+                 (#:format natural-number/c
+                  #:overwrite boolean? 
+                  #:proc-data (or/c #f (-> any/c any)) 
+                  #:proc-images (or/c #f (-> any/c any)))
+                 any)]
 ;  
 ;  [read-glif-file (->* (path-string?) ((or/c string? #f)) glyph?)]
 ;  [write-glif-file (-> glyph? path-string? any)]
@@ -256,7 +257,7 @@
   (match g
     [(glif format name advance unicodes 
            note image _ _ _ _ lib)
-     (glyph format name advance unicodes note image 
+     (glyph name advance unicodes note image 
             (list (layer foreground null null null null)) lib)]))
 
 ; (listof Glyph) (listof (Cons Symbol (HashTable Symbol Glif)))
@@ -275,17 +276,17 @@
        glyphs))
 
 ; Glyph Symbol -> Glif
-(define (glyph->glif g l)
-  (let* ([gl (if (= (glyph-format g) 1)
-                 (glyph->glyph1 g)
-                 (glyph->glyph2 g))]
-         [elts (match (get-layer gl l)
-                 [#f (list null null null null)]
-                 [(layer _ guidelines anchors contours components)
-                  (list guidelines anchors contours components)])])
-  (match gl
-    [(glyph format name advance unicodes 
-            note image layers lib)
+(define (glyph->glif g l format)
+  (let ([elts (if (get-layer g l)
+                  (match (if (= format 1)
+                             (layer->layer1 (get-layer g l))
+                             (get-layer g l))
+                    [(layer _ guidelines anchors contours components)
+                     (list guidelines anchors contours components)])
+                  (list null null null null))])
+  (match g
+    [(glyph name advance unicodes 
+            note image _ lib)
      (glif format name advance unicodes note image
            (first elts) (second elts)
            (third elts) (fourth elts)
@@ -395,8 +396,7 @@
 ; String UfoReader -> Font
 ; produce a font from an UFO2 file
 (define (read-ufo2 creator reader)
-  (font 2 creator
-        ((reader 'info))
+  (font ((reader 'info))
         ((reader 'groups))
         ((reader 'kerning))
         ((reader 'features))
@@ -409,16 +409,15 @@
 ; String UfoReader -> Font
 ; produce a font from an UFO3 file
 (define (read-ufo3 creator reader)
-  (font 3 creator
-            ((reader 'info))
-            ((reader 'groups))
-            ((reader 'kerning))
-            ((reader 'features))
-            ((reader 'glyphs))
-            ((reader 'layers))
-            ((reader 'lib))
-            ((reader 'data))
-            ((reader 'images))))
+  (font ((reader 'info))
+        ((reader 'groups))
+        ((reader 'kerning))
+        ((reader 'features))
+        ((reader 'glyphs))
+        ((reader 'layers))
+        ((reader 'lib))
+        ((reader 'data))
+        ((reader 'images))))
 
 (define (layer-info->hash l)
   (let ([clr (if (layer-info-color l)
