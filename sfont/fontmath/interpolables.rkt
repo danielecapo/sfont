@@ -34,6 +34,7 @@
 ; Font Boolean Boolean -> Font
 (define (prepare-font f [weak #t] [auto-directions #f])
   (struct-copy font (if auto-directions (correct-directions f) f)
+               [layers (list (hash-ref (font-layers f) foreground))]
                [fontinfo (prepare-info (font-fontinfo f))]
                [kerning (prepare-kerning (font-kerning f))]
                [glyphs (map-glyphs (curryr prepare-glyph weak) f)]))

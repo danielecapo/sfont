@@ -87,7 +87,7 @@
   [filter-glyphs (-> (-> glyph? boolean?) font? (listof glyph?))]
   [set-layer (-> glyph? layer? glyph?)]
   [get-glyph (-> font? name/c (or glyph? #f))]
-  [get-glyphs (-> font? name/c (listof glyph?))]
+  [get-glyphs (-> font? (listof name/c) (listof glyph?))]
   [remove-glyph (-> font? name/c font?)]
   [insert-glyph (-> font? name/c font?)]
   [map-glyphs (->* ((-> glyph? any/c) font?) (#:sorted boolean?) (listof any/c))]
@@ -600,15 +600,26 @@
     (struct-copy glyph g
                  [layers (hash-set layers new-name new-layer)])))
 
-; (Layer -> T) Glyph -> (listOf T)
+; (Layer -> T) Glyph [Boolean] -> (listOf T)
 ; apply the procedure to each layer, collect the results in a list 
-(define (map-layers proc g)
-  (map proc (hash-values (glyph-layers g))))
+(define (map-layers proc g #:sorted [sorted #f])
+  (map proc (if sorted
+                (sort-layer-list (hash-values (glyph-layers g)))
+                (hash-values (glyph-layers g)))))
 
-; (Layer -> T) Glyph -> side effects
+; (Layer -> T) Glyph [Boolean] -> side effects
 ; apply the procedure to each layer
-(define (for-each-layers proc g)
-  (for-each proc (hash-values (glyph-layers g))))
+(define (for-each-layers proc g #:sorted [sorted #f])
+  (for-each proc (if sorted
+                (sort-layer-list (hash-values (glyph-layers g)))
+                (hash-values (glyph-layers g)))))
+  
+; (listOf Layer) (Layer -> T) (T T -> Boolean) -> (listOf Layer)
+; produce a sorted list of layers
+(define (sort-layer-list ll 
+                         #:key [key (lambda (l) (symbol->string (layer-name l)))]
+                         #:pred [pred string<?])
+  (sort ll #:key key pred))
 
 ; (Glyph -> Boolean) Font-> (listOf Glyphs)
 ; filter the list of glyphs in the layer with the procedure
@@ -625,7 +636,7 @@
 ; Return the given Glyphs in the font
 (define (get-glyphs f gs)
   (filter identity
-          (map (lambda (g) (get-glyph f g)) gs)))
+          (map (lambda (g) (get-glyph f g)) (remove-duplicates gs))))
         
 ; Font Symbol -> Font
 ; produce a new font with the glyph removed from the given layer
