@@ -12,11 +12,11 @@
   [read-ufo (->* (path-string?) 
                  (#:proc-data (-> any/c any) #:proc-images (-> any/c any))
                  font?)]
-;  [write-ufo (->* (font? path-string?) 
-;                  (#:overwrite boolean? 
-;                   #:proc-data (or/c #f (-> any/c any)) 
-;                   #:proc-images (or/c #f (-> any/c any)))
-;                  any)]
+  [write-ufo (->* (font? path-string?) 
+                 (#:overwrite boolean? 
+                   #:proc-data (or/c #f (-> any/c any)) 
+                   #:proc-images (or/c #f (-> any/c any)))
+                  any)]
 ;  
 ;  [read-glif-file (->* (path-string?) ((or/c string? #f)) glyph?)]
 ;  [write-glif-file (-> glyph? path-string? any)]
