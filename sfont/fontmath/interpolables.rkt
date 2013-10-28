@@ -20,8 +20,7 @@
   [compatible-groups (-> groups/c groups/c (listof symbol?) (values groups/c groups/c))]
   [compatible-kernings (-> kerning/c kerning/c (listof symbol?) (listof symbol?) (values kerning/c kerning/c))]
   [match-fonts-contours (-> font? font? font?)]
-  [import-component-scale (-> component? component? component?)])
- in-layers)
+  [import-component-scale (-> component? component? component?)]))
   
   
 
@@ -37,7 +36,7 @@
   (struct-copy font (if auto-directions (correct-directions f) f)
                [fontinfo (prepare-info (font-fontinfo f))]
                [kerning (prepare-kerning (font-kerning f))]
-               [layers (list (prepare-layer (get-layer f) weak))]))
+               [glyphs (map-glyphs (curryr prepare-glyph weak) f)]))
 
 ; FontInfo -> Fontinfo
 (define (prepare-info i)       
@@ -61,16 +60,16 @@
 ; Layer Boolean -> Layer
 (define (prepare-layer l [weak #t])
   (struct-copy layer l
-               [glyphs (map-glyphs (lambda (g) (prepare-glyph g weak)) l)]))
+               [anchors (sort-anchors (layer-anchors l))]
+               [components (sort-components (layer-components l))]
+               [guidelines '()]
+               [contours (sort-contours 
+                          (map-contours (lambda (c) (prepare-contour c weak)) l))]))
 
 ; Glyph Boolean -> Glyph
 (define (prepare-glyph g [weak #t])
   (struct-copy glyph g
-               [anchors (sort-anchors (glyph-anchors g))]
-               [components (sort-components (glyph-components g))]
-               [guidelines '()]
-               [contours (sort-contours 
-                          (map-contours (lambda (c) (prepare-contour c weak)) g))]))
+               [layers (list (prepare-layer (get-layer g foreground)))]))
 
 ; (listof Anchor) -> (listof Anchor)
 (define (sort-anchors loa)
@@ -114,28 +113,28 @@
 
 ; Font Font -> Font Font
 (define (compatible-fonts f1 f2)
-  (let*-values ([(i1 i2) (compatible-infos    (font-fontinfo f1) 
-                                              (font-fontinfo f2))]
-                [(l1 l2) (compatible-layers   (get-layer f1)
-                                              (get-layer f2))]
-                [(g1 g2) (compatible-groups   (font-groups f1)
-                                              (font-groups f2) 
-                                              (map-glyphs glyph-name l1 #:sorted #t))]
-                [(k1 k2) (compatible-kernings (font-kerning f1)
-                                              (font-kerning f2)
-                                              (map-glyphs glyph-name l1 #:sorted #t)
-                                              (hash-keys g1))])
+  (let*-values ([(i1 i2)   (compatible-infos       (font-fontinfo f1) 
+                                                   (font-fontinfo f2))]
+                [(gl1 gl2) (compatible-font-glyphs f1
+                                                   f2)]
+                [(g1 g2)   (compatible-groups      (font-groups f1)
+                                                   (font-groups f2) 
+                                                   (map glyph-name gl1))]
+                [(k1 k2)   (compatible-kernings    (font-kerning f1)
+                                                   (font-kerning f2)
+                                                   (map glyph-name gl1)
+                                                   (hash-keys g1))])
     (values
      (struct-copy font f1
                   [fontinfo i1]
                   [kerning  k1]
                   [groups   g1]
-                  [layers   (list l1)])
+                  [glyphs   gl1])
      (struct-copy font f2
                   [fontinfo i2]
                   [kerning  k2]
                   [groups   g2]
-                  [layers   (list l2)]))))
+                  [glyphs   gl2]))))
 
 ; FontInfo FontInfo -> FontInfo FontInfo 
 (define (compatible-infos i1 i2) 
@@ -145,15 +144,12 @@
       (values (make-immutable-hash li1)
               (make-immutable-hash li2)))))
 
-; Layer Layer -> Layer Layer 
-(define (compatible-layers l1 l2)
-  (let*-values ([(gs1 gs2) (commons (map-glyphs identity l1 #:sorted #t)
-                                    (map-glyphs identity l2 #:sorted #t)
-                                    glyph-name eq? symbol<?)]
-                [(gr1 gr2) (compatible-list-of-glyphs gs1 gs2)])
-    (values
-     (struct-copy layer l1 [glyphs gr1])
-     (struct-copy layer l2 [glyphs gr2]))))
+; Font Font -> (listof Glyph) (listof Glyph)
+(define (compatible-font-glyphs f1 f2)
+  (let*-values ([(gs1 gs2) (commons (map-glyphs identity f1 #:sorted #t)
+                                    (map-glyphs identity f2 #:sorted #t)
+                                    glyph-name eq? symbol<?)])
+    (compatible-list-of-glyphs gs1 gs2)))
 
 ; (listof Glyph) (listof Glyph) -> (listof Glyph) (listof Glyph)
 (define (compatible-list-of-glyphs log1 log2)
@@ -167,18 +163,27 @@
 
 ; Glyph Glyph -> Glyph or False Glyph or False
 (define (compatible-glyphs g1 g2)
-  (let ([cs1 (glyph-contours g1)]
-        [cs2 (glyph-contours g2)])
+  (let-values ([(l1 l2) (compatible-layers (get-layer g1 foreground)
+                                           (get-layer g2 foreground))])
+    (if (and l1 l2)
+        (values (struct-copy glyph g1 [layers (list l1)])
+                (struct-copy glyph g2 [layers (list l2)]))
+        (values #f #f))))
+
+; Layer Layer -> Layer or False Layer or False
+(define (compatible-layers l1 l2)
+  (let ([cs1 (layer-contours l1)]
+        [cs2 (layer-contours l2)])
     (cond [(not (= (length cs1) (length cs2))) (values #f #f)]
           [(andmap (lambda (a b) (= (length (contour-points a)) (length (contour-points b))))
                      cs1 cs2)
            (values #f #f)]
-          [else (let-values (((c1 c2) (compatible-components (glyph-components g1)
-                                                             (glyph-components g2)))
-                             ((a1 a2) (compatible-anchors (glyph-anchors g1)
-                                                          (glyph-anchors g2))))
-                  (values (struct-copy glyph g1 [components c1] [anchors a1])
-                          (struct-copy glyph g2 [components c2] [anchors a2])))])))
+          [else (let-values (((c1 c2) (compatible-components (layer-components l1)
+                                                             (layer-components l2)))
+                             ((a1 a2) (compatible-anchors    (layer-anchors l1)
+                                                             (layer-anchors l2))))
+                  (values (struct-copy layer l1 [components c1] [anchors a1])
+                          (struct-copy layer l2 [components c2] [anchors a2])))])))
 
 ; (listof Component) (listof Component) -> (listof Component) (listof Component)
 (define (compatible-components loc1 loc2)
@@ -301,12 +306,6 @@
                           lop)) 
              pos<?)))
 
-(define-syntax-rule (in-layers l f body)
-  (map-layers 
-   (lambda (l)
-     (struct-copy layer l
-                  [glyphs body]))
-   f))
 
 ; Font Font -> Font
 ; match the contours of the second font against the first
@@ -314,14 +313,17 @@
   (let ([gs1 (map-glyphs identity f1)]
         [gs2 (map-glyphs identity f2)])
     (struct-copy font f2 
-                 [layers (in-layers l f2 (map match-glyphs-contours gs1 gs2))])))
+                 [glyphs (map match-glyphs-contours gs1 gs2)])))
 
 ; Glyph Glyph -> Glyph
 ; match the contours of the second glyph against the first
 (define (match-glyphs-contours g1 g2)
-  (let ([cs1 (glyph-contours g1)]
-        [cs2 (glyph-contours g2)])
-    (struct-copy glyph g2 [contours (match-contour-order cs1 cs2)])))
+  (let ([cs1 (layer-contours (get-layer g1 foreground))]
+        [cs2 (layer-contours (get-layer g2 foreground))])
+    (struct-copy glyph g2 
+                 [layers 
+                  (list (struct-copy layer (get-layer g2 foreground)
+                                     [contours (match-contour-order cs1 cs2)]))])))
 
 ; (listof Contour) (listof Contour) -> (listof Contour)
 ; match the second list of contours against the first list.

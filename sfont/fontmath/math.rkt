@@ -32,7 +32,7 @@
 (define font-object/c
   (flat-named-contract 
    'font-object/c
-   (or/c vec? font? glyph? contour? anchor? component? fontinfo/c kerning/c)))
+   (or/c vec? font? glyph? layer? contour? anchor? component? fontinfo/c kerning/c)))
 
 (define mathfilter
   (make-parameter #f))
@@ -45,18 +45,22 @@
 ; Font (listof Symbol) -> Font
 (define (only-glyphs-in gl f)
     (struct-copy font f
-                 [layers (map-layers
-                          (lambda (l)
-                            (struct-copy layer l
-                                         [glyphs (filter-glyphs 
-                                                  (lambda (g)
-                                                    (member (glyph-name g) gl))
-                                                  l)]))
-                            f)]))
+                 [glyphs (filter-glyphs 
+                          (lambda (g)
+                            (member (glyph-name g) gl))
+                          f)]))
+;                 [layers (map-layers
+;                          (lambda (l)
+;                            (struct-copy layer l
+;                                         [glyphs (filter-glyphs 
+;                                                  (lambda (g)
+;                                                    (member (glyph-name g) gl))
+;                                                  l)]))
+;                            f)]))
 
 ; Symbol Font -> (listof Symbol)
 (define (component-deps g f)
-    (let ([cs (map component-base (glyph-components (car (get-glyphs f (list g)))))])
+    (let ([cs (map component-base (layer-components (get-layer (get-glyph f g) foreground)))])
       (append* cs (map (lambda (g) (component-deps g f)) cs))))
 
 ; Font -> Font
@@ -109,17 +113,24 @@
                [width  (foldl + (advance-width  a1) (map advance-width  as))]
                [height (foldl + (advance-height a1) (map advance-height as))]))
 
+; Layer ... -> Layer
+(define (layer+ l1 . ls)
+  (let [(lss (cons l1 ls))]
+    (struct-copy layer l1
+                 [contours
+                  (apply map contour+ (map layer-contours lss))]
+                 [components
+                  (apply map component+ (map layer-components lss))]
+                 [anchors
+                  (apply map anchor+ (map layer-anchors lss))])))
+
 ; Glyph ... -> Glyph
 (define (glyph+ g1 . gs)
   (let [(gss (cons g1 gs))]
     (struct-copy glyph g1
                  [advance (apply advance+ (map glyph-advance gss))]
-                 [contours
-                  (apply map contour+ (map glyph-contours gss))]
-                 [components
-                  (apply map component+ (map glyph-components gss))]
-                 [anchors
-                  (apply map anchor+ (map glyph-anchors gss))])))
+                 [layers 
+                  (list (apply layer+ (map (curryr get-layer foreground) gss)))])))
 
 ; Any Real Real -> Any
 (define (font-scale* o fx [fy fx])
@@ -136,10 +147,8 @@
                   (struct-copy font f1
                                [fontinfo (info+ (font-fontinfo f1) (font-fontinfo f2))]
                                [kerning (kerning+ (font-kerning f1) (font-kerning f2))]
-                               [layers (in-layers l f1
-                                                  (map glyph+ 
-                                                       (font-glyphs f1) 
-                                                       (font-glyphs f2)))]))]
+                               [glyphs (map glyph+ (font-glyphs-list f1) 
+                                                   (font-glyphs-list f2))]))]
             [fonts (map reduced-font (cons f1 fs))])
         (foldl f+ (car fonts) (cdr fonts)))))
 
@@ -154,6 +163,7 @@
   ((match o
      [(? font? _) font*]
      [(? glyph? _) scale]
+     [(? layer? _) scale]
      [(? contour? _) scale]
      [(? anchor? _ ) scale]
      [(? component? _) scale]
@@ -166,6 +176,7 @@
   (apply (match o1
            [(? font? _) font+]
            [(? glyph? _) glyph+]
+           [(? layer? _) layer+]
            [(? contour? _) contour+]
            [(? anchor? _ ) anchor+]
            [(? component? _) component+]
@@ -190,6 +201,8 @@
      (apply font:+ a as)]
     [(list (? glyph? _) ...)
      (apply font:+ a as)]
+    [(list (? layer? _) ...)
+     (apply font:+ a as)]
     [(list (? real? _) ...)
      (apply + a as)]
     [(list (? vec? _) ...)
@@ -205,6 +218,8 @@
      (apply font:+ a (map (lambda (i) (prod i -1)) as))]
     [(list (? glyph? _) ...)
      (apply font:+ a (map (lambda (i) (prod i -1)) as))]
+    [(list (? layer? _) ...)
+     (apply font:+ a (map (lambda (i) (prod i -1)) as))]
     [(list (? real? _) ...)
      (apply - a as)]
     [(list (? vec? _) ...)
@@ -219,6 +234,8 @@
     [(list-no-order (? font? f) (? real? s) ...)
      (apply font:* f s)]
     [(list-no-order (? glyph? f) (? real? s) ...)
+     (apply font:* f s)]
+    [(list-no-order (? layer? f) (? real? s) ...)
      (apply font:* f s)]
     [(list-no-order (? vec? v) (? real? s) ...)
      (vec* v (apply * s))]
@@ -244,6 +261,8 @@
     [(list (? font? f) (? real? s) ...)
      (apply font:* f (map (lambda (n) (/ 1.0 n)) s))]
     [(list (? glyph? f) (? real? s) ...)
+     (apply font:* f (map (lambda (n) (/ 1.0 n)) s))]
+    [(list (? layer? f) (? real? s) ...)
      (apply font:* f (map (lambda (n) (/ 1.0 n)) s))]
     [(list (? vec? v) (? real? s) ...)
      (vec* v (apply * (map (lambda (n) (/ 1.0 n)) s)))]
@@ -292,14 +311,18 @@
 ; Produce a new font with components scale fields imported from f2
 (define (fix-components f1 f2)
   (struct-copy font f1
-               [layers (in-layers l f1
-                                  (map (lambda (g1 g2)
-                                         (struct-copy glyph g1
-                                                      [components (map import-component-scale
-                                                                       (glyph-components g1)
-                                                                       (glyph-components g2))]))
-                                       (font-glyphs f1)
-                                       (font-glyphs f2)))]))
+               [glyphs
+                (map 
+                 (lambda (g1 g2)
+                   (struct-copy glyph g1
+                                [layers 
+                                 (list 
+                                  (struct-copy layer (get-layer g1 foreground)
+                                               [components (map import-component-scale
+                                                                (layer-components (get-layer g1 foreground))
+                                                                (layer-components (get-layer g2 foreground)))]))]))
+                 (font-glyphs-list f1)
+                 (font-glyphs-list f2))]))
                                                       
 
 

@@ -92,6 +92,7 @@
   [insert-glyph (-> font? name/c font?)]
   [map-glyphs (->* ((-> glyph? any/c) font?) (#:sorted boolean?) (listof any/c))]
   [for-each-glyphs (->* ((-> glyph? any/c) font?) (#:sorted boolean?) any/c)]
+  [font-glyphs-list (-> font? (listof glyph?))]
   [sort-glyph-list (->* ((listof glyph?)) (#:key (-> glyph? any/c) #:pred (-> any/c any/c boolean?)) (listof glyph?))]
   [map-kerning (-> (-> real? real?) kerning/c kerning/c)]
   [font->ufo2 (-> font? font?)]
@@ -652,6 +653,11 @@
   (for-each proc (if sorted
                      (sort-glyph-list (hash-values (font-glyphs f)))
                      (hash-values (font-glyphs f)))))
+
+; Font -> (listof Glyph)
+; produce a sorted list of glyphs in the font
+(define (font-glyphs-list f)
+  (map-glyphs identity f #:sorted #t))
 
 
 ; (listOf Glyph) (Glyph -> T) (T T -> Boolean) -> (listOf Glyph)
