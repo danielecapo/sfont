@@ -23,6 +23,7 @@
   [color/c (-> any/c boolean?)]
   [foreground name/c]
   [background name/c]
+  [sfont-creator string?]
   [struct font  
   ((format natural-number/c) 
    (creator string?) 
@@ -199,6 +200,7 @@
              
              
              
+
 ;;; Syntax defintion
 ;;; The following macros are used to create objects that implement the generic interface gen:geometric
 ;;; there can be three kinds of behaviour:
@@ -255,6 +257,7 @@
 
 (define foreground 'public.default)
 (define background 'public.background)
+(define sfont-creator "com.danielecapo.sfont")
 
 ;;;
 ;;; DATA DEFINITIONS

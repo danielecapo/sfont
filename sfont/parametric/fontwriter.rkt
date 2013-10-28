@@ -283,8 +283,9 @@
                                    (build-contour-list cnt . cnts))])])
      #'(let* ([s v] ...)
          (space-glyph
-          (glyph 1 name (advance 0 0) (unicode name) #f #f '() '() 
-                   cnts '() (make-immutable-hash))
+          (glyph 1 name (advance 0 0) (unicode name) #f #f 
+                 (list (layer foreground null null cnts null))
+                 (make-immutable-hash))
          left-form right-form)))]
     [(glyph. . body) (raise-syntax-error #f "Invalid glyph. definition." stx)]))
 
@@ -336,7 +337,7 @@
                      glyph-form ...)
      
        (let* (v ...)
-         (font 2 "ufo-rkt"
+         (font 2 sfont-creator
                    (make-immutable-hash
                     (let* ([all-blues (list (list (alg blue) (ovs blue)) ...)]
                            [blues (sort (flatten 
@@ -366,9 +367,9 @@
                    (make-immutable-hash) 
                    (make-immutable-hash) 
                    #f
+                   (build-glyphs-list glyph-form ...)
                    (list 
-                    (layer 'public.default #f
-                               (build-glyphs-list glyph-form ...)))
+                    (layer-info foreground #f (make-immutable-hash)))
                    (make-immutable-hash)
                    #f #f))]))
 

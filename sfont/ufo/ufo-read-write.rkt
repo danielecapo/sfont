@@ -515,7 +515,7 @@
      (make-ufo-path "layercontents.plist")))
   (let ([s (list 
             (cons 'meta (lambda () 
-                          (write-on-plist (hash 'creator (font-creator f)
+                          (write-on-plist (hash 'creator sfont-creator
                                                 'formatVersion (font-format f))
                                           (make-ufo-path "metainfo.plist"))))
             (cons 'info (lambda () 
