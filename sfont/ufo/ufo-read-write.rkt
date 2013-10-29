@@ -615,3 +615,46 @@
     ((writer 'layercontents))
     ((writer 'data))
     ((writer 'images))))
+
+
+
+; functions for reading data
+
+(define (make-advance #:width [width 0] #:height [height 0])
+  (advance (ensure-number width) (ensure-number height)))
+
+(define (make-image #:fileName filename #:xScale [x-scale 1] #:xyScale [xy-scale 0] 
+                        #:yxScale [yx-scale 0] #:yScale [y-scale 0] #:xOffset [x-offset 0]
+                        #:yOffset [y-offset 0] #:color [color #f])
+  (image filename (trans-mat (ensure-number x-scale) (ensure-number xy-scale) 
+                             (ensure-number yx-scale) (ensure-number y-scale) 
+                             (ensure-number x-offset) (ensure-number y-offset))
+         (ensure-color color)))
+
+
+(define (make-guideline #:x x #:y y  #:angle angle 
+                            #:name [name #f] #:color [color #f] 
+                            #:identifier [identifier #f])
+  (guideline (vec (ensure-number x) (ensure-number y)) (ensure-number angle) name 
+             (ensure-color color) (ensure-symbol identifier)))
+
+(define (make-anchor #:x x #:y y #:name name
+                     #:color [color #f] #:identifier [identifier #f])
+  (anchor (vec (ensure-number x) (ensure-number y)) name (ensure-color color) (ensure-symbol identifier)))
+
+(define (make-contour #:identifier [identifier #f] #:points [points null])
+  (contour (ensure-symbol identifier) points))
+
+(define (make-component #:base base #:xScale [x-scale 1] #:xyScale [xy-scale 0] 
+                        #:yxScale [yx-scale 0] #:yScale [y-scale 1] #:xOffset [x-offset 0]
+                        #:yOffset [y-offset 0] #:identifier [identifier #f])
+  (component (ensure-symbol base) 
+             (trans-mat (ensure-number x-scale) (ensure-number xy-scale) 
+                        (ensure-number yx-scale) (ensure-number y-scale) 
+                        (ensure-number x-offset) (ensure-number y-offset))
+             (ensure-symbol identifier)))
+
+(define (make-point #:x x #:y y #:type [type 'offcurve] 
+                        #:smooth [smooth #f] #:name [name #f] #:identifier [identifier #f])
+  (point (vec (ensure-number x) (ensure-number y)) (ensure-symbol type)
+             (ensure-smooth smooth) name (ensure-symbol identifier)))

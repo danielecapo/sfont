@@ -128,37 +128,37 @@
   [component-round (-> component? component?)]
   [point-round (-> point? point?)]
   [ensure-number (-> (or/c string? real?) real?)]
-  [ensure-symbol (-> (or/c string? symbol?) symbol?)]
+  [ensure-symbol (-> (or/c string? symbol? #f) (or/c symbol? #f))]
   [ensure-smooth (-> (or/c string? boolean?) boolean?)]
   [string->color (-> string? color/c)]
   [color->string (-> color/c string?)]
-  [ensure-color (-> (or/c string? color/c) color/c)]
+  [ensure-color (-> (or/c string? color/c #f) (or/c color/c #f))]
   [string->unicode (-> string? natural-number/c)]
   [unicode->string (-> natural-number/c string?)]
-  [make-advance (->* () (#:width (or/c string? real?) #:height (or/c string? real?)) advance?)]
-  [make-image (->* (#:fileName string?)
-                   (#:xScale (or/c string? real?) #:xyScale (or/c string? real?) 
-                    #:yxScale (or/c string? real?) #:yScale (or/c string? real?) #:xOffset (or/c string? real?)
-                    #:yOffset (or/c string? real?) #:color (or/c color/c string? #f))
-                   image?)]
-  [make-guideline (->* (#:x (or/c string? real?) #:y (or/c string? real?)  #:angle (or/c string? real?)) 
-                       (#:name (or/c string? string? #f) #:color (or/c color/c string? #f) 
-                        #:identifier (or/c symbol? string? #f))
-                       guideline?)]
-  [make-anchor (->* (#:x (or/c string? real?) #:y (or/c string? real?) #:name string?)
-                    (#:color (or/c color/c string? #f) #:identifier (or/c symbol? string? #f))
-                    anchor?)]
-  [make-component (->* (#:base (or/c string? name/c))
-                       (#:xScale (or/c string? real?) #:xyScale (or/c string? real?) 
-                        #:yxScale (or/c string? real?) #:yScale (or/c string? real?) #:xOffset (or/c string? real?)
-                        #:yOffset (or/c string? real?) #:identifier (or/c symbol? string? #f))
-                       component?)]
-  [make-contour (->* () (#:identifier (or/c symbol? #f) #:points (listof point?))
-                     contour?)]
-  [make-point (->* (#:x (or/c string? real?) #:y (or/c string? real?))
-                   (#:type (or/c string? (one-of/c 'move 'line 'offcurve 'curve 'qcurve))
-                    #:smooth (or/c boolean? string?) #:name (or/c string? #f) #:identifier (or/c symbol? string? #f))
-                   point?)]
+;  [make-advance (->* () (#:width (or/c string? real?) #:height (or/c string? real?)) advance?)]
+;  [make-image (->* (#:fileName string?)
+;                   (#:xScale (or/c string? real?) #:xyScale (or/c string? real?) 
+;                    #:yxScale (or/c string? real?) #:yScale (or/c string? real?) #:xOffset (or/c string? real?)
+;                    #:yOffset (or/c string? real?) #:color (or/c color/c string? #f))
+;                   image?)]
+;  [make-guideline (->* (#:x (or/c string? real?) #:y (or/c string? real?)  #:angle (or/c string? real?)) 
+;                       (#:name (or/c string? string? #f) #:color (or/c color/c string? #f) 
+;                        #:identifier (or/c symbol? string? #f))
+;                       guideline?)]
+;  [make-anchor (->* (#:x (or/c string? real?) #:y (or/c string? real?) #:name string?)
+;                    (#:color (or/c color/c string? #f) #:identifier (or/c symbol? string? #f))
+;                    anchor?)]
+;  [make-component (->* (#:base (or/c string? name/c))
+;                       (#:xScale (or/c string? real?) #:xyScale (or/c string? real?) 
+;                        #:yxScale (or/c string? real?) #:yScale (or/c string? real?) #:xOffset (or/c string? real?)
+;                        #:yOffset (or/c string? real?) #:identifier (or/c symbol? string? #f))
+;                       component?)]
+;  [make-contour (->* () (#:identifier (or/c symbol? #f) #:points (listof point?))
+;                     contour?)]
+;  [make-point (->* (#:x (or/c string? real?) #:y (or/c string? real?))
+;                   (#:type (or/c string? (one-of/c 'move 'line 'offcurve 'curve 'qcurve))
+;                    #:smooth (or/c boolean? string?) #:name (or/c string? #f) #:identifier (or/c symbol? string? #f))
+;                   point?)]
   [map-contours (-> (-> contour? any/c) (or/c glyph? layer?) (listof any/c))]
   [for-each-contours (-> (-> contour? any) (or/c glyph? layer?) any)]
   [map-components (-> (-> component? any/c) (or/c glyph? layer?) (listof any/c))]
@@ -1037,46 +1037,6 @@
 (define (unicode->string n)
   (~r n #:base '(up 16) #:pad-string "0" #:min-width 4))
 
-;;; The following procedures are used for reading glyph from a glif file but they can be useful for other reasons.
-
-(define (make-advance #:width [width 0] #:height [height 0])
-  (advance (ensure-number width) (ensure-number height)))
-
-(define (make-image #:fileName filename #:xScale [x-scale 1] #:xyScale [xy-scale 0] 
-                        #:yxScale [yx-scale 0] #:yScale [y-scale 0] #:xOffset [x-offset 0]
-                        #:yOffset [y-offset 0] #:color [color #f])
-  (image filename (trans-mat (ensure-number x-scale) (ensure-number xy-scale) 
-                             (ensure-number yx-scale) (ensure-number y-scale) 
-                             (ensure-number x-offset) (ensure-number y-offset))
-         (ensure-color color)))
-
-
-(define (make-guideline #:x x #:y y  #:angle angle 
-                            #:name [name #f] #:color [color #f] 
-                            #:identifier [identifier #f])
-  (guideline (vec (ensure-number x) (ensure-number y)) (ensure-number angle) name 
-             (ensure-color color) (ensure-symbol identifier)))
-
-(define (make-anchor #:x x #:y y #:name name
-                     #:color [color #f] #:identifier [identifier #f])
-  (anchor (vec (ensure-number x) (ensure-number y)) name (ensure-color color) (ensure-symbol identifier)))
-
-(define (make-contour #:identifier [identifier #f] #:points [points null])
-  (contour (ensure-symbol identifier) points))
-
-(define (make-component #:base base #:xScale [x-scale 1] #:xyScale [xy-scale 0] 
-                        #:yxScale [yx-scale 0] #:yScale [y-scale 1] #:xOffset [x-offset 0]
-                        #:yOffset [y-offset 0] #:identifier [identifier #f])
-  (component (ensure-symbol base) 
-             (trans-mat (ensure-number x-scale) (ensure-number xy-scale) 
-                        (ensure-number yx-scale) (ensure-number y-scale) 
-                        (ensure-number x-offset) (ensure-number y-offset))
-             (ensure-symbol identifier)))
-
-(define (make-point #:x x #:y y #:type [type 'offcurve] 
-                        #:smooth [smooth #f] #:name [name #f] #:identifier [identifier #f])
-  (point (vec (ensure-number x) (ensure-number y)) (ensure-symbol type)
-             (ensure-smooth smooth) name (ensure-symbol identifier)))
 
 ; (Contour -> T) (Glyph or Layer) -> (listOf T)
 ; apply the procedure to each contour of the glyph, collect results in a list
@@ -1208,10 +1168,7 @@
 ; Anchor -> Contour
 ; produce a contour with one point only that is used by convention in Glif1 to define an anchor
 (define (anchor->contour a)
-  (make-contour #:points (list (make-point #:x (vec-x (anchor-pos a))
-                                           #:y (vec-y (anchor-pos a))
-                                           #:name (anchor-name a)
-                                           #:type 'move))))
+  (contour #f (list (point (anchor-pos a) 'move #f (anchor-name a) #f))))
 
 ; (listOf Point) -> (listOf Point) 
 ; produce a list of points where the first element is always an on-curve point
@@ -1330,23 +1287,20 @@
             (lambda (prev pts acc)
               (match (cons prev pts)
                 [(list-rest (vec x y) (vec x y) (vec x2 y2) (vec x2 y2) rest-pts)
-                   (aux (vec x2 y2) rest-pts (append acc (list (make-point #:x x2 #:y y2 #:type 'line))))]
+                   (aux (vec x2 y2) rest-pts (append acc (list (point (vec x2 y2) 'line #f #f #f))))]
                 [(list-rest (vec x y) (vec ox1 oy1) (vec ox2 oy2) (vec x2 y2) rest-pts)
                  (aux (vec x2 y2) rest-pts (append acc
-                                                  (list (make-point #:x ox1 #:y oy1)
-                                                        (make-point #:x ox2 #:y oy2)
-                                                        (make-point #:x x2 #:y y2 #:type 'curve))))]
+                                                  (list (point (vec ox1 oy1) 'offcurve #f #f #f)
+                                                        (point (vec ox2 oy2) 'offcurve #f #f #f)
+                                                        (point (vec x2 y2) 'curve #f #f #f))))]
                 [(list _) acc]
                 [(list) null]))))
     (let* ((first-pt (car b))
            (ufo-pts (aux first-pt (cdr b) null)))
       (auto-smooth
-       (make-contour #:points 
-                     (if (closed? b) (cons (last ufo-pts) (drop-right ufo-pts 1))
-                         (cons (make-point #:x (vec-x first-pt)
-                                           #:y (vec-y first-pt)
-                                           #:type 'move)
-                               ufo-pts)))))))
+       (contour #f (if (closed? b) (cons (last ufo-pts) (drop-right ufo-pts 1))
+                       (cons (point first-pt 'move #f #f #f)
+                             ufo-pts)))))))
   
 ;
 ;;;;; WRITE THIS LATER!
