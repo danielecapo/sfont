@@ -16,8 +16,7 @@
   [ovs (-> alignment/c real?)]
   [ovs-height (-> alignment/c real?)]
   [remove~ (->* (bezier/c) () #:rest (listof (and/c bezier/c closed?)) (listof (and/c bezier/c closed?)))]
-  [join~ (->* (bezier/c) () #:rest (listof (and/c bezier/c closed?)) (listof (and/c bezier/c closed?)))]
-  )
+  [join~ (->* (bezier/c) () #:rest (listof (and/c bezier/c closed?)) (listof (and/c bezier/c closed?)))])
  glyph.
  font.
  from
