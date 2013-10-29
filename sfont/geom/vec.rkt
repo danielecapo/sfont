@@ -1,8 +1,6 @@
 #lang racket
 
 (require "geometric-generic.rkt"
-         (planet wmfarr/plt-linalg:1:13/vector)
-         (planet wmfarr/plt-linalg:1:13/matrix)
          "../properties.rkt"
          "../utilities.rkt"
          racket/generic)
@@ -14,12 +12,17 @@
   [approx (-> real? real?)]
   [struct vec ((x real?)
                (y real?))]
+  [struct vec3 ((x real?)
+                (y real?)
+                (z real?))]  
   [struct trans-mat ((x real?) 
                      (xy real?) 
                      (yx real?)
                      (y real?)
                      (x-offset real?)
                      (y-offset real?))]
+  [vec3->vec (-> vec3? vec?)]
+  [vec->vec3 (-> vec? vec3?)]
   [vec= (-> vec? vec? boolean?)]
   [vec-approx= (-> vec? vec? boolean?)]
   [list->vec (-> (list/c real? real?) vec?)]
@@ -37,7 +40,9 @@
   [scale-matrix (->* (real?) (real?) trans-mat?)]
   [shear-matrix (-> real? real? trans-mat?)]
   [trans-mat* (-> trans-mat? trans-mat? trans-mat?)]
+  [trans-mat-vec* (-> trans-mat? vec3? vec3?)]
   [dot-prod (-> vec? vec? real?)]
+  [dot-prod-3 (-> vec3? vec3? real?)]
   [cross-prod-2d (-> vec? vec? real?)]
   [segment-intersection (-> vec? vec? vec? vec? (or/c vec? #f))]
   [signed-area (-> vec? vec? real?)]
@@ -80,10 +85,8 @@
             (values (approx x)
                     (approx y)))
   #:methods gen:geometric
-  [(define (transform v m)
-     (let* ([vm (matrix 3 1 (vec-x v) (vec-y v) 1)]
-            [res (matrix-mul (trans-mat->matrix m) vm)])
-       (vec (matrix-ref res 0 0) (matrix-ref res 1 0))))
+  [(define (transform v m) 
+     (vec3->vec (trans-mat-vec* m v)))
   (define (translate v x y)
     (vec (+ (vec-x v) x)
          (+ (vec-y v) y)))
@@ -108,6 +111,15 @@
   (define (reflect-y v)
     (vec (vec-x v) (- (vec-y v))))])
 
+(struct vec3 (x y z) #:transparent)
+
+; Vec3 -> Vec
+(define (vec3->vec v)
+  (vec (vec3-x v) (vec3-y v)))
+
+;Vec -> Vec3
+(define (vec->vec3 v)
+  (vec3 (vec-x v) (vec-y v) 0))
 
 ;;; TransformationMatrix
 ;;; (trans-mat Real Real Real Real Real Real)
@@ -248,32 +260,40 @@
 (define (shear-matrix fx fy)
   (trans-mat 1 fx fy 1 0 0))
 
-; TransformationMatrix -> Matrix
-; produce a matrix (imported from planet, see above) from the transformation matrix
-(define (trans-mat->matrix m)
-  (match m
-    [(trans-mat x xy yx y x-offset y-offset)
-     (matrix 3 3 x yx 0 xy y 0 x-offset y-offset 1)]))
-
-; Matrix -> TransformationMatrix
-; produce a transformation matrix from a matrix
-(define (matrix->trans-mat m)
-  (trans-mat (matrix-ref m 0 0) (matrix-ref m 0 1) (matrix-ref m 1 0) 
-             (matrix-ref m 1 1) (matrix-ref m 0 2) (matrix-ref m 1 2)))
-
 ; TransformationMatrix TransformationMatrix -> TransformationMatrix
 ; multiply the transformation matrices
 (define (trans-mat* m1 m2)
-  (matrix->trans-mat 
-   (matrix-mul (trans-mat->matrix m1)
-               (trans-mat->matrix m2))))
+  (let ([mr1 (vec3 (trans-mat-x m1) (trans-mat-xy m1) (trans-mat-x-offset m1))]
+        [mr2 (vec3 (trans-mat-yx m1) (trans-mat-y m1) (trans-mat-y-offset m1))]
+        [mr3 (vec3 0 0 1)]
+        [mc1 (vec3 (trans-mat-x m2) (trans-mat-yx m2) 0)]
+        [mc2 (vec3 (trans-mat-xy m2) (trans-mat-y m2) 0)]
+        [mc3 (vec3 (trans-mat-x-offset m2) (trans-mat-y-offset m2) 1)])
+    (trans-mat (dot-prod-3 mc1 mr1)
+               (dot-prod-3 mc2 mr1)
+               (dot-prod-3 mc3 mr1)
+               (dot-prod-3 mc1 mr2)
+               (dot-prod-3 mc2 mr2)
+               (dot-prod-3 mc3 mr3))))
 
+; TransformationMatrix Vec3 -> Vec3
+(define (trans-mat-vec* m v)
+  (let ([mr1 (vec3 (trans-mat-x m) (trans-mat-xy m) (trans-mat-x-offset m))]
+        [mr2 (vec3 (trans-mat-yx m) (trans-mat-y m) (trans-mat-y-offset m))]
+        [mr3 (vec3 0 0 1)])
+    (vec3 (dot-prod-3 mr1 v) (dot-prod-3 mr2 v) (dot-prod-3 mr3 v))))
 
 ; Vec Vec -> Real 
 ; dot product
 (define (dot-prod v1 v2)
   (+ (* (vec-x v1) (vec-x v2))
      (* (vec-y v1) (vec-y v2))))
+
+;Vec3 Vec3 -> Real
+(define (dot-prod-3 v1 v2)
+  (+ (* (vec3-x v1) (vec3-x v2))
+     (* (vec3-y v1) (vec3-y v2))
+     (* (vec3-z v1) (vec3-z v2))))
 
 ; Vec Vec -> Real
 ; 2D cross product
