@@ -29,7 +29,9 @@
     [(_ o (field --> proc0 . procs)) 
      #'((apply compose (reverse (list proc0 . procs)))  (lookup getter o 'field))]
     [(_ o (field @ i)) 
-     #'(sequence-ref (lookup getter o 'field) i)]
+     #'(let ([s (lookup getter o 'field)])
+         (cond [(list? s) (list-ref s i)]
+               [(dict? s) (dict-ref s i)]))]
     [(_ o (field arg0 . args)) #'(lookup getter o 'field arg0 . args)]
     [(_ o field) 
      (unless (identifier? #'field) 
@@ -85,15 +87,14 @@
    (getters guideline pos angle name color identifier)
    (getters image filename matrix color)
    (getters advance width height)
-   (getters glyph format name advance unicodes note image
-            guidelines anchors contours components lib)
-   (append (getters layer name info glyphs)
-           `((glyph ,get-glyph)))
-   (append (getters font format creator fontinfo groups kerning 
-                    features layers lib data images)
-           `((glyph ,get-glyph)
-             (layer ,get-layer)))
-                                                                  
+   (append (getters glyph name advance unicodes 
+                    note image layers lib)
+           `((layer ,get-layer)))
+   (getters layer guidelines anchors contours components)
+   (getters layer-info name color lib)
+   (append (getters font fontinfo groups kerning 
+                    features glyphs layers lib data images)
+           `((glyph ,get-glyph)))                                                                  
    (getters vec x y)
    (getters trans-mat x xy yx y x-offset y-offset)))
 
@@ -109,21 +110,12 @@
 
              
         
-; (Font or Layer) Symbol Symbol-> (Glyph -> Font)
-(define (glyph-set o g)
-  (cond [(font? o)
-         (lambda (gl)
-           (insert-glyph o 
-                         (struct-copy glyph gl
-                                      [name g]
-                                      [unicodes (unicode g)])))]
-        [(layer? o)
-         (lambda (gl)
-           (struct-copy layer o
-                        [glyphs (hash-set (layer-glyphs o) g
-                                          (struct-copy glyph gl
-                                                       [name g]
-                                                       [unicodes (unicode g)]))]))]))
+; Font Symbol -> (Glyph -> Font)
+(define (glyph-set f g)
+  (lambda (gl)
+    (insert-glyph f (struct-copy glyph gl
+                                 [name g]
+                                 [unicodes (unicode g)]))))
 
 (define setter
   (list
@@ -134,16 +126,13 @@
    (setters guideline pos angle name color identifier)
    (setters image filename matrix color)
    (setters advance width height)
-   (setters glyph format name advance unicodes note image
-            guidelines anchors contours components lib)
-   (append (setters layer name info glyphs)
-           `((glyph ,glyph-set)))
-   (append (setters font format creator fontinfo groups kerning 
-                    features layers lib data images)
-           `((glyph ,glyph-set)
-             (layer ,(lambda (f l)
-                       (lambda (nl)
-                         (set-layer f (struct-copy layer nl [name l])))))))
-                                                                  
+   (append (setters glyph name advance unicodes 
+                    note image layers lib)
+           `((layer ,(lambda (g l) (lambda (nl) (set-layer g (struct-copy layer nl [name l])))))))
+   (setters layer guidelines anchors contours components)
+   (setters layer-info name color lib)
+   (append (setters font fontinfo groups kerning 
+                    features glyphs layers lib data images)
+           `((glyph ,glyph-set)))                                                                  
    (setters vec x y)
    (setters trans-mat x xy yx y x-offset y-offset)))

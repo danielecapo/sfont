@@ -87,7 +87,7 @@
   [get-glyph (-> font? name/c (or glyph? #f))]
   [get-glyphs (-> font? (listof name/c) (listof glyph?))]
   [remove-glyph (-> font? name/c font?)]
-  [insert-glyph (-> font? name/c font?)]
+  [insert-glyph (-> font? glyph? font?)]
   [map-glyphs (->* ((-> glyph? any/c) font?) (#:sorted boolean?) (listof any/c))]
   [for-each-glyphs (->* ((-> glyph? any/c) font?) (#:sorted boolean?) any/c)]
   [font-glyphs-list (-> font? (listof glyph?))]
