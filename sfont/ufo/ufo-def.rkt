@@ -93,8 +93,6 @@
   [font-glyphs-list (-> font? (listof glyph?))]
   [sort-glyph-list (->* ((listof glyph?)) (#:key (-> glyph? any/c) #:pred (-> any/c any/c boolean?)) (listof glyph?))]
   [map-kerning (-> (-> real? real?) kerning/c kerning/c)]
- ; [font->ufo2 (-> font? font?)]
- ; [font->ufo3 (-> font? font?)]
   [decompose-glyph (-> font? glyph? glyph?)]
   [decompose-font (-> font? font?)]
   [glyph-bounding-box (case-> (-> glyph? font? bounding-box/c)
@@ -146,8 +144,6 @@
   [map-points (-> (-> point? any/c) contour? (listof any/c))]
   [for-each-points (-> (-> point? any) contour? any)]
   [layer->layer1 (-> layer? layer?)]
- ; [glyph->glyph1 (-> glyph? glyph?)]
- ; [glyph->glyph2 (-> glyph? glyph?)]
   [anchor->contour (-> anchor? contour?)]
   [contour->bezier (-> contour? bezier/c)]
   [bezier->contour (-> bezier/c contour?)]
@@ -660,18 +656,6 @@
                  (cons l 
                        (make-immutable-hash
                         (hash-map kr (lambda (r v) (cons r (proc v))))))))))
-
-;; Font -> Font
-;; produce a new font that try to be compatible with ufo2 specs
-;(define (font->ufo2 f)
-;  (struct-copy font f [format 2] [data #f] [images #f]
-;               [glyphs (map-glyphs glyph->glyph1 f)]))
-;; Font -> Font
-;; produce a new font that try to be compatible with ufo3 spec     
-;(define (font->ufo3 f) 
-;  (struct-copy font (kern-groups2->3 f)
-;               [format 3]
-;               [glyphs (map-glyphs glyph->glyph2 f)]))
 
 ; Font Glyph -> Glyph
 ; decompose glyph components to outlines
