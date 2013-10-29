@@ -135,30 +135,6 @@
   [ensure-color (-> (or/c string? color/c #f) (or/c color/c #f))]
   [string->unicode (-> string? natural-number/c)]
   [unicode->string (-> natural-number/c string?)]
-;  [make-advance (->* () (#:width (or/c string? real?) #:height (or/c string? real?)) advance?)]
-;  [make-image (->* (#:fileName string?)
-;                   (#:xScale (or/c string? real?) #:xyScale (or/c string? real?) 
-;                    #:yxScale (or/c string? real?) #:yScale (or/c string? real?) #:xOffset (or/c string? real?)
-;                    #:yOffset (or/c string? real?) #:color (or/c color/c string? #f))
-;                   image?)]
-;  [make-guideline (->* (#:x (or/c string? real?) #:y (or/c string? real?)  #:angle (or/c string? real?)) 
-;                       (#:name (or/c string? string? #f) #:color (or/c color/c string? #f) 
-;                        #:identifier (or/c symbol? string? #f))
-;                       guideline?)]
-;  [make-anchor (->* (#:x (or/c string? real?) #:y (or/c string? real?) #:name string?)
-;                    (#:color (or/c color/c string? #f) #:identifier (or/c symbol? string? #f))
-;                    anchor?)]
-;  [make-component (->* (#:base (or/c string? name/c))
-;                       (#:xScale (or/c string? real?) #:xyScale (or/c string? real?) 
-;                        #:yxScale (or/c string? real?) #:yScale (or/c string? real?) #:xOffset (or/c string? real?)
-;                        #:yOffset (or/c string? real?) #:identifier (or/c symbol? string? #f))
-;                       component?)]
-;  [make-contour (->* () (#:identifier (or/c symbol? #f) #:points (listof point?))
-;                     contour?)]
-;  [make-point (->* (#:x (or/c string? real?) #:y (or/c string? real?))
-;                   (#:type (or/c string? (one-of/c 'move 'line 'offcurve 'curve 'qcurve))
-;                    #:smooth (or/c boolean? string?) #:name (or/c string? #f) #:identifier (or/c symbol? string? #f))
-;                   point?)]
   [map-contours (-> (-> contour? any/c) (or/c glyph? layer?) (listof any/c))]
   [for-each-contours (-> (-> contour? any) (or/c glyph? layer?) any)]
   [map-components (-> (-> component? any/c) (or/c glyph? layer?) (listof any/c))]
@@ -188,8 +164,7 @@
   [kerning-group? (-> name/c boolean?)]
   [update-kerning-group-name (-> name/c (or/c 'left 'right) name/c)]
   [lookup-kerning-pair (-> font? name/c name/c (values real? boolean?))]
-  [kerning-value (-> font? name/c name/c real?)]
-  )
+  [kerning-value (-> font? name/c name/c real?)])
  draw-glyph
  draw-contour
  draw-points
@@ -505,25 +480,25 @@
 ;;; represent the advance width and height of a glyph
 (struct advance (width height) #:transparent)
 
+
 ;;; Image
 ;;; (image String TransformationMatrix Color)
-
 (geometric-struct (matrix-based-trans)
                   image (filename matrix color) 
                   #:transparent
                   #:property prop:has-matrix (lambda (i) (image-matrix i)))
 
+
 ;;; Guideline
 ;;; (guideline Vec Number String Color Symbol)
-
 (geometric-struct (position-based-trans)
                   guideline (pos angle name color identifier) 
                   #:transparent
                   #:property prop:has-position (lambda (g) (guideline-pos g)))
 
+
 ;;; Anchor
 ;;; (anchor Vec String Color Symbol)
-
 (geometric-struct (position-based-trans)
                   anchor (pos name color identifier) 
                   #:transparent
@@ -1129,15 +1104,6 @@
                        rest-pts)
                   (list start)))))
 
-;; Glyph -> Glyph
-;; Produce a new glyph hat try to be compatible with glif1 specs
-;(define (glyph->glyph1 g)
-;  (match g
-;    [(glyph format name advance (list codes ...) 
-;            note image layers lib)
-;     (glyph 1 name advance codes #f #f 
-;            (list (layer->layer1 (get-layer g foreground)))
-;            lib)]))
 
 ; Layer -> Layer
 ; produce a new layer compatible with glif1 spec
@@ -1160,10 +1126,6 @@
                 (map-components (lambda (c) (struct-copy component c [identifier #f]))
                                 l)]))
 
-;; Glyph -> Glyph
-;; Produce a new glyph hat try to be compatible with glif2 specs
-;(define (glyph->glyph2 g)
-;  (struct-copy glyph g [format 2]))
 
 ; Anchor -> Contour
 ; produce a contour with one point only that is used by convention in Glif1 to define an anchor

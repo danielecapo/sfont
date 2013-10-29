@@ -17,11 +17,7 @@
                   #:overwrite boolean? 
                   #:proc-data (or/c #f (-> any/c any)) 
                   #:proc-images (or/c #f (-> any/c any)))
-                 any)]
-;  
-;  [read-glif-file (->* (path-string?) ((or/c string? #f)) glyph?)]
-;  [write-glif-file (-> glyph? path-string? any)]
-  ))
+                 any)]))
 
 
 (struct glif (format name advance unicodes 
@@ -50,7 +46,7 @@
 ; ... -> Point
 ; produce a point from ...
 (define (parse-point p)
-  (apply-with-kws make-point (cadr p)))
+  (apply-with-kws build-point (cadr p)))
 
 ; (listOf Outlines) -> (listOf Contour) (listOf Component) (listOf Anchor)
 ; separate contours, components and anchors
@@ -64,12 +60,12 @@
           (aux contours 
                components 
                (append anchors 
-                       (list (make-anchor #:x x #:y y #:name name)))
+                       (list (build-anchor #:x x #:y y #:name name)))
                elts)]
          [(list-rest 'contour id points)
           (aux (append contours
                        (list (apply-with-kws 
-                              make-contour 
+                              build-contour 
                               (append id (list (list 'points (map parse-point points)))))))
                components
                anchors
@@ -77,7 +73,7 @@
          [(list 'component args)
           (aux contours
                (append components (list (apply-with-kws
-                                         make-component
+                                         build-component
                                          args)))
                anchors
                elts)])]))
@@ -95,7 +91,7 @@
          
          [(list 'advance args) 
           (aux (struct-copy glif acc 
-                            [advance (apply-with-kws make-advance args)])
+                            [advance (apply-with-kws build-advance args)])
                restelts)]
          [(list 'unicode (list (list 'hex hex)))
           (aux (struct-copy glif acc 
@@ -106,16 +102,16 @@
                restelts)]
          [(list 'image args)
           (aux (struct-copy glif acc 
-                            [image (apply-with-kws make-image args)])
+                            [image (apply-with-kws build-image args)])
                restelts)]
          [(list 'guideline args)
           (aux (struct-copy glif acc 
-                            [guidelines (cons (apply-with-kws make-guideline args)
+                            [guidelines (cons (apply-with-kws build-guideline args)
                                               (glif-guidelines acc))])
                restelts)]
          [(list 'anchor args)
           (aux (struct-copy glif acc 
-                            [anchors (cons (apply-with-kws make-anchor args)
+                            [anchors (cons (apply-with-kws build-anchor args)
                                               (glif-anchors acc))])
                restelts)]
          [(list-rest 'outline null outlines)
@@ -133,7 +129,7 @@
          [_ acc])]))
   (aux (glif (string->number (se-path* '(glyph #:format) x))
               (if name name (string->symbol (se-path* '(glyph #:name) x)))
-              (make-advance) null #f #f null null null null (make-immutable-hash))
+              (build-advance) null #f #f null null null null (make-immutable-hash))
        (se-path*/list '(glyph) x)))
 
 ; if the value expr evaluetes to the default value produce the empty list otherwise evaluates expr
@@ -620,11 +616,11 @@
 
 ; functions for reading data
 
-(define (make-advance #:width [width 0] #:height [height 0])
+(define (build-advance #:width [width 0] #:height [height 0])
   (advance (ensure-number width) (ensure-number height)))
 
-(define (make-image #:fileName filename #:xScale [x-scale 1] #:xyScale [xy-scale 0] 
-                        #:yxScale [yx-scale 0] #:yScale [y-scale 0] #:xOffset [x-offset 0]
+(define (build-image #:fileName filename #:xScale [x-scale 1] #:xyScale [xy-scale 0] 
+                        #:yxScale [yx-scale 0] #:yScale [y-scale 1] #:xOffset [x-offset 0]
                         #:yOffset [y-offset 0] #:color [color #f])
   (image filename (trans-mat (ensure-number x-scale) (ensure-number xy-scale) 
                              (ensure-number yx-scale) (ensure-number y-scale) 
@@ -632,20 +628,20 @@
          (ensure-color color)))
 
 
-(define (make-guideline #:x x #:y y  #:angle angle 
+(define (build-guideline #:x x #:y y  #:angle angle 
                             #:name [name #f] #:color [color #f] 
                             #:identifier [identifier #f])
   (guideline (vec (ensure-number x) (ensure-number y)) (ensure-number angle) name 
              (ensure-color color) (ensure-symbol identifier)))
 
-(define (make-anchor #:x x #:y y #:name name
+(define (build-anchor #:x x #:y y #:name name
                      #:color [color #f] #:identifier [identifier #f])
   (anchor (vec (ensure-number x) (ensure-number y)) name (ensure-color color) (ensure-symbol identifier)))
 
-(define (make-contour #:identifier [identifier #f] #:points [points null])
+(define (build-contour #:identifier [identifier #f] #:points [points null])
   (contour (ensure-symbol identifier) points))
 
-(define (make-component #:base base #:xScale [x-scale 1] #:xyScale [xy-scale 0] 
+(define (build-component #:base base #:xScale [x-scale 1] #:xyScale [xy-scale 0] 
                         #:yxScale [yx-scale 0] #:yScale [y-scale 1] #:xOffset [x-offset 0]
                         #:yOffset [y-offset 0] #:identifier [identifier #f])
   (component (ensure-symbol base) 
@@ -654,7 +650,7 @@
                         (ensure-number x-offset) (ensure-number y-offset))
              (ensure-symbol identifier)))
 
-(define (make-point #:x x #:y y #:type [type 'offcurve] 
+(define (build-point #:x x #:y y #:type [type 'offcurve] 
                         #:smooth [smooth #f] #:name [name #f] #:identifier [identifier #f])
   (point (vec (ensure-number x) (ensure-number y)) (ensure-symbol type)
              (ensure-smooth smooth) name (ensure-symbol identifier)))
