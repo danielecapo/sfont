@@ -48,7 +48,7 @@
             (join-subpaths b (parse-curves ((vec-x p) (vec-y p)) . r)))]
        [path-element 
         #'(let* ([b i]
-            [n (car b)])
+                 [n (car b)])
             (join-subpaths b (parse-curves path-element . r)))])]
     [(_ (x y) path-element . r)
      (syntax-case #'path-element (@ @° insert)
@@ -88,9 +88,9 @@
      (syntax-case #'path-element (@ @°)
        [(@ x1 y1)
         #'(let* ([nt (vec cx cy)]
-            [n (vec+ nt (vec x1 y1))])
-       (parse-curves ((vec-x nt) (vec-y nt) t)
-            ((vec-x n) (vec-y n)) . r))]
+                 [n (vec+ nt (vec x1 y1))])
+            (parse-curves ((vec-x nt) (vec-y nt) t)
+                          ((vec-x n) (vec-y n)) . r))]
        [(@° a l)
         #'(let ([nt (vec cx cy)]
                 [angle a]
@@ -111,8 +111,8 @@
     [(_ (x y . r))
      (raise-syntax-error #f "Invalid end path element" stx)]
     [(_) #'()]))
-    
-   
+
+
 
 
 (define-syntax (~ stx)
@@ -139,7 +139,7 @@
                            ))])
        (with-syntax ([(path-elts ...) (p-lines #'r #'())])
          #'(parse-curves path-elts ...)))]))
-   
+
 
 
 ; Bezier, Bezier -> Bezier
@@ -150,8 +150,8 @@
         [(null? (cdr p1))
          (let ([p (car p1)])
            (if (vec= p (car p2))
-             (cons p (cdr p2))
-             (append (list p p (car p2)) p2)))]
+               (cons p (cdr p2))
+               (append (list p p (car p2)) p2)))]
         [else (cons (car p1) (join-subpaths (cdr p1) p2))]))
 
 
@@ -161,7 +161,7 @@
            (append acc (bezier-subtract p pt)))
          null
          from-pt))
- 
+
 ; Bezier  Bezier ... -> (listof Bezier)
 (define (join~ pt . pts)
   (if (null? pts)
@@ -181,7 +181,7 @@
                   (apply join~ (car j) (append (cdr overlaps) non-overlaps))
                   (append (list (car overlaps))
                           (apply join~ pt (append (cdr overlaps) non-overlaps)))))))))
- 
+
 
 ; Real, Real, Real, Real -> Bezier
 ; produce a rectangle (as a bezier curve) with lower left corner in (x, y) with width w and height h
@@ -269,9 +269,9 @@
              [metrics left-form right-form]
              . contour-form)
      #'(glyph. name 
-             [locals]
-             [metrics left-form right-form]
-             . contour-form)]
+               [locals]
+               [metrics left-form right-form]
+               . contour-form)]
     [(glyph. name 
              [locals [s v] ...]
              [metrics left-form right-form]
@@ -281,12 +281,12 @@
                            [((contours cnt . cnts))
                             #'(map bezier->contour 
                                    (build-contour-list cnt . cnts))])])
-     #'(let* ([s v] ...)
-         (space-glyph
-          (glyph 1 name (advance 0 0) (unicode name) #f #f 
-                 (list (layer foreground null null cnts null))
-                 (make-immutable-hash))
-         left-form right-form)))]
+       #'(let* ([s v] ...)
+           (space-glyph
+            (glyph name (advance 0 0) (unicode name) #f #f 
+                   (list (layer foreground null null cnts null))
+                   (make-immutable-hash))
+            left-form right-form)))]
     [(glyph. . body) (raise-syntax-error #f "Invalid glyph. definition." stx)]))
 
 
@@ -296,15 +296,15 @@
   (->* () () #:rest (listof (or/c bezier/c (listof bezier/c))) (listof bezier/c))
   (foldl 
    (lambda (c r)
-           (append r (if (bezier/c c)
-                         (list c)
-                         c)))
+     (append r (if (bezier/c c)
+                   (list c)
+                   c)))
    '()
    cnts))
 
 
 
-       
+
 ; Alignemnt is a list of two elements, the first element is the position, the second represents the height of overshoot
 (define alignment/c (flat-named-contract 'alignment/c (list/c real? real?)))
 
@@ -336,42 +336,41 @@
                      (v ...)
                      glyph-form ...)
      
-       (let* (v ...)
-         (font 2 sfont-creator
-                   (make-immutable-hash
-                    (let* ([all-blues (list (list (alg blue) (ovs blue)) ...)]
-                           [blues (sort (flatten 
-                                         (filter ((curry ormap) 
-                                                  (negate negative?)) 
-                                                 all-blues))
-                                        <)]
-                           [o-blues (sort (flatten 
-                                           (filter ((curry andmap) negative?)
-                                                   all-blues))
-                                          <)]
-                           [infoa (list (cons 'unitsPerEm (+ (alg ascender-id) (- (alg descender-id))))
-                                        (cons 'ascender (alg ascender-id))
-                                        (cons 'descender (alg descender-id))
-                                        (cons 'familyName (symbol->string (quote name)))
-                                        (cons 'postscriptFontName (symbol->string (quote name)))
-                                        (cons 'versionMajor 1)
-                                        (cons 'versionMinor 0))]
-                           [infob (if (null? blues)
-                                      infoa
-                                      (cons (cons 'postscriptBlueValues blues)
-                                            infoa))])
-                      (if (null? o-blues)
-                          infob
-                          (cons (cons 'postscriptBlueValues blues)
-                                infob))))
-                   (make-immutable-hash) 
-                   (make-immutable-hash) 
-                   #f
-                   (build-glyphs-list glyph-form ...)
-                   (list 
-                    (layer-info foreground #f (make-immutable-hash)))
-                   (make-immutable-hash)
-                   #f #f))]))
+     (let* (v ...)
+       (font (make-immutable-hash
+              (let* ([all-blues (list (list (alg blue) (ovs blue)) ...)]
+                     [blues (sort (flatten 
+                                   (filter ((curry ormap) 
+                                            (negate negative?)) 
+                                           all-blues))
+                                  <)]
+                     [o-blues (sort (flatten 
+                                     (filter ((curry andmap) negative?)
+                                             all-blues))
+                                    <)]
+                     [infoa (list (cons 'unitsPerEm (+ (alg ascender-id) (- (alg descender-id))))
+                                  (cons 'ascender (alg ascender-id))
+                                  (cons 'descender (alg descender-id))
+                                  (cons 'familyName (symbol->string (quote name)))
+                                  (cons 'postscriptFontName (symbol->string (quote name)))
+                                  (cons 'versionMajor 1)
+                                  (cons 'versionMinor 0))]
+                     [infob (if (null? blues)
+                                infoa
+                                (cons (cons 'postscriptBlueValues blues)
+                                      infoa))])
+                (if (null? o-blues)
+                    infob
+                    (cons (cons 'postscriptBlueValues blues)
+                          infob))))
+             (make-immutable-hash) 
+             (make-immutable-hash) 
+             #f
+             (build-glyphs-list glyph-form ...)
+             (list 
+              (layer-info foreground #f (make-immutable-hash)))
+             (make-immutable-hash)
+             #f #f))]))
 
 
 ; (Glyph or (listOf Glyph)) ... -> (listOf Glyph)
@@ -396,19 +395,19 @@
                     (datum->syntax stx
                                    (append*
                                     (map (lambda (p d)
-                                          (cons (string->keyword (symbol->string (syntax->datum p))) (list (list p d))))
+                                           (cons (string->keyword (symbol->string (syntax->datum p))) (list (list p d))))
                                          (syntax->list #'(param ...))
                                          (syntax->list #'(dflt  ...)))))])
        #'(lambda kwarglist (font. name . rest)))]
     [(font. name
-       [alignments als ...]
-       [variables v ...]
-       [glyphs glyph-form ...])
+            [alignments als ...]
+            [variables v ...]
+            [glyphs glyph-form ...])
      (for-each (lambda (i) (unless (identifier? i)
-                            (raise-syntax-error #f "Expected identifier" stx #'i)))
-              (cons #'name
-                    (append (map (compose car syntax->list) (syntax->list #'(als ...)))
-                            (map (compose car syntax->list) (syntax->list #'(v ...))))))
+                             (raise-syntax-error #f "Expected identifier" stx #'i)))
+               (cons #'name
+                     (append (map (compose car syntax->list) (syntax->list #'(als ...)))
+                             (map (compose car syntax->list) (syntax->list #'(v ...))))))
      (letrec ([find-blues
                (lambda (s acc)
                  (syntax-case s (:font-ascender :font-descender)
@@ -441,6 +440,6 @@
                              (v ...) 
                              glyph-form ...))))]
     [(font. name
-       [alignments als ...]
-       [glyphs glyph-form ...])
+            [alignments als ...]
+            [glyphs glyph-form ...])
      #'(font. name [alignments als ...] [variables] [glyphs glyph-form ...])]))
