@@ -430,7 +430,7 @@
 
 ; Font String (String -> ...) (String -> ...) -> UfoWriter
 ; produce a writer for the ufo file in path
-(define (writer f path [proc-data #f] [proc-images #f])
+(define (writer f path format [proc-data #f] [proc-images #f])
   (define (make-ufo-path file)
     (build-path path file))
   (define (write-on-plist dict path)
@@ -477,7 +477,7 @@
                       [(list-rest g rest-glyphs)
                        (let* ([name (namesymbol->filename (glyph-name g) "" ".glif" names)]
                               [gl (if (get-layer g l)
-                                      (glyph->glif g l)
+                                      (glyph->glif g l (if (= format 3) 2 1))
                                       #f)])                        
                           (begin
                             (when gl (write-glif-file gl (build-path glyphsdir name)))
@@ -490,15 +490,16 @@
                       (build-path glyphsdir "contents.plist"))))
       
   (define (write-layers)
-    (let ((layers-hash (font-layers f)))
-      (print layers-names)
+    (let* ([l (if (= format 3)
+                  (font-layers f)
+                  (hash foreground (hash-ref (font-layers f) foreground)))])
       (for-each (lambda (l)
                   (begin
                     (let ([dir (make-ufo-path (cdr l))]
                           [la (car l)])
                       (make-directory dir)
                       (write-glyphs la dir)
-                      (when (= (font-format f) 3)
+                      (when (= format 3)
                         (write-layerinfo la dir)))))
                 layers-names)))
   (define (write-layerinfo l dir)
@@ -515,7 +516,7 @@
   (let ([s (list 
             (cons 'meta (lambda () 
                           (write-on-plist (hash 'creator sfont-creator
-                                                'formatVersion (font-format f))
+                                                'formatVersion format)
                                           (make-ufo-path "metainfo.plist"))))
             (cons 'info (lambda () 
                           (write-on-plist (font-fontinfo f) 
@@ -535,22 +536,20 @@
 
 ; Font String [Boolean] (String -> ...) (String -> ...) -> side effects
 ; write the UFO to the given path
-(define (write-ufo f path #:overwrite [overwrite #t] #:proc-data [proc-data #f] #:proc-images [proc-images #f])
+(define (write-ufo f path #:format [format 2] #:overwrite [overwrite #t] #:proc-data [proc-data #f] #:proc-images [proc-images #f])
   (unless (and (filename-extension path) 
                (string=? (bytes->string/utf-8 (filename-extension path))
                          "ufo"))
     (error (format "Expected ufo extension, but given ~a" path)))
-  (let* ([ff (font-format f)]
-         [f (if (= ff 3) (font->ufo3 f) (font->ufo2 f))] 
-         [writer (writer f path proc-data proc-images)])
+  (let ([writer (writer f path format proc-data proc-images)])
     (if (and (directory-exists? path) (not overwrite))
         #f
         (begin
           (if (directory-exists? path)
               (clean-ufo-dir path)
               (make-directory path))
-          (cond [(= ff 2) (write-ufo2 writer)]
-                [(= ff 3) (write-ufo3 writer)]
+          (cond [(= format 2) (write-ufo2 writer)]
+                [(= format 3) (write-ufo3 writer)]
                 [#t (error "I can only write Ufo 2 and Ufo 3 files")])))))
 
 ; PathString -> Void
