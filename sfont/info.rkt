@@ -1,2 +1,2 @@
 #lang setup/infotab
-(define scribblings '(("doc/sfont.scrbl" ())))
+(define scribblings '(("scribblings/sfont.scrbl" ())))
