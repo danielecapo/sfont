@@ -38,9 +38,6 @@ Nice things that can be added to this library:
 
 - Validation of UFOs
 - Documentation
-- Boolean operations on bezier curves
-- Make it installable via Planet
-- Simple GUI
 - Export to (and import from) fontforge sfd format
 - Export and import glyphs in SVG
 - Better macros for parametric definitions of fonts
@@ -84,33 +81,54 @@ The normal behaviour is to overwrite everything, if you DON'T want to overwrite:
 (write-ufo f "/path/to/your.ufo" #:overwrite #f)
 ```
 
-### Convert between UFO2 and UFO3
+By default the font is written in the UFO2 format (and it loses layers, guidelines, etc.), if you want to save it as UFO3 you can use the `#:format` keyword.
 
 ```
-(font->ufo3 f)
-(font->ufo2 f)
-```
-
-So, to save as UFO3 you can:
-
-```
-(write-ufo (font->ufo3 f) "/path/to/your.ufo")
+(write-ufo f "/path/to/your.ufo" #:format 3)
 ```
 
 ### Navigating the font
 
-You can use the normal way, i.e. structures field accessors, to get the various parts.
-However since this can be annoying for a deeply nested data structure (I suppose the term is correct) like a font, sfont provides the `seq` macro
-
-
-
-The macro seq let's you access data:
+The module `navigator.rkt` define three macros that can be used to access font data in an easier way.
 
 ```
-(seq f) -> will returns an hashtable of glyphs in the foreground layer
-(seq f 'a) -> glyph "a" of the foreground layer
-(seq f 'a 0) -> the first contour of "a"
-(seq f 'a 0 2) -> the third point of this contour
+(fref f
+	[glyph 'a]
+	[layer foreground]
+	[contours @ 0]
+	[point @ 2]
+	pos
+	x)
+```
+
+Find the x position of the third point in the first contour of the layer foreground in the glyph a.
+
+If you need to (functionally) 'change' the same object you can use `fset`
+
+```
+(fset
+	(f
+	 [glyph 'a]
+	 [layer foreground]
+	 [contours @ 0]
+	 [point @ 2]
+	 pos
+	 x)
+	100)
+```
+
+If you want to update data with a function
+
+```
+(fupdate
+	(f
+	 [glyph 'a]
+	 [layer foreground]
+	 [contours @ 0]
+	 [point @ 2]
+	 pos
+	 x)
+	(lambda (x) (+ x 20)))
 ```
 
 ### Spacing fonts
