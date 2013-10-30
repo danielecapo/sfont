@@ -89,7 +89,7 @@ By default the font is written in the UFO2 format (and it loses layers, guidelin
 
 ### Navigating the font
 
-The module `navigator.rkt` define three macros that can be used to access font data in an easier way.
+The module `navigator.rkt` defines three macros that can be used to access font data in an easier way.
 
 ```
 (fref f
