@@ -86,7 +86,8 @@
                     (approx y)))
   #:methods gen:geometric
   [(define (transform v m) 
-     (vec3->vec (trans-mat-vec* m v)))
+     (let ([v1 (vec3 (vec-x v) (vec-y v) 1)])
+     (vec3->vec (trans-mat-vec* m v1))))
   (define (translate v x y)
     (vec (+ (vec-x v) x)
          (+ (vec-y v) y)))
