@@ -5,17 +5,19 @@
          "geometry.rkt"
          "utilities.rkt")
 
-(provide display-size
-         display-text
-         display-pen
-         show-kerning?
-         set-contour-view! 
-         with-contour-view
-         pictf:font
-         pictf:glyph
-         draw-font-dc
-         lines
-         unique-letters)
+(provide 
+ (contract-out
+  [display-size (parameter/c natural-number/c)]
+  [display-text (parameter/c (listof (listof symbol?)))]
+  [display-pen (parameter/c (is-a?/c pen%))]
+  [show-kerning? (parameter/c boolean?)])
+ set-contour-view! 
+ with-contour-view
+ pictf:font
+ pictf:glyph
+ draw-font-dc
+ lines
+ unique-letters)
 
 ;;; Global variables
 (define display-pen (make-parameter (new pen% [style 'transparent])))
@@ -62,17 +64,6 @@
 
 
       
-(define-syntax-rule (with-sample-text (text size) body)
-  (let ([t (display-text)]
-        [s (display-size)])
-    (begin
-      (set-sample-text! text)
-      (set-sample-size! size)
-      body
-      (set-sample-text! t)
-      (set-sample-size! s))))
-    
-
 (define (name glyph) (car glyph))
 (define (advance glyph) (cadr glyph))
 (define (contours glyph) (cddr glyph))

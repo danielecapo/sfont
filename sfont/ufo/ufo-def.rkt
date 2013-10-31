@@ -19,7 +19,6 @@
   [features/c (-> any/c boolean?)]
   [images/c (-> any/c boolean?)]
   [data/c (-> any/c boolean?)]
-  [layerinfo/c (-> any/c boolean?)]
   [color/c (-> any/c boolean?)]
   [foreground name/c]
   [background name/c]
@@ -249,7 +248,7 @@
 ;;; (hashtable (Symbol . (listof Symbol)))
 (define groups/c (flat-named-contract
                   'groups/c
-                  (hash/c name/c (listof symbol?) #:immutable #t #:flat? #t)))
+                  (hash/c name/c (listof name/c) #:immutable #t #:flat? #t)))
 
 ;;; Lib
 ;;; 
@@ -276,12 +275,7 @@
 ;;; fontinfo should be defined better
 (define images/c (flat-named-contract 'images/c any/c))
 
-;;; LayerInfo
-;;; change this
-(define layerinfo/c (flat-named-contract 'layerinfo/c (or/c #f lib/c)))
-                 
 
-                 
 
 ;;; Font
 ;;; (font Number String HashTable HashTable HashTable String (listOf Glyph) (listOf Layer) HashTable ... ...)
