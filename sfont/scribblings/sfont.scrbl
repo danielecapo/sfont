@@ -106,7 +106,7 @@ the fourth one is the alpha value (transparency).}
                         (lib lib/c))]{
 
 Layer infos are used to store informations about layers at font level.
-They can associate to the layer's name a color and arbitrary informations in a lib (see also the
+They can associate a layer's name to a color and arbitrary informations stored in a lib (see also the
 @link["http://unifiedfontobject.org/versions/ufo3/glyphs.html#layerinfo"]{UFO specifications}.)
 
 If a layer is added to a glyph, the respective layer-info has to be added to the font layers.}
@@ -124,3 +124,56 @@ like glyphs in fonts can be passed as lists to the constructor).
 
 Transformations can be applied to glyphs, however only @racket[scale] will
 affect the advance width and height of the glyph.}
+
+@defstruct*[advance ((width real?) (height real?))]{
+
+The advance width and height of a glyph. Advance dictates where
+the next glyph should be placed.
+}
+                                
+@defstruct*[image ((filename string?) (matrix trans-mat?) (color (or/c color/c #f)))]{
+
+An image is defined by the filename, a transformation matrix and a color
+(if the color is false, then no color is specified).
+}
+
+@defstruct*[layer ((name name/c) 
+                   (guidelines (listof guideline?))
+                   (anchors (listof anchor?))
+                   (contours (listof contour?))
+                   (components (listof component?)))]{
+
+A layer is used to store informations about contours, anchors, 
+components and guidelines.
+
+Transformations applied to a layer are applied to its content.}
+
+
+@defstruct*[guideline ((pos vec?) 
+                       (angle real?) 
+                       (name (or/c string? #f)) 
+                       (color (or/c color/c #f)) 
+                       (identifier (or/c symbol? #f)))]
+
+@defstruct*[anchor 
+            ((pos vec?)
+             (name string?) 
+             (color (or/c color/c #f))
+             (identifier (or/c symbol? #f)))]
+
+@defstruct*[component ((base name/c) (matrix trans-mat?) (identifier (or/c symbol? #f)))]
+
+@defstruct*[contour ((identifier (or/c symbol? #f)) (points (listof point?)))]
+
+@defstruct*[point 
+            ((pos vec?)
+             (type (one-of/c 'move 'line 'offcurve 'curve 'qcurve))
+             (smooth boolean?)
+             (name (or/c string? #f))
+             (identifier (or/c symbol? #f)))]
+
+
+@defproc[(get-glyph (f font?) (g name/c)) (or/c glyph? #f)]{
+                                                            
+Return the glyph named g from the font f.}
+

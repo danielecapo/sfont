@@ -83,7 +83,7 @@
   [for-each-layers (-> (-> layer? any/c) glyph? any/c)]
   [filter-glyphs (-> (-> glyph? boolean?) font? (listof glyph?))]
   [set-layer (-> glyph? layer? glyph?)]
-  [get-glyph (-> font? name/c (or glyph? #f))]
+  [get-glyph (-> font? name/c (or/c glyph? #f))]
   [get-glyphs (-> font? (listof name/c) (listof glyph?))]
   [remove-glyph (-> font? name/c font?)]
   [insert-glyph (-> font? glyph? font?)]
