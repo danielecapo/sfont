@@ -79,8 +79,8 @@
      (identifier (or/c symbol? #f)))]
   
   [get-layer (->* (glyph?) (name/c) (or/c layer? #f))]
-  [map-layers (-> (-> layer? any/c) glyph? (listof any/c))]
-  [for-each-layers (-> (-> layer? any/c) glyph? any/c)]
+  [map-layers (->* ((-> layer? any/c) glyph?) (#:sorted boolean?) (listof any/c))]
+  [for-each-layers (->* ((-> layer? any/c) glyph?) (#:sorted boolean?) void?)]
   [filter-glyphs (-> (-> glyph? boolean?) font? (listof glyph?))]
   [set-layer (-> glyph? layer? glyph?)]
   [get-glyph (-> font? name/c (or/c glyph? #f))]
@@ -88,7 +88,7 @@
   [remove-glyph (-> font? name/c font?)]
   [insert-glyph (-> font? glyph? font?)]
   [map-glyphs (->* ((-> glyph? any/c) font?) (#:sorted boolean?) (listof any/c))]
-  [for-each-glyphs (->* ((-> glyph? any/c) font?) (#:sorted boolean?) any/c)]
+  [for-each-glyphs (->* ((-> glyph? any/c) font?) (#:sorted boolean?) void?)]
   [font-glyphs-list (-> font? (listof glyph?))]
   [sort-glyph-list (->* ((listof glyph?)) (#:key (-> glyph? any/c) #:pred (-> any/c any/c boolean?)) (listof glyph?))]
   [map-kerning (-> (-> real? real?) kerning/c kerning/c)]
@@ -96,6 +96,7 @@
   [decompose-font (-> font? font?)]
   [glyph-bounding-box (case-> (-> glyph? font? bounding-box/c)
                               (-> glyph? bounding-box/c))]
+  [font-bounding-box (->* (font?) (boolean?) bounding-box/c)]
   [get-sidebearings (case-> (-> glyph? (or/c (cons/c real? real?) #f))
                             (-> glyph? font? (or/c (cons/c real? real?) #f)))]
   [intersections-at (case-> (-> glyph? real? (listof vec?))

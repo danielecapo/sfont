@@ -148,6 +148,10 @@ components and guidelines.
 
 Transformations applied to a layer are applied to its content.}
 
+@defthing[foreground 'public.default]
+@defthing[background 'public.background]{
+
+Names of foreground and background layers.}
 
 @defstruct*[guideline ((pos vec?) 
                        (angle real?) 
@@ -172,8 +176,88 @@ Transformations applied to a layer are applied to its content.}
              (name (or/c string? #f))
              (identifier (or/c symbol? #f)))]
 
+@subsection{Functions}
 
 @defproc[(get-glyph (f font?) (g name/c)) (or/c glyph? #f)]{
                                                             
-Return the glyph named g from the font f.}
+Produces the glyph named @emph{g} from the font @emph{f}. If @emph{f} hasn't a glyph with that name, returns false.}
 
+@defproc[(get-glyphs (f font?) (gs (listof name/c))) (listof glyph?)]{
+                                                            
+Maps every name in @emph{gs} with the corresponding glyph in @emph{f} (if the glyph exists).}
+
+@defproc[(remove-glyph (f font?) (g name/c)) font?]{
+                                                            
+Functionally remove (produces a new font) the glyph named @emph{g} from @emph{f}.}
+
+@defproc[(insert-glyph (f font?) (g glyph?)) font?]{
+                                                            
+Functionally insert (produces a new font) the glyph @emph{g} in @emph{f}.}
+
+@defproc[(map-glyphs [proc (-> glyph? any/c)] [f font?]  [#:sorted sorted boolean? #f]) (listof any/c)]
+@defproc[(for-each-glyphs [proc (-> glyph? any/c)] [f font?]  [#:sorted sorted boolean? #f]) void?]
+@defproc[(filter-glyphs [proc (-> glyph? boolean?)] [f font?]) (listof glyph?)]{                                                                              
+Like @racket[map] @racket[for-each] and @racket[filter], but the procedures are applied 
+to the glyphs in the given font. If @racket[sorted] 
+is @racket[#t] in @racket[map-glyphs] and @racket[for-each-glyphs] the glyphs will be sorted by name before
+the operation.}
+
+@defproc[(font-glyphs-list [f font?]) (listof glyph?)]{
+                                                            
+Produces a list of the glyphs in @emph{f}.}
+
+@defproc[(sort-glyph-list [gl (listof glyph?)] 
+                          [#:key key (-> glyph? any/c) 
+                                 (lambda (g) (symbol->string (glyph-name g)))]
+                          [#:pred pred (-> any/c any/c boolean?) string<?])
+         (listof glyph?)]{
+                          
+Produce a list of sorted glyphs. The way glyphs are sorted is controlled by 
+@racket[key] and @racket[pred].}
+                                                            
+@defproc[(get-layer [g glyph?] [l name/c foreground]) layer?]{
+                                                              
+Produce the layer named @emph{l} in the given glyph, the default layer is @racket[foreground].}
+
+@defproc[(set-layer [g glyph?] [new-layer layer?]) glyph?]{
+                                                              
+Functionally sets a layer in a glyph.}
+
+@defproc[(map-layers [proc (-> layer? any/c)] [g glyph?]  [#:sorted sorted boolean? #f]) (listof any/c)]
+@defproc[(for-each-layers [proc (-> layer? any/c)] [g glyph?]  [#:sorted sorted boolean? #f]) void?]{                                                                              
+
+Like @racket[map] and @racket[for-each], but the procedures are applied 
+to the layers in the given glyph. If @racket[sorted] 
+is @racket[#t] the layers will be sorted by name before
+the operation.}
+
+@defproc[(decompose-glyph [f font?] [g glyph?]) glyph?]{
+                                                        
+Produce a glyph from the given glyph decomposing components to outline.
+The 'context' from which the components (other glyphs) are retrieved is a font.}
+
+@defproc[(decompose-font [f font?]) font?]{
+                                                        
+Produce a font from the given font decomposing all glyphs.}
+
+
+@defproc*[([(glyph-bounding-box [g glyph?] [f font?]) bounding-box/c]
+           [(glyph-bounding-box [g glyph?]) bounding-box/c])]{
+                          
+Produces the bounding box for the glyph, if a font is provided the bounding box
+will take into account components, otherwise the bounding box will be 
+the bounding box of contours only.}
+
+@defproc[(font-bounding-box [f font?] [components boolean? #t]) bounding-box/c]{
+                                                        
+Produces the bounding box of the font, if @racket[components] is @racket[#t] components
+are taken into account.}     
+                        
+@defproc*[([(get-sidebearings [g glyph?] [f font?]) (or/c (cons/c real? real?) #f)]
+           [(get-sidebearings [g glyph?]) (or/c (cons/c real? real?) #f)])]{
+                          
+Produces the sidebearings of the glyph in a pair (or @racket[#f] if they can't be found), if a font is provided the sidebearings will take into account components.
+The @racket[car] of the pair represents the left sidebearing, while the @racket[cdr] represents the right one.}
+                          
+
+                                         
