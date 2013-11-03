@@ -338,3 +338,40 @@ Produces a color from a string in the format @racket["r,g,b,a"].}
                                               
 Produces a string in the format @racket["r,g,b,a"] from a color.}
 
+@defproc[(map-contours [proc (-> contour? any/c)] [o (or/c layer? glyph?)]) (listof any/c)]
+@defproc[(for-each-contours [proc (-> contour? any)] [o (or/c layer? glyph?)]) void?]{
+
+Like @racket[map] and @racket[for-each], but apply the procedure to every @racket[contour] in a @racket[layer] or,
+if used with a @racket[glyph] to the @racket[foreground] layer of the glyph.}
+
+@defproc[(map-components [proc (-> component? any/c)] [o (or/c layer? glyph?)]) (listof any/c)]
+@defproc[(for-each-components [proc (-> component? any)] [o (or/c layer? glyph?)]) void?]{
+
+Like @racket[map] and @racket[for-each], but apply the procedure to every @racket[component] in a @racket[layer] or,
+if used with a @racket[glyph] to the @racket[foreground] layer of the glyph.}
+
+@defproc[(map-anchors [proc (-> anchor? any/c)] [o (or/c layer? glyph?)]) (listof any/c)]
+@defproc[(for-each-anchors [proc (-> anchor? any)] [o (or/c layer? glyph?)]) void?]{
+
+Like @racket[map] and @racket[for-each], but apply the procedure to every @racket[anchor] in a @racket[layer] or,
+if used with a @racket[glyph] to the @racket[foreground] layer of the glyph.}
+
+@defproc[(map-guidelines [proc (-> guideline? any/c)] [o (or/c layer? glyph?)]) (listof any/c)]
+@defproc[(for-each-guidelines [proc (-> guideline? any)] [o (or/c layer? glyph?)]) void?]{
+
+Like @racket[map] and @racket[for-each], but apply the procedure to every @racket[guideline] in a @racket[layer] or,
+if used with a @racket[glyph] to the @racket[foreground] layer of the glyph.}
+
+@defproc[(map-points [proc (-> point? any/c)] [o (or/c layer? glyph?)]) (listof any/c)]
+@defproc[(for-each-points [proc (-> point? any)] [o (or/c layer? glyph?)]) void?]{
+
+Like @racket[map] and @racket[for-each], but apply the procedure to every @racket[point] in a @racket[contour].}
+
+@defproc[(contour->bezier [c contour?]) bezier/c]{
+
+Produces a cubic @racket[bezier/c] from a @racket[contour]. Line segments are transformed in cubic bezier segments
+where the first control point is equal to the start point and the second control point is equal to the end point.}
+
+@defproc[(bezier->contour [b bezier/c]) contour?]{
+
+Produces a @racket[contour] from a @racket[bezier/c].}
