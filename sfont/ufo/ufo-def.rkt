@@ -113,7 +113,7 @@
   [lowercase-stems (-> font? real?)]
   [uppercase-stems (-> font? real?)]
   [correct-directions (-> font? font?)]
-  [print-glyph (-> font? name/c any)]
+  [print-glyph (-> font? name/c void?)]
   [font-round (-> font? font?)]
   [layer-round (-> layer? layer?)]
   [kerning-round (-> kerning/c kerning/c)]
@@ -125,14 +125,8 @@
   [contour-round (-> contour? contour?)]
   [component-round (-> component? component?)]
   [point-round (-> point? point?)]
-  [ensure-number (-> (or/c string? real?) real?)]
-  [ensure-symbol (-> (or/c string? symbol? #f) (or/c symbol? #f))]
-  [ensure-smooth (-> (or/c string? boolean?) boolean?)]
   [string->color (-> string? color/c)]
   [color->string (-> color/c string?)]
-  [ensure-color (-> (or/c string? color/c #f) (or/c color/c #f))]
-  [string->unicode (-> string? natural-number/c)]
-  [unicode->string (-> natural-number/c string?)]
   [map-contours (-> (-> contour? any/c) (or/c glyph? layer?) (listof any/c))]
   [for-each-contours (-> (-> contour? any) (or/c glyph? layer?) any)]
   [map-components (-> (-> component? any/c) (or/c glyph? layer?) (listof any/c))]
@@ -940,29 +934,6 @@
   (struct-copy point p 
                [pos (vec-round (point-pos p))]))
 
-; (String or Number) -> Number
-; produce a number from a string or return the number
-(define (ensure-number n)
-  (if (or (not n) (number? n)) 
-      n 
-      (string->number (string-replace n "," "."))))
-
-; (String or Symbol) -> Symbol
-; produce a symbol from a string or return the symbol
-(define (ensure-symbol s)
-  (if s
-      (if (symbol? s) s (string->symbol s))
-      s))
-
-; ("yes" or "no" or Boolean) -> Boolean
-; produce a boolean from yes/no strings or return the boolean
-(define (ensure-smooth s)
-  (match s
-    [#f #f]
-    ["no" #f]
-    [#t #t]
-    ["yes" #t]
-    [_ (error "invalid value for smooth")]))
 
 ; String -> Color
 ; produce a color from a string of the type "r,g,b,a"
@@ -975,21 +946,6 @@
 ; produce a string of type "r,g,b,a" from a color
 (define (color->string c)
   (string-join (map number->string c) ","))
-
-; (String or Color) -> Color
-; produce a color from the string or return the color
-(define (ensure-color c)
-  (if (string? c) (string->color c) c))
-
-; String -> Unicode
-; produce an Unicode from String
-(define (string->unicode s)
-  (string->number (string-append "#x" s)))
-
-; Unicode -> String 
-; produce a String from an Unicode
-(define (unicode->string n)
-  (~r n #:base '(up 16) #:pad-string "0" #:min-width 4))
 
 
 ; (Contour -> T) (Glyph or Layer) -> (listOf T)

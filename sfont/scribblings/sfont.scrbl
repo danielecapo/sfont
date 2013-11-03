@@ -260,4 +260,81 @@ Produces the sidebearings of the glyph in a pair (or @racket[#f] if they can't b
 The @racket[car] of the pair represents the left sidebearing, while the @racket[cdr] represents the right one.}
                           
 
-                                         
+@defproc*[([(intersections-at [g glyph?] [f font?] [h real?]) (listof vec?)]
+           [(intersections-at [g glyph?] [h real?]) (listof vec?)])]{
+                          
+Produces a list of intersections between the outlines (if a font is provided it will take into account components)
+and the horizontal line passing through (0, @racket[h]).}                                         
+                                                         
+@defproc*[([(get-sidebearings-at [g glyph?] [f font?] [h real?]) (or/c (cons/c real? real?) #f)]
+           [(get-sidebearings-at [g glyph?] [h real?]) (or/c (cons/c real? real?) #f)])]{
+                          
+Like @racket[get-sidebearings] but the sidebearings are calculated from the leftmost and rightmost
+intersections produced by @racket[intersection-at].}
+                                                                                        
+                          
+@defproc*[([(set-sidebearings [g glyph?] [f font?] [left real?] [right real?]) glyph?]
+           [(set-sidebearings [g glyph?] [left real?] [right real?]) glyph?])]{
+                          
+Produces a glyph with the given sidebearings (ie. if @racket[get-sidebearings] is applied to
+the new glyph the result is @racket[(cons left right)]).}
+                                                                              
+@defproc*[([(set-sidebearings-at [g glyph?] [f font?] [left real?] [right real?] [h real?]) glyph?]
+           [(set-sidebearings-at [g glyph?] [left real?] [right real?] [h real?]) glyph?])]{
+                          
+Produces a glyph with the given sidebearings at the given height (ie. if @racket[get-sidebearings-at] is applied to
+the new glyph the result is @racket[(cons left right)]).}
+                                                                                           
+@defproc*[([(adjust-sidebearings [g glyph?] [f font?] [left real?] [right real?]) glyph?]
+           [(adjust-sidebearings [g glyph?] [left real?] [right real?]) glyph?])]{
+                          
+Produces a glyph adding @racket[left] and @racket[right] to the sidebearings.}
+                                                                                 
+@defproc*[([(glyph-signed-area [g glyph?] [f font?] [sides natural-number/c]) real?]
+           [(glyph-signed-area [g glyph?] [sides natural-number/c]) real?])]{
+                          
+Produces the area of the glyph (if font s provided components will be considered too). If the directions
+of a contour is counterclockwise the 'signed' area will be positive, therefore if the sum of 'signed' areas for all contours
+in the glyph is negative, contours direction is almost certainly wrong for postscript fonts.}
+                                                                            
+@defproc[(lowercase-stems [f font?]) real?]{
+
+Produces the width of lowercase stems from the glyph @emph{n}, if  the font hasn't a glyph
+named @emph{n} an error is raised.}
+
+@defproc[(uppercase-stems [f font?]) real?]{
+
+Produces the width of uppercase stems from the glyph @emph{H}, if  the font hasn't a glyph
+named @emph{H} an error is raised.}
+
+@defproc[(correct-directions [f font?]) font?]{
+
+Produces a new font for which every glyph has a positive signed area.}
+
+@defproc[(print-glyph [f font?] [gn name/c]) void?]{
+
+Print the font's glyph named @racket[gn] at the REPL. Actually, by evaluating an expression that produce a glyph,
+the glyph is showed at the REPL, with @racket[print-glyph], however, the right vertical metrics of the fonts can be used.}
+
+@defproc[(font-round [f font?]) font?]
+@defproc[(layer-round [l layer?]) layer?]
+@defproc[(kerning-round [k kerning/c]) kerning/c]
+@defproc[(glyph-round [g glyph?]) glyph?]
+@defproc[(advance-round [a advance?]) advance?]
+@defproc[(image-round [i image?]) image?]
+@defproc[(anchor-round [a anchor?]) anchor?]
+@defproc[(contour-round [c contour?]) contour?]
+@defproc[(component-round [c component?]) component?]
+@defproc[(guideline-round [g guideline?]) guideline?]
+@defproc[(point-round [p point?]) point?]{
+
+Round coordinates.}
+
+@defproc[(string->color [s string?]) color/c]{
+                                              
+Produces a color from a string in the format @racket["r,g,b,a"].}
+
+@defproc[(color->string [c color/c]) string?]{
+                                              
+Produces a string in the format @racket["r,g,b,a"] from a color.}
+

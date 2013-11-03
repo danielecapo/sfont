@@ -616,6 +616,46 @@
 
 ; functions for reading data
 
+; (String or Number) -> Number
+; produce a number from a string or return the number
+(define (ensure-number n)
+  (if (or (not n) (number? n)) 
+      n 
+      (string->number (string-replace n "," "."))))
+
+; (String or Symbol) -> Symbol
+; produce a symbol from a string or return the symbol
+(define (ensure-symbol s)
+  (if s
+      (if (symbol? s) s (string->symbol s))
+      s))
+
+; ("yes" or "no" or Boolean) -> Boolean
+; produce a boolean from yes/no strings or return the boolean
+(define (ensure-smooth s)
+  (match s
+    [#f #f]
+    ["no" #f]
+    [#t #t]
+    ["yes" #t]
+    [_ (error "invalid value for smooth")]))
+
+; (String or Color) -> Color
+; produce a color from the string or return the color
+(define (ensure-color c)
+  (if (string? c) (string->color c) c))
+
+; String -> Unicode
+; produce an Unicode from String
+(define (string->unicode s)
+  (string->number (string-append "#x" s)))
+
+; Unicode -> String 
+; produce a String from an Unicode
+(define (unicode->string n)
+  (~r n #:base '(up 16) #:pad-string "0" #:min-width 4))
+
+
 (define (build-advance #:width [width 0] #:height [height 0])
   (advance (ensure-number width) (ensure-number height)))
 
