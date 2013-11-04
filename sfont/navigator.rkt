@@ -14,7 +14,7 @@
 (define (lookup dic o field . args)
   (letrec ([aux (lambda (t)
                   (if (null? t)
-                      (error "The object can be accessed")
+                      (error "The object can't be accessed")
                       (if ((caar t) o)
                           (let ([ac (assoc field (cdar t))])
                             (if ac 

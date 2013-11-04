@@ -311,10 +311,12 @@ named @emph{H} an error is raised.}
 
 Produces a new font for which every glyph has a positive signed area.}
 
-@defproc[(print-glyph [f font?] [gn name/c]) void?]{
+@defproc[(print-glyph [f font?] [gn name/c]) pict?]{
 
 Print the font's glyph named @racket[gn] at the REPL. Actually, by evaluating an expression that produce a glyph,
 the glyph is showed at the REPL, with @racket[print-glyph], however, the right vertical metrics of the fonts can be used.}
+
+@subsection{Rounding coordinates}
 
 @defproc[(font-round [f font?]) font?]
 @defproc[(layer-round [l layer?]) layer?]
@@ -328,7 +330,7 @@ the glyph is showed at the REPL, with @racket[print-glyph], however, the right v
 @defproc[(guideline-round [g guideline?]) guideline?]
 @defproc[(point-round [p point?]) point?]{
 
-Round coordinates.}
+Round coordinates. This may be necessary for font editors that do not accept non-integer numbers for coordinates.}
 
 @defproc[(string->color [s string?]) color/c]{
                                               
@@ -375,3 +377,73 @@ where the first control point is equal to the start point and the second control
 @defproc[(bezier->contour [b bezier/c]) contour?]{
 
 Produces a @racket[contour] from a @racket[bezier/c].}
+
+@defproc[(component->outlines [c component?] [g glyph?]) (listof contour?)]{
+
+Apply the transformation matrix of the component to the base glyph. Produces a list of contours.}
+
+@defproc[(contour-open? [c contour?]) boolean?]{
+
+True if the contour is open (ie. if the contour starts with a @emph{move} point.}
+
+@defproc[(reverse-contour [c contour?]) contour?]{
+
+Produces a contour with points in the reverse order.}
+
+@defproc[(glyph-reverse-directions [g glyph?]) glyph?]{
+
+Produces a glyph with contours reversed.}
+
+@defproc[(glyph-correct-directions [g glyph?]) glyph?]{
+
+Produces a glyph following the postscript convention.}
+
+@defproc[(kern-groups2->3 [f font?]) font?]{
+
+Produces a new font with kerning groups names following the UFO3 convention.}
+
+@defproc[(kerning-group-names [f font?]) (cons/c (listof name/c) (listof name/c))]{
+
+Produces the kerning groups names in a pair of lists. The @racket[car] is for left groups, the @racket[cdr] for right groups.}
+
+@defproc[(valid-kerning-group-name? [g name/c] [side (or/c 'left 'right)]) boolean?]{
+
+True if the name is a valid kerning group name for the given side. UFO3 requires left groups to start
+with public.kern1. and right groups with public.kern2. .}
+
+@defproc[(left-kerning-group? [g name/c]) boolean?]{
+
+True if the name is a valid left kerning group name. UFO3 requires left groups to start
+with public.kern1. .}
+
+@defproc[(right-kerning-group? [g name/c]) boolean?]{
+
+True if the name is a valid right kerning group name. UFO3 requires right groups to start
+with public.kern2. .}
+
+@defproc[(kerning-group? [g name/c]) boolean?]{
+
+True if the name is a kerning group name.}
+
+@defproc[(update-kerning-group-name [g name/c] [side (or/c 'left 'right)]) name/c]{
+
+Produce a new name with the appropriate prefix.}
+
+@defproc[(lookup-kerning-pair [f font?] [left name/c] [right name/c]) (values real? boolean?)]{
+
+Find the kerning for the pair @racket[left] and @racket[right] in the font.
+The second value returned is a boolean that signals if the kerning pair is defined or not.
+If the kerning pair is not defined the kerning for that pair is always zero.}
+
+@defproc[(kerning-value [f font?] [left name/c] [right name/c]) real?]{
+
+Find the kerning for the pair @racket[left] and @racket[right] in the font 
+(this is the first value prouced by @racket[lookup-kerning-pair]).
+If the kerning pair is not defined the kerning for that pair is always zero.
+}
+
+@defproc[(map-kerning [proc (-> real? real?)] [k kerning/c]) kerning/c]{
+
+Apply the procedure to every kerning pair, produce a new kerning table
+with the updated kerning values.
+}

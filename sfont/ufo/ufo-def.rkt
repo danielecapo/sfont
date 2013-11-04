@@ -7,7 +7,9 @@
          "../gui/draw-property.rkt"
          racket/generic
          (planet wmfarr/plt-linalg:1:13/matrix)
-         slideshow/pict-convert)
+         slideshow/pict-convert
+         (only-in slideshow/pict
+                  pict?))
 
 (provide 
  (contract-out
@@ -113,7 +115,7 @@
   [lowercase-stems (-> font? real?)]
   [uppercase-stems (-> font? real?)]
   [correct-directions (-> font? font?)]
-  [print-glyph (-> font? name/c void?)]
+  [print-glyph (-> font? name/c pict?)]
   [font-round (-> font? font?)]
   [layer-round (-> layer? layer?)]
   [kerning-round (-> kerning/c kerning/c)]
