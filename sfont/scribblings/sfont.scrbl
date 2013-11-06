@@ -101,6 +101,14 @@ to files.}
 A color is a list of four numbers between 0 and 1. The first three value are th rgb values,
 the fourth one is the alpha value (transparency).}
 
+@defproc[(string->color [s string?]) color/c]{
+                                              
+Produces a color from a string in the format @racket["r,g,b,a"].}
+
+@defproc[(color->string [c color/c]) string?]{
+                                              
+Produces a string in the format @racket["r,g,b,a"] from a color.}
+
 @defstruct*[layer-info ((name name/c) 
                         (color (or/c color/c #f))
                         (lib lib/c))]{
@@ -178,6 +186,22 @@ Names of foreground and background layers.}
 
 @subsection{Functions}
 
+@subsubsection{Reading and writing UFOs}
+
+@defproc[(read-ufo (file path-string?)) font?]{
+
+Read the UFO file and produce a @racket[font].}
+
+@defproc[(write-ufo (f font?) (file path-string?) (#:overwrite overwrite boolean? #t) (#:format format (list/c 2 3) 2))
+         void?]{
+
+Write the @racket[font] to @racket[file], if @racket[#:overwrite] is @racket[#f]
+and the file already exists, an error is raised.
+The optional keyword argument @racket[#:format] is used to save in a specific
+UFO format (default is @racket[2]).}
+
+@subsubsection{Inspecting glyphs and layers}
+
 @defproc[(get-glyph (f font?) (g name/c)) (or/c glyph? #f)]{
                                                             
 Produces the glyph named @emph{g} from the font @emph{f}. If @emph{f} hasn't a glyph with that name, returns false.}
@@ -251,8 +275,10 @@ the bounding box of contours only.}
 @defproc[(font-bounding-box [f font?] [components boolean? #t]) bounding-box/c]{
                                                         
 Produces the bounding box of the font, if @racket[components] is @racket[#t] components
-are taken into account.}     
-                        
+are taken into account.}
+
+@subsubsection{Sidebearings and spacing properties}
+
 @defproc*[([(get-sidebearings [g glyph?] [f font?]) (or/c (cons/c real? real?) #f)]
            [(get-sidebearings [g glyph?]) (or/c (cons/c real? real?) #f)])]{
                           
@@ -290,33 +316,7 @@ the new glyph the result is @racket[(cons left right)]).}
                           
 Produces a glyph adding @racket[left] and @racket[right] to the sidebearings.}
                                                                                  
-@defproc*[([(glyph-signed-area [g glyph?] [f font?] [sides natural-number/c]) real?]
-           [(glyph-signed-area [g glyph?] [sides natural-number/c]) real?])]{
-                          
-Produces the area of the glyph (if font s provided components will be considered too). If the directions
-of a contour is counterclockwise the 'signed' area will be positive, therefore if the sum of 'signed' areas for all contours
-in the glyph is negative, contours direction is almost certainly wrong for postscript fonts.}
-                                                                            
-@defproc[(lowercase-stems [f font?]) real?]{
-
-Produces the width of lowercase stems from the glyph @emph{n}, if  the font hasn't a glyph
-named @emph{n} an error is raised.}
-
-@defproc[(uppercase-stems [f font?]) real?]{
-
-Produces the width of uppercase stems from the glyph @emph{H}, if  the font hasn't a glyph
-named @emph{H} an error is raised.}
-
-@defproc[(correct-directions [f font?]) font?]{
-
-Produces a new font for which every glyph has a positive signed area.}
-
-@defproc[(print-glyph [f font?] [gn name/c]) pict?]{
-
-Print the font's glyph named @racket[gn] at the REPL. Actually, by evaluating an expression that produce a glyph,
-the glyph is showed at the REPL, with @racket[print-glyph], however, the right vertical metrics of the fonts can be used.}
-
-@subsection{Rounding coordinates}
+@subsubsection{Rounding coordinates}
 
 @defproc[(font-round [f font?]) font?]
 @defproc[(layer-round [l layer?]) layer?]
@@ -332,13 +332,7 @@ the glyph is showed at the REPL, with @racket[print-glyph], however, the right v
 
 Round coordinates. This may be necessary for font editors that do not accept non-integer numbers for coordinates.}
 
-@defproc[(string->color [s string?]) color/c]{
-                                              
-Produces a color from a string in the format @racket["r,g,b,a"].}
-
-@defproc[(color->string [c color/c]) string?]{
-                                              
-Produces a string in the format @racket["r,g,b,a"] from a color.}
+@subsubsection{Contours, components, anchors and guidelines}
 
 @defproc[(map-contours [proc (-> contour? any/c)] [o (or/c layer? glyph?)]) (listof any/c)]
 @defproc[(for-each-contours [proc (-> contour? any)] [o (or/c layer? glyph?)]) void?]{
@@ -398,6 +392,8 @@ Produces a glyph with contours reversed.}
 
 Produces a glyph following the postscript convention.}
 
+@subsubsection{kerning}
+
 @defproc[(kern-groups2->3 [f font?]) font?]{
 
 Produces a new font with kerning groups names following the UFO3 convention.}
@@ -447,3 +443,31 @@ If the kerning pair is not defined the kerning for that pair is always zero.
 Apply the procedure to every kerning pair, produce a new kerning table
 with the updated kerning values.
 }
+
+@subsubsection{More}       
+
+@defproc*[([(glyph-signed-area [g glyph?] [f font?] [sides natural-number/c]) real?]
+           [(glyph-signed-area [g glyph?] [sides natural-number/c]) real?])]{
+                          
+Produces the area of the glyph (if font s provided components will be considered too). If the directions
+of a contour is counterclockwise the 'signed' area will be positive, therefore if the sum of 'signed' areas for all contours
+in the glyph is negative, contours direction is almost certainly wrong for postscript fonts.}
+                                                                            
+@defproc[(lowercase-stems [f font?]) real?]{
+
+Produces the width of lowercase stems from the glyph @emph{n}, if  the font hasn't a glyph
+named @emph{n} an error is raised.}
+
+@defproc[(uppercase-stems [f font?]) real?]{
+
+Produces the width of uppercase stems from the glyph @emph{H}, if  the font hasn't a glyph
+named @emph{H} an error is raised.}
+
+@defproc[(correct-directions [f font?]) font?]{
+
+Produces a new font for which every glyph has a positive signed area.}
+
+@defproc[(print-glyph [f font?] [gn name/c]) pict?]{
+
+Print the font's glyph named @racket[gn] at the REPL. Actually, by evaluating an expression that produce a glyph,
+the glyph is showed at the REPL, with @racket[print-glyph], however, the right vertical metrics of the fonts can be used.}

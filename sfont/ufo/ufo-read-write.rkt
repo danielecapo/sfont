@@ -9,15 +9,11 @@
 
 (provide 
  (contract-out
-  [read-ufo (->* (path-string?) 
-                 (#:proc-data (-> any/c any) #:proc-images (-> any/c any))
-                 font?)]
+  [read-ufo (->* (path-string?)  font?)]
   [write-ufo (->* (font? path-string?) 
-                 (#:format natural-number/c
-                  #:overwrite boolean? 
-                  #:proc-data (or/c #f (-> any/c any)) 
-                  #:proc-images (or/c #f (-> any/c any)))
-                 any)]))
+                 (#:format (list/c 2 3)
+                  #:overwrite boolean?)
+                 void?)]))
 
 
 (struct glif (format name advance unicodes 
@@ -378,9 +374,9 @@
 
 ; String (String -> T1) (String -> T2) -> Font
 ; produce a font read from ufo file in path
-(define (read-ufo path #:proc-data [proc-data identity] #:proc-images [proc-images identity])
+(define (read-ufo path )
   (if (directory-exists? path)
-      (let* ([reader (reader path proc-data proc-images)]
+      (let* ([reader (reader path identity identity)]
              [meta ((reader 'meta))]
              [format (dict-ref meta 'formatVersion)]
              [creator (dict-ref meta 'creator)])
@@ -532,14 +528,14 @@
 
 ; Font String [Boolean] (String -> ...) (String -> ...) -> side effects
 ; write the UFO to the given path
-(define (write-ufo f path #:format [format 2] #:overwrite [overwrite #t] #:proc-data [proc-data #f] #:proc-images [proc-images #f])
+(define (write-ufo f path #:format [format 2] #:overwrite [overwrite #t])
   (unless (and (filename-extension path) 
                (string=? (bytes->string/utf-8 (filename-extension path))
                          "ufo"))
     (error (format "Expected ufo extension, but given ~a" path)))
-  (let ([writer (writer f path format proc-data proc-images)])
+  (let ([writer (writer f path format #f #f)])
     (if (and (directory-exists? path) (not overwrite))
-        #f
+        (error "The file already exists, use #:overwrite to force writing")
         (begin
           (if (directory-exists? path)
               (clean-ufo-dir path)
