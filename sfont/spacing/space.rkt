@@ -86,7 +86,7 @@
                         f
                         (list 'name ...) 
                         (list glyphs ...))])
-         (let ([name glyphs] ...)
+         (let* ([name glyphs] ...)
            (space f1 . spacing-forms)))]
     [(space f (name ...) : l r . spacing-forms)
      (for-each (lambda (n) (when (not (identifier? n))
