@@ -9,7 +9,8 @@
 @(require (for-label racket
                      racket/contract/base
                      slideshow/pict-convert
-                     sfont))
+                     sfont
+                     sfont/spacing/space))
 
 
 
@@ -471,3 +472,65 @@ Produces a new font for which every glyph has a positive signed area.}
 
 Print the font's glyph named @racket[gn] at the REPL. Actually, by evaluating an expression that produce a glyph,
 the glyph is showed at the REPL, with @racket[print-glyph], however, the right vertical metrics of the fonts can be used.}
+
+
+
+@section{Spacing fonts}
+
+@defmodule[sfont/spacing/space]
+
+This module define functions and macros for spacing fonts. 
+
+@defform/subs[(space font-expr maybe-groups spacing-form ...)
+              ([maybe-groups (code:line)
+                             (code:line [groups (group-name group) ...])]
+               [spacing-form (code:line glyph-name : side side)
+                             (code:line \@ group-name : side side)
+                             (code:line (glyph-name ...) : side side)]
+               [side (code:line --)
+                     (code:line (/--/ advance-width))
+                     (code:line (<-> adjustment))
+                     (code:line (sidebearing height))
+                     (code:line sidebearing)])]{
+
+This syntax form is designed to define the spacing of a font. The result is a new font with the spacing applied.
+One example should clarify how it works:
+@racketblock[(space font-to-be-spaced
+                    [groups (group1 '(h i l m n))
+                            (group2 '(o e c d))]
+                    v        : 10 10
+                    f        : 80 (200 100)
+                    a        : -- (/--/ 400)
+                    k        : (/--/ 400) --
+                    (s z)    : (<-> 20) (<-> 20)
+                    \@ group1 : (80 200) (80 100)
+                    \@ group2 : 40 --)]
+
+Two groups are defined (group1 and group2) and they are added to the font groups field.
+
+@racket[v : 10 10]: means set both sidebearings of v to @racket[10]
+
+@racket[f : 80 (200 100)]: means set the left sidebearings of f to @racket[80] while
+the right sidebearing is set to @racket[200] at height @racket[100]
+
+@racket[a : -- (/--/ 400)]: means leave the left sidebearings of a untouched and set its advance width to @racket[400]
+
+@racket[k : (/--/ 400) --]: means leave the right sidebearings of k untouched and set its advance width to @racket[400]
+
+@racket[(s z) : (<-> 20) (<-> 20)]: defines an inline group (s and z) that won't be added to the font groups.
+and adjust the left and right sidebearings of both glyphs by @racket[20] units.
+
+@racket[\@ group1 : (80 200) (80 100)]: applies the spacing rules to every glyph in group1,
+The left sidebearing is set to @racket[80] at height @racket[200], while the right sidebearing is set to @racket[80] at height @racket[100]
+
+@racket[\@ group2 : 40 --]: sets the left sidebearing of every glyph in group2 to @racket[40].
+
+The various forms can be combined freely.}
+
+
+@defform*[((space-glyph glyph-expr side side)
+           (space-glyph (glyph-expr font-expr) side side))]{
+
+Produce a new glyph with the spacing applied, the syntax of @racket[side] is the same used in @racket[space].
+The second form, that specify a font, takes into account components.}
+
