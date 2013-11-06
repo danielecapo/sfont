@@ -82,11 +82,11 @@
     [(space f 
             [groups (name glyphs) ...]
             . spacing-forms)
-     #'(let ([f1 (foldl (lambda (n g f) (add-to-groups f n g))
-                        f
-                        (list 'name ...) 
-                        (list glyphs ...))])
-         (let* ([name glyphs] ...)
+     #'(let* ([name glyphs] ...)
+         (let ([f1 (foldl (lambda (n g f) (add-to-groups f n g))
+                          f
+                          (list 'name ...) 
+                          (list glyphs ...))])
            (space f1 . spacing-forms)))]
     [(space f (name ...) : l r . spacing-forms)
      (for-each (lambda (n) (when (not (identifier? n))
