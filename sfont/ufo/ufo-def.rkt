@@ -1487,8 +1487,8 @@
                      (map (lambda (g) 
                             (map (lambda (s) (hash-ref g s #f)) second-ids))
                            fg)))])
-    (cond [(> (length k) 1)
-           (error (~a "More than one kerning value for the same pair " gl " " gr))]
+    (cond ;[(> (length k) 1)
+          ; (error (~a "More than one kerning value for the same pair " gl " " gr))]
           [(null? k) (values 0 #f)]
           [else (values (car k) #t)])))
 
