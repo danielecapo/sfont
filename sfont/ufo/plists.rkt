@@ -15,7 +15,7 @@
   [read-dict (-> path-string? dict-plist?)]))
 
    
-   (define (dict-plist? d)
+(define (dict-plist? d)
   (or (hash? d)
       (list? d)
       (exact-integer? d)

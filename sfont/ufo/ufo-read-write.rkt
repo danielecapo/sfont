@@ -5,7 +5,8 @@
          "names.rkt"
          "../geometry.rkt"
          xml
-         xml/path)
+         xml/path
+         xml/plist)
 
 (provide 
  (contract-out
@@ -428,6 +429,24 @@
   (define (write-on-plist dict path)
     (when (and dict (> (dict-count dict) 0))
       (write-dict dict path)))
+  (define (write-kerning k path)
+    (let* ([k-list (sorted-kerning-list k)]
+           [k-plist (cons 'dict
+                          (map (lambda (el)
+                                 (list 'assoc-pair 
+                                       (symbol->string (car el))
+                                       (cons 'dict
+                                             (map (lambda (el2)
+                                                    (list 'assoc-pair
+                                                          (symbol->string (car el2))
+                                                          (dict->plist (cdr el2))))
+                                                  (cdr el)))))
+                               k-list))])
+      (call-with-output-file path
+        (lambda (out) 
+          (write-plist k-plist out))
+        #:exists 'replace)))
+                                              
   (define (write-directory dir path [proc #f])
     (when dir
       (if proc
@@ -514,7 +533,7 @@
                           (write-on-plist (font-fontinfo f) 
                                           (make-ufo-path "fontinfo.plist"))))
             (cons 'groups write-groups)
-            (cons 'kerning (lambda () (write-on-plist (font-kerning f) 
+            (cons 'kerning (lambda () (write-kerning (font-kerning f) 
                                                       (make-ufo-path "kerning.plist"))))
             (cons 'features (lambda () (write-on-text-file (font-features f)
                                                            (make-ufo-path "features.fea"))))

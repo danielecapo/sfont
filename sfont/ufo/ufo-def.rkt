@@ -156,7 +156,8 @@
   [kerning-group? (-> name/c boolean?)]
   [update-kerning-group-name (-> name/c (or/c 'left 'right) name/c)]
   [lookup-kerning-pair (-> font? name/c name/c (values real? boolean?))]
-  [kerning-value (-> font? name/c name/c real?)])
+  [kerning-value (-> font? name/c name/c real?)]
+  [sorted-kerning-list (-> kerning/c (listof (cons/c name/c (listof (cons/c name/c real?)))))])
  draw-glyph
  draw-contour
  draw-points
@@ -1496,6 +1497,15 @@
 (define (kerning-value f gl gr)
   (let-values ([(k f) (lookup-kerning-pair f gl gr)])
     k))
+
+
+; Kerning -> AssocationList
+(define (sorted-kerning-list k)
+  (define (group-first? n1 n2) (kerning-group? n1))
+  (sort (hash-map k (lambda (n v)
+                      (cons n (sort (hash-map v cons) group-first? #:key car))))
+        group-first? #:key car))
+
 
 
 (define-syntax ==>
