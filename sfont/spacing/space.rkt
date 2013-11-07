@@ -12,8 +12,7 @@
   [uppercase-tracy (-> font? real? real? real? real? font?)])
  space 
  kern
- space-glyph
- add-kern)
+ space-glyph)
  
 ; Spacer
 ; (list Symbol (Number or False) (Number or False))
@@ -179,13 +178,18 @@
         [else (raise-syntax-error "Side can be either side1 or side2")]))
 
 (define-syntax (kern stx)
-  (syntax-case stx  ()
-    [(_ f [groups  (name side glyphs) ...] . kern-forms)
-     #'(let ([f1 (foldl (lambda (n s g f) (add-to-side-group f n s g))
-                          f
-                          (list 'name ...)
-                          (list 'side ...)
-                          (list glyphs ...))])
+  (syntax-case stx (side1 side2)
+    [(_ f [groups (side1 (n1 gs1) ...) (side2 (n2 gs2) ...)] . kern-forms)
+     #'(let ([f1 (foldl (lambda (n g fo)
+                          (add-to-side-group fo n 'side2 g))
+                          (foldl (lambda (n g fo) 
+                                   (add-to-side-group fo n 'side1 g))
+                                 f
+                                 (list 'n1 ...)
+                                 (list gs1 ...))
+                          (list 'n2 ...)
+                          (list gs2 ...))
+                          ])
          (kern f . kern-forms))]
     [(_ f . kern-forms) #'(let ([fo f]
                                 [kh (make-hash)])
@@ -317,11 +321,3 @@
   X : d d
   Y : d d
   Z : c c)
-
-(define f (read-ufo "/Users/daniele/Downloads/source-sans-pro-master/RomanMM/SourceSansPro_0.ufo"))
-
-(kern f
-        [groups (O side1 '(O D Q))
-                (E side2 '(E F))]
-                
-         @ O E : 1000)
