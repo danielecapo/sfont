@@ -84,6 +84,8 @@ For example:
             'e -18))]
 specifies a kerning table where the value the kerning between v and o is -20
 and the kerning between v and e is -18.
+The hash table don't have a clear order, but when the font is written with @racket[write-ufo]
+the kerning pairs are sorted with @racket[sorted-kerning-list].
 }
       
 @defthing[features/c flat-contract?]{
@@ -430,7 +432,10 @@ Produce a new name with the appropriate prefix.}
 
 Find the kerning for the pair @racket[left] and @racket[right] in the font.
 The second value returned is a boolean that signals if the kerning pair is defined or not.
-If the kerning pair is not defined the kerning for that pair is always zero.}
+If the kerning pair is not defined the kerning for that pair is always zero.
+The kerning pair lookup doesn't check possible conflicts, it always returns the
+first value found (first glyphs pairs, then group glyph pairs, finally group group pairs).
+}
 
 @defproc[(kerning-value [f font?] [left name/c] [right name/c]) real?]{
 
@@ -442,7 +447,14 @@ If the kerning pair is not defined the kerning for that pair is always zero.
 @defproc[(map-kerning [proc (-> real? real?)] [k kerning/c]) kerning/c]{
 
 Apply the procedure to every kerning pair, produce a new kerning table
-with the updated kerning values.
+with the updated kerning values.}
+
+@defproc[(sorted-kerning-list [k kerning/c]) (listof (cons/c name/c (listof (cons/c name/c real?))))]{
+
+Produces an association list that repressents the kerning table sorted according sorted 
+according the kerning levels hierarchy defined by the UFO specifications: the first level
+is for group combinations, then group-glyph (or glyph-group) combinations, finally glyph combinations;
+this means that group names precede glyph names.
 }
 
 @subsubsection{More}       
