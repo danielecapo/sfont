@@ -431,17 +431,14 @@
       (write-dict dict path)))
   (define (write-kerning k path)
     (let* ([k-list (sorted-kerning-list k)]
-           [k-plist (cons 'dict
-                          (map (lambda (el)
-                                 (list 'assoc-pair 
-                                       (symbol->string (car el))
-                                       (cons 'dict
-                                             (map (lambda (el2)
-                                                    (list 'assoc-pair
-                                                          (symbol->string (car el2))
-                                                          (dict->plist (cdr el2))))
-                                                  (cdr el)))))
-                               k-list))])
+           [k-plist 
+            (cons 'dict
+                  (for/list ([el k-list])
+                    `(assoc-pair ,(symbol->string (car el))
+                                 ,(cons 'dict
+                                        (for/list ([el2 (cdr el)])
+                                          `(assoc-pair ,(symbol->string (car el2))
+                                                       ,(dict->plist (cdr el2))))))))])
       (call-with-output-file path
         (lambda (out) 
           (write-plist k-plist out))
