@@ -16,6 +16,7 @@
  pictf:font
  pictf:glyph
  draw-font-dc
+ draw-glyph-dc
  lines
  unique-letters)
 
