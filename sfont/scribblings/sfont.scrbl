@@ -534,3 +534,23 @@ The various forms can be combined freely.}
 Produce a new glyph with the spacing applied, the syntax of @racket[side] is the same used in @racket[space].
 The second form, that specify a font, takes into account components.}
 
+@defform/subs[(kern font expr maybe-groups kern-form ...)
+              ([maybe-groups (code:line)
+                             (code:line [groups (side [group-name group] ...)])
+                             (code:line [groups (side [group-name group] ...)
+                                                (side [group-name group] ...)])]
+               [side (code:line left)
+                     (code:line right)]
+               [kern-form (code:line glyph1 glyph2 : kern)
+                          (code:line \@ group-name glyph2 : kern)
+                          (code:line glyph1 \@ group-name : kern)
+                          (code:line \@ group-name \@ group-name : kern)])]{
+
+This syntax can be used to define the kerning table of a font:
+@racketblock[(kern font-to-be-kerned
+                   [groups
+                    (left  [roundR '(d e c o)])
+                    (right [diagL  '(v w y)])]
+                   \@ roundR \@ diagL : -20
+                   k o : -16)]
+}
