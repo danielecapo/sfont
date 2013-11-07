@@ -173,25 +173,20 @@
 (define (right-kern-group n)
   (string->symbol (~a "public.kern2." n)))
 
+(define (add-to-side-group f n s gs)
+  (cond [(eq? s 'side1) (add-to-groups f (left-kern-group n) gs)]
+        [(eq? s 'side2) (add-to-groups f (right-kern-group n) gs)]
+        [else (raise-syntax-error "Side can be either side1 or side2")]))
+
 (define-syntax (kern stx)
-  (syntax-case stx  (left-groups right-groups)
-    [(_ f [groups  (side (n group) ...) . g] . kern-forms)
-     (with-syntax [(ngl #`(lambda (fo)
-                            (hash-set* (font-groups fo)
-                                       #,@(datum->syntax stx (append* (syntax->datum #'((n group) ...)))))))]       
-       (syntax-case #'side (left right)
-         [left #'(let ([n (left-kern-group 'n)] ...
-                       [fo f])
-                   (kern  (struct-copy font fo
-                                       [groups (ngl fo)])
-                          [groups . g] . kern-forms))]
-         [right #'(let ([n (right-kern-group 'n)] ...
-                        [fo f])
-                    (kern  (struct-copy font fo
-                                        [groups (ngl fo)])
-                           [groups . g] . kern-forms))]
-         [x (raise-syntax-error #f "Group side can be left or right" stx #'x)]))]
-    [(_ f [groups] . kern-forms) #'(kern f . kern-forms)]
+  (syntax-case stx  ()
+    [(_ f [groups  (name side glyphs) ...] . kern-forms)
+     #'(let ([f1 (foldl (lambda (n s g f) (add-to-side-group f n s g))
+                          f
+                          (list 'name ...)
+                          (list 'side ...)
+                          (list glyphs ...))])
+         (kern f . kern-forms))]
     [(_ f . kern-forms) #'(let ([fo f]
                                 [kh (make-hash)])
                             (struct-copy font fo
@@ -204,11 +199,11 @@
      #'(let ([k (make-hash)])
        (make-kerns f1 k . kern-forms))]
     [(make-kerns f1 kh @ l r : v . kern-forms)
-     #'(make-kerns f1 (add-kern kh l 'r v) . kern-forms)] 
+     #'(make-kerns f1 (add-kern kh (left-kern-group 'l) 'r v) . kern-forms)] 
     [(make-kerns f1 kh l @ r : v . kern-forms)
-     #'(make-kerns f1 (add-kern kh 'l r v) . kern-forms)] 
+     #'(make-kerns f1 (add-kern kh 'l (right-kern-group 'r) v) . kern-forms)] 
     [(make-kerns f1 kh @ l @ r : v . kern-forms)
-     #'(make-kerns f1 (add-kern kh l r v) . kern-forms)] 
+     #'(make-kerns f1 (add-kern kh (left-kern-group 'l) (left-kern-group 'l) v) . kern-forms)] 
     [(make-kerns f1 kh l r : v . kern-forms)
      (begin
        (unless (identifier? #'l)
@@ -322,3 +317,11 @@
   X : d d
   Y : d d
   Z : c c)
+
+(define f (read-ufo "/Users/daniele/Downloads/source-sans-pro-master/RomanMM/SourceSansPro_0.ufo"))
+
+(kern f
+        [groups (O side1 '(O D Q))
+                (E side2 '(E F))]
+                
+         @ O E : 1000)
