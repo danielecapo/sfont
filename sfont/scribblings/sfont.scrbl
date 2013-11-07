@@ -548,11 +548,8 @@ The second form, that specify a font, takes into account components.}
 
 @defform/subs[(kern font expr maybe-groups kern-form ...)
               ([maybe-groups (code:line)
-                             (code:line [groups (side [group-name group] ...)])
-                             (code:line [groups (side [group-name group] ...)
-                                                (side [group-name group] ...)])]
-               [side (code:line left)
-                     (code:line right)]
+                             (code:line [groups (side1 [group-name group] ...)
+                                                (side2 [group-name group] ...)])]
                [kern-form (code:line glyph1 glyph2 : kern)
                           (code:line \@ group-name glyph2 : kern)
                           (code:line glyph1 \@ group-name : kern)
@@ -561,8 +558,71 @@ The second form, that specify a font, takes into account components.}
 This syntax can be used to define the kerning table of a font:
 @racketblock[(kern font-to-be-kerned
                    [groups
-                    (left  [roundR '(d e c o)])
-                    (right [diagL  '(v w y)])]
+                    (side1 [curved '(d e c o)])
+                    (side2 [diag   '(v w y)])]
                    \@ roundR \@ diagL : -20
-                   k o : -16)]
+                   k o : -16)]}
+
+@defproc[(lowercase-tracy [f font?] [xh real?] [n real?] [o real?] [min real?] [c-adj real? 0.80] [l-adj 1.05]) font?]{
+                                                                                                                 
+Produce a new font applying the rule described in W.Tracy's book "Letters of Credit"
+for the lowercase latin alphabet. In this rule the designer should set the left sidebearing of @bold{n},
+the sidebearings of @bold{o} and the minimum space to be applied to diagonal letters.
+Moreover, Tracy says that some space should be 'slightly less or 'slightly more, this is
+captured by the two optional arguments.
+The first argument (@racket[xh]) is the x-height of the the font.}
+
+@defproc[(uppercase-tracy [f font?] [caps real?] [h real?] [o real?] [min real?]) font?]{
+
+Produces a new font applyng W.Tracy's rule for uppercase latin alphabet.
+The designer have to set the spacing for @bold{H}, @bold{O} and a minimum
+for uppercase diagonal letters.
+The first argument is the height of uppercase letters.}
+
+@defform[(define-spacing-rule name (arg ...) 
+           (locals ...) 
+           maybe-groups 
+           spacing-form ...)]{
+                                                                              
+Define a new procedure @racket[name] with the arguments defined in @racket[arg ...]
+locals are a list of bindings. The rest is like the @racket[space] macro.
+The procedure applies the spacing to the font.
+To make an example, this is the how @racket[lowercase-tracy] is defined:
+
+@racketblock[(define-spacing-rule
+  lowercase-tracy 
+  [xh n o min [c-adj 0.80] [l-adj 1.05]]
+  ([mid (/ xh 2)]
+   [a n]
+   [b (floor (* 0.9 n))]
+   [c (floor (* l-adj n))]
+   [d min]
+   [e o]
+   [f (floor (* c-adj o))])
+  a : -- (b mid)
+  b : (a mid) e
+  c : e f
+  d : e (a mid)
+  e : e f
+  f : -- --
+  g : -- --
+  h : (c mid) (b mid)
+  i : (c mid) (a mid)
+  j : (a mid) (a mid)
+  k : (c mid) d
+  l : (c mid) (a mid)
+  m : (a mid) (b mid)
+  n : (a mid) (b mid)
+  o : e e
+  p : (c mid) e
+  q : e (a mid)
+  r : (a mid) d
+  s : -- --
+  t : -- --
+  u : (b mid) (b mid)
+  v : d d
+  w : d d
+  x : d d
+  y : (d xh) (d xh)
+  z : -- --)]
 }

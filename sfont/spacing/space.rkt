@@ -6,65 +6,13 @@
 
 (provide
  (contract-out 
-  [spacer/c (-> any/c boolean?)]
-  [get-spacing (-> font? (listof spacer/c) (listof (list/c name/c real? real?)))]
   [lowercase-tracy (->* (font? real? real? real? real?) (real? real?) font?)]
   [uppercase-tracy (-> font? real? real? real? real? font?)])
  space 
  kern
- space-glyph)
+ space-glyph
+ define-spacing-rule)
  
-; Spacer
-; (list Symbol (Number or False) (Number or False))
-
-(define spacer/c 
-  (flat-named-contract 
-   'spacer/c 
-   (list/c name/c (or/c real? #f) (or/c real? #f))))
-
-; Adjustment
-; (list Symbol Number Number)
-
-; Font (Listof Spacer) -> (listof (list Symbol Real Real))
-; produces a list of sidebearings for given glyphs
-(define (get-spacing f s)
-  (map (lambda (s)
-         (let* ([name (car s)]
-                [g (get-glyph f name)]
-                [sleft (cadr s)]
-                [sright (caddr s)])
-           (cons name
-                 (cons (if sleft
-                           (car (get-sidebearings-at g f sleft))
-                           (car (get-sidebearings g f)))
-                       (if sright
-                           (cdr (get-sidebearings-at g f sright))
-                           (cdr (get-sidebearings g f)))))))
-       s))
-                       
-                         
-; spacing
-; Font (Listof spacer) -> Font
-; REMOVE?
-(define (spacing f s)
-  (define (set-space s f)
-    (let* ([g (get-glyph f (car s))]
-           [sleft (cadr s)]
-           [sright (caddr s)]
-           [sb (if (or (list? sleft)
-                       (list? sright))
-                   (get-sidebearings g f)
-                   #f)]
-           [nleft (if (number? sleft)
-                      sleft;(- sleft (car (sidebearings f name)))
-                      (+ (car sb) 
-                         (- (car sleft) (car (get-sidebearings-at g f (cadr sleft))))))]
-           [nright (if (number? sright)
-                       sright ;(- sright (cdr (sidebearings f name)))
-                       (+ (cdr sb)
-                          (- (car sright) (cdr (get-sidebearings-at g f (cadr sright))))))])
-      (insert-glyph f (set-sidebearings g f nleft nright))))
-  (foldl set-space f s))
 
 ; Font Symbol (listof Symbol) -> Font
 (define (add-to-groups f g gs)
