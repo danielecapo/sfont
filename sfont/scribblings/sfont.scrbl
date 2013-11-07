@@ -587,7 +587,7 @@ The first argument is the height of uppercase letters.}
 Define a new procedure @racket[name] with the arguments defined in @racket[arg ...]
 locals are a list of bindings. The rest is like the @racket[space] macro.
 The procedure applies the spacing to the font.
-To make an example, this is the how @racket[lowercase-tracy] is defined:
+To make an example, this is a part of the definition of @racket[lowercase-tracy]:
 
 @racketblock[(define-spacing-rule
   lowercase-tracy 
@@ -607,22 +607,5 @@ To make an example, this is the how @racket[lowercase-tracy] is defined:
   f : -- --
   g : -- --
   h : (c mid) (b mid)
-  i : (c mid) (a mid)
-  j : (a mid) (a mid)
-  k : (c mid) d
-  l : (c mid) (a mid)
-  m : (a mid) (b mid)
-  n : (a mid) (b mid)
-  o : e e
-  p : (c mid) e
-  q : e (a mid)
-  r : (a mid) d
-  s : -- --
-  t : -- --
-  u : (b mid) (b mid)
-  v : d d
-  w : d d
-  x : d d
-  y : (d xh) (d xh)
-  z : -- --)]
+  ...)]
 }
