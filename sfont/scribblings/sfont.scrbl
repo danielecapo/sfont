@@ -703,8 +703,8 @@ that is equivalent to:
 
 @racket[(+ light-c (* (- bold-c light-c) 0.6))] .} 
                                                   
-@defproc[(x-> [o font-intp-object/c]) font-intp-object/c]
-@defproc[(y-> [o font-intp-object/c]) font-intp-object/c]{
+@defproc[(x-> [o geometric?]) geometric?]
+@defproc[(y-> [o geometric?]) geometric?]{
                                                
 Projections of the object on the x and y axes. 
 These projections can be useful to obtain the so-called 
@@ -716,18 +716,6 @@ These projections can be useful to obtain the so-called
 It will increase contrast.
 }
 
-@defthing[font-intp-object/c flat-contract?]{
-                                             
-A font object that can be interpolated:
-
-@itemlist[@item{a @racket[font]}
-          @item{a @racket[glyph]}
-          @item{a @racket[layer]}
-          @item{a @racket[contour]}
-          @item{a @racket[anchor]}
-          @item{a @racket[component]}
-          @item{@racket[fontinfo/c]}
-          @item{a @racket[kerning/c]}]}
 
 
 @section{Geometry}
