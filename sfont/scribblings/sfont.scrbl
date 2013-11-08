@@ -922,11 +922,11 @@ True if the first and last points coincide.}
 'Explodes' a curve in a list of segments. The optional arguments declares the 'order' of the bezier curve
 (basically: the number of control points for each segments plus one, cubic beziers have two points, quadratic one, etc.}
 
-@defproc[(on-curve-nodes [b bezier/c] [o natural-number/c 3]) (listof vec?)]{
+@defproc[(on-curve-points [b bezier/c] [o natural-number/c 3]) (listof vec?)]{
                                                                             
 Produce a list of points removing all the control points from the bezier.}
 
-@defproc[(off-curve-nodes [b bezier/c] [o natural-number/c 3]) (listof vec?)]{
+@defproc[(off-curve-points [b bezier/c] [o natural-number/c 3]) (listof vec?)]{
                                                                             
 Produce a list of control points of the bezier curve.}
 
@@ -945,6 +945,10 @@ Produces a cubic line segment where control points are placed at the extrema.}
 @defproc[(split [s segment/c] [t (real-in 0 1)]) (values segment/c segment/c)]{
                                                                        
 Splits the segment in two parts. If @racket[t] is 0 or 1 the first/second half is an empty list.}
+
+@defproc[(split-at-point [s segment/c] [v vec?]) (values segment/c segment/c)]{
+                                                                               
+Like @racket[split] but try to split the curve near the point provided.}                                                                               
 
 @defproc[(join-beziers [b1 bezier/c] [b bezier/c] ...) bezier/c]{
                                                                        
@@ -984,3 +988,91 @@ Positive if the curve is counter-clockwise.}
 @defproc[(bezier-area [b bezier/c] [o natural-number/c 3] [s natural-number/c 200]) (and/c real? positive?)]{
                                                           
 The absolute value of @racket[bezier-signed-area].}
+
+@defproc[(clockwise? [b bezier/c]) boolean?]{
+                                   
+True if the curve is clockwise.}
+
+@defproc[(clockwise [b bezier/c]) bezier/c]{
+                                   
+Reverses the curve if it isn't clockwise.}
+
+@defproc[(cubic-bezier-intersections [b1 cubic-bezier/c] [b2 cubic-bezier/c]) (listof vec?)]{
+                                                                                 
+Produces a list of intersections between the two cubic bezier curves.}
+
+@defproc[(cubic-segments-intersections [s1 cubic-segment/c] [s2 cubic-segment/c]) (listof vec?)]{
+                                                                                 
+Produces a list of intersections between the two cubic bezier segments.}
+
+@defproc[(line-segment-intersections [l segment/c] [s segment/c]) (listof vec?)]{
+                                                                                 
+Produces a list of intersections between the line segment and the segment.}
+
+@defproc[(segment-intersect-hor [h real?] [s segment/c]) (listof vec?)]{
+                                                                        
+Produces a list of intersections between the bezier segment and a the horizontal line y = h.}
+
+@defproc[(segment-intersect-vert [v real?] [s segment/c]) (listof vec?)]{
+                                                                        
+Produces a list of intersections between the bezier segment and a the vertical line x = v.}
+
+@defproc[(bezier-intersect-hor [h real?] [s segment/c]) (listof vec?)]{
+                                                                        
+Produces a list of intersections between the bezier curve and a the horizontal line y = h.}
+
+@defproc[(bezier-intersect-vert [v real?] [s segment/c]) (listof vec?)]{
+                                                                        
+Produces a list of intersections between the bezier curve and a the vertical line x = v.}
+
+@defproc[(bezier-boundaries-hor [h real?] [s segment/c]) bounding-box/c]{
+                                                                        
+Produces the bounding box of the intersections between the bezier curve
+and a the horizontal line y = h.}
+
+@defproc[(point-inside-bezier? [v vec?] [b closed-bezier/c]) boolean?]{
+                                                                        
+True if the point is inside the bezier curve.}
+
+@subsubsection{Boolean operations}
+
+@defproc[(bezier-subtract [b1 closed-bezier/c] [b2 closed-bezier/c]) (listof closed-bezier/c)]{
+                                                                        
+Subtract the second closed bezier curve from the first, produces a list of closed bezier curves.}
+
+@defproc[(bezier-union [b1 closed-bezier/c] [b2 closed-bezier/c]) (listof closed-bezier/c)]{
+                                                                        
+Add the second closed bezier curve to the first, produces a list of closed bezier curves
+(if the curves don't intersect, for example, the two original curves are returned).}
+
+@defproc[(bezier-intersection [b1 closed-bezier/c] [b2 closed-bezier/c]) (listof closed-bezier/c)]{
+                                                                        
+Intersect the second closed bezier curve with the first, produces a list of closed bezier curves.}
+
+
+@subsection{Bounding Boxes}
+
+@defthing[bounding-box/c flat-contract?]{
+                                         
+A Bounding Box can be a pair of @racket[vec] with the first one representing the
+lower left corner and the second one the upper right corner, or @racket[#f] for the null Bounding Box.}
+
+@defproc[(combine-bounding-boxes [bb bounding-box/c] [b bounding-box/c] ...) bounding-box/c]{
+                                                                                             
+Produces the bounding box of the bounding boxes.}
+
+@defproc[(line-bounding-box [l (cons/c vec? vec?)]) bounding-box/c]{
+                                                                                             
+Produces the bounding box of the line segment represented by the two @racket[vec].}
+
+@defproc[(inside-bounding-box? [v vec?] [bb bounding-box/c]) boolean?]{
+                                                                                       
+True if the @racket[vec] is inside the bounding box.}
+
+@defproc[(overlap-bounding-boxes? [bb1 bounding-box/c] [bb2 bounding-box/c]) boolean?]{
+                                                                                       
+True if the bounding boxes overlap.}
+
+@defproc[(include-bounding-box? [bb1 bounding-box/c] [bb2 bounding-box/c]) boolean?]{
+                                                                                       
+True if the second bounding box is surrounded by the first one.}

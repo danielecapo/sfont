@@ -17,7 +17,7 @@
   [closed-bezier/c (-> any/c boolean?)]
   [closed? (-> bezier/c boolean?)]
   [segments (->* (bezier/c) (natural-number/c) (listof bezier/c))]
-  [on-curve-nodes (->* (bezier/c) (natural-number/c) (listof vec?))]
+  [on-curve-points (->* (bezier/c) (natural-number/c) (listof vec?))]
   [end-points (-> bezier/c (cons/c vec? vec?))]
   [off-curve-points (-> segment/c (listof vec?))]
   [line-segment? (-> segment/c boolean?)]
@@ -42,10 +42,10 @@
   [bezier-intersect-hor (->* (real? bezier/c) (natural-number/c) (listof vec?))]
   [bezier-intersect-vert (->* (real? bezier/c) (natural-number/c) (listof vec?))]
   [bezier-boundaries-hor (->* (real? bezier/c) (natural-number/c) bounding-box/c)]
-  [point-inside-bezier? (-> vec? (and/c bezier/c closed?) boolean?)]
-  [bezier-subtract (-> (and/c bezier/c closed?) (and/c bezier/c closed?) (listof (and/c bezier/c closed?)))]
-  [bezier-union (-> (and/c bezier/c closed?) (and/c bezier/c closed?) (listof (and/c bezier/c closed?)))]
-  [bezier-intersection (-> (and/c bezier/c closed?) (and/c bezier/c closed?) (listof (and/c bezier/c closed?)))]
+  [point-inside-bezier? (-> vec? closed-bezier/c boolean?)]
+  [bezier-subtract (-> closed-bezier/c closed-bezier/c (listof closed-bezier/c))]
+  [bezier-union (-> closed-bezier/c closed-bezier/c (listof closed-bezier/c))]
+  [bezier-intersection (-> closed-bezier/c closed-bezier/c (listof closed-bezier/c))]
   [split-at-point (-> segment/c vec? (values segment/c segment/c))]
   ))
   
@@ -79,7 +79,7 @@
 (define (closed? b)
   (vec= (car b) (last b)))
 
-(define closed-bezier/c (flat-named-contract 'closed/c (and/c bezier/c closed?)))
+(define closed-bezier/c (flat-named-contract 'closed-bezier/c (and/c bezier/c closed?)))
 
 ; Bezier Natural -> list of Segments
 ; produce the list of Segments in which the gth order Bezier can be divided 
@@ -91,7 +91,7 @@
 
 ; Bezier Natural-> list of Vec
 ; produce a list of nodes that lie on the Cubic Bezier (remove the 'control points')
-(define (on-curve-nodes b [g 3])
+(define (on-curve-points b [g 3])
   (append (map car (segments b g)) (list (last b))))
 
 ; Bezier -> (cons Vec Vec)
@@ -152,7 +152,7 @@
             (if (clockwise? b1)
                 (map clockwise r)
                 (map c-clockwise r)))
-          (if (andmap (curryr point-inside-bezier? b1) (on-curve-nodes bb2))
+          (if (andmap (curryr point-inside-bezier? b1) (on-curve-points bb2))
               (if (clockwise? b1) 
                   (list b1 b2)
                   (list b1 bb2))
@@ -173,9 +173,9 @@
             (if (clockwise? b1)
                 (map clockwise r)
                 (map c-clockwise r)))
-          (cond [(andmap (curryr point-inside-bezier? b1) (on-curve-nodes bb2))
+          (cond [(andmap (curryr point-inside-bezier? b1) (on-curve-points bb2))
                  (list b1)]
-                [(andmap (curryr point-inside-bezier? b2) (on-curve-nodes bb1))
+                [(andmap (curryr point-inside-bezier? b2) (on-curve-points bb1))
                  (list b2)]
                 [else (list b1 b2)])))))
 
@@ -194,9 +194,9 @@
             (if (clockwise? b1)
                 (map clockwise r)
                 (map c-clockwise r)))
-          (cond [(andmap (curryr point-inside-bezier? b1) (on-curve-nodes bb2))
+          (cond [(andmap (curryr point-inside-bezier? b1) (on-curve-points bb2))
                  (list b2)]
-                [(andmap (curryr point-inside-bezier? b2) (on-curve-nodes bb1))
+                [(andmap (curryr point-inside-bezier? b2) (on-curve-points bb1))
                  (list b1)]
                 [else null])))))
 
