@@ -16,8 +16,8 @@
           [rename add  + (->* (fontmath-object/c) () #:rest (listof fontmath-object/c) fontmath-object/c)]
           [rename sub  - (->* (fontmath-object/c) () #:rest (listof fontmath-object/c) fontmath-object/c)]
           [rename div  / (->* (fontmath-object/c) () #:rest (listof fontmath-object/c) fontmath-object/c)]
-          [x-> (-> font-intp-object/c font-intp-object/c)]
-          [y-> (-> font-intp-object/c font-intp-object/c)]
+          [x-> (-> geometric? geometric?)]
+          [y-> (-> geometric? geometric?)]
           [fix-components (-> font? font? font?)])
          define-interpolable-fonts
          define-space
@@ -132,7 +132,7 @@
                  [layers 
                   (list (apply layer+ (map (curryr get-layer foreground) gss)))])))
 
-; Any Real Real -> Any
+; Font Real Real -> Any
 (define (font-scale* o fx [fy fx])
   (let ([o1 (scale o fx fy)])
     (struct-copy font o1
@@ -276,12 +276,12 @@
 
 ;; PROJECTIONS
 
-; FontObject -> FontObject
+; Geometric -> Geometric
 ; project the object on the x axis (set every y coord. to zero)
 (define (x-> o)
   ((if (font? o) font-scale* scale) o 1 0))
 
-; FontObject -> FontObject
+; Geometric -> Geometric
 ; project the object on the y axis (set every x coord. to zero)
 (define (y-> o)
   ((if (font? o) font-scale* scale) o 0 1))  
