@@ -10,7 +10,8 @@
                      racket/contract/base
                      slideshow/pict-convert
                      sfont
-                     sfont/spacing/space))
+                     sfont/spacing/space
+                     sfont/geometry))
 
 
 
@@ -729,6 +730,230 @@ A font object that can be interpolated:
           @item{a @racket[kerning/c]}]}
 
 
+@section{Geometry}
+
+@defmodule[sfont/geometry]
+
+This is the module for vector operations, transformations and bezier curves.
+
+@defparam[precision p real?]{A parameter that controls rounding.}
+
+@defproc[(approx [n real?]) real?]{
+                                   
+Approximate the numbers with the precision defined by @racket[precision].}                                   
+
+@defstruct*[vec ([x real?] 
+                 [y real?])]{
+                                       
+A structure that represents a 2D vector. A @racket[vec] implements the @racket[gen:geometric] interface.}
+                            
+@defstruct*[vec3 ([x real?] 
+                  [y real?]
+                  [z real?])]{
+                                       
+A structure that represents a 3D vector.}
+                             
+                             
+@defproc[(vec3->vec [v vec3?]) vec?]
+@defproc[(vec->vec3 [v vec?]) vec3?]{Conversion between 3D and 2D vcectors.}
+
+@defstruct*[trans-mat ((x real?) 
+                       (xy real?) 
+                       (yx real?)
+                       (y real?)
+                       (x-offset real?)
+                       (y-offset real?))]{
+
+A transformation matrix. A @racket[trans-mat] implements the @racket[gen:geometric] interface.}
+
+@defproc[(geometric? [o any/c]) boolean?]{
+                                          
+A predicate for structures that implement the generic group @racket[gen:geometric]}
+
+@defproc[(transform [o geometric?] [m trans-mat?]) geometric?]{
+                                                               
+Applies the trasformation matrix to the object.}
+
+@defproc[(translate [o geometric?] [x real?] [y real?]) geometric?]{
+                                                               
+Applies the translation to the object.}
+
+@defproc[(rotate [o geometric?] [angle real?]) geometric?]{
+                                                               
+Applies the rotation to the object.}
+
+@defproc[(scale [o geometric?] [fx real?] [fy real? fx]) geometric?]{
+                                                               
+Scales the object.}
+
+@defproc[(skew-x [o geometric?] [angle real?]) geometric?]{
+                                                               
+Applies a shear transformation to the object.}
+
+@defproc[(skew-y [o geometric?] [angle real?]) geometric?]{
+                                                               
+Applies a shear transformation to the object.}
+
+@defproc[(reflect-x [o geometric?]) geometric?]{
+                                                               
+Reflects the object around the x axis.}
+
+@defproc[(reflect-y [o geometric?]) geometric?]{
+                                                               
+Reflects the object around the y axis.}
+
+@defproc[(vec= [v1 vec?] [v2 vec?]) boolean?]{
+        
+True if the x and y coordinates of the vectors are equal.}                                     
 
 
+@defproc[(vec-approx= [v1 vec?] [v2 vec?]) boolean?]{
+        
+True if the x and y coordinates of the vectors are approximately equal (using the @racket[precision] parameter).}
 
+@defproc[(list->vec [l (list/c real? real?)]) vec?]{
+        
+Produces a @racket[vec] from a list of two numbers.}
+
+@defproc[(vec->list [v vec?]) (list/c real? real?)]{
+        
+Produces a list of two numbers from a @racket[vec].}
+
+@defproc[(vec-length [v vec?]) (and/c real? (not/c negative?))]{
+        
+Produces the length of the vector.}
+
+@defproc[(vec-angle [v vec?]) real?]{
+        
+Produces the angle of the vector.}
+
+@defproc[(vec+ [v1 vec?] [v2 vec?]) vec?]{
+        
+Sum two vectors.}
+
+@defproc[(vec- [v1 vec?] [v2 vec?]) vec?]{
+        
+Subtract two vectors.}
+
+@defproc[(vec* [v1 vec?] [n real?]) vec?]{
+        
+Scalar multiplications.}
+
+@defproc[(vec/ [v1 vec?] [n real?]) vec?]{
+        
+Scalar division.}
+
+@defproc[(aligned? [v1 vec?] [v2 vec?] [v3 vec?]) boolean?]{
+                                                               
+True if the vectors @racket[v1], @racket[v1] and @racket[v1] are aligned.}
+
+@defproc[(translation-matrix (x real?) (y real?)) trans-mat?]{
+                                                               
+Produces a translation matrix.}
+
+@defproc[(rotation-matrix (angle real?)) trans-mat?]{
+                                                               
+Produces a rotation matrix.}
+
+@defproc[(scale-matrix [fx real?] [fy real? fx]) trans-mat?]{
+                                                               
+Produces a scale matrix.}
+
+@defproc[(shear-matrix [x real?] [y real?]) trans-mat?]{
+                                                               
+Produces a shear matrix.}
+
+@defproc[(trans-mat* [m1 trans-mat?] [m2 trans-mat?]) trans-mat?]{
+                                                                  
+Multiplies two transformation matrices.}
+
+@defproc[(trans-mat-vec* [m trans-mat?] [v vec3?]) vec3?]{
+                                                                  
+Multiplies the translation matrix and the 3D vector.}
+
+@defproc[(dot-prod [v1 vec?] [v2 vec?]) real?]{
+                                                                  
+Produces the dot product of two 2D vectors.}
+
+@defproc[(dot-prod-3 [v1 vec3?] [v2 vec3?]) real?]{
+                                                                  
+Produces the dot product of two 3D vectors.}
+
+@defproc[(cross-prod-2d [v1 vec?] [v2 vec?]) real?]{
+                                                                  
+The third scalar component of the cross product.}
+
+@defproc[(segment-intersection [v1 vec?] [v2 vec?] [v3 vec?] [v4 vec?]) (or/c vec? #f)]{
+                                                                  
+The intersection (if any) between the segments v1-v2 and v3-v4.}
+
+@defproc[(signed-area [v1 vec?] [v2 vec?]) real?]{
+                                                                  
+The signed area of the triangle formed by the two vectors. Positive if the angle between vectors is counter-clockwise.}
+
+@defproc[(signed-polygonal-area [lov (listof vec?)]) real?]{
+                                                                  
+The signed area of the polygon formed by the list of vectors. Positive if counter-clockwise.}
+
+@defproc[(intersect-hor [h real?] [v1 vec?] [v2 vec?]) (or/c vec? #f)]{
+                                                                       
+Produces the intersection (if any) between the horizontal line passing from (0, h)
+and the line segment v1-v2.}
+
+@defproc[(intersect-vert [v real?] [v1 vec?] [v2 vec?]) (or/c vec? #f)]{
+                                                                       
+Produces the intersection (if any) between the vertical line passing from (v, 0)
+and the line segment v1-v2.}
+
+@defproc[(pass-through-hor? [h real?] [v1 vec?] [v2 vec?]) boolean?]{
+                                                                       
+True if the line segment v1-v2 intersects  horizontal line passing from (0, h).}
+
+@defproc[(pass-through-vert? [v real?] [v1 vec?] [v2 vec?]) boolean?]{
+                                                                       
+True if the line segment v1-v2 intersects the vertical line passing from (v, 0).}
+
+@subsection{Bezier Curves}
+
+In Sfont a 'bezier curve' is a list of @racket[vec], a segment is a bezier curve
+with only two 'on-curve' points.
+
+
+@defthing[bezier/c flat-contract?]
+@defthing[segment/c flat-contract?]
+@defthing[cubic-bezier/c flat-contract?]
+@defthing[cubic-segment/c flat-contract?]
+@defthing[closed-bezier/c flat-contract?]
+
+@defproc[(closed? [b bezier/c]) boolean?]{
+                                          
+True if the first and last points coincide.}
+
+@defproc[(segments [b bezier/c] [o natural-number/c 3]) (listof segment/c)]{
+                                                                            
+'Explodes' a curve in a list of segments. The optional arguments declares the 'order' of the bezier curve
+(basically: the number of control points for each segments plus one, cubic beziers have two points, quadratic one, etc.}
+
+@defproc[(on-curve-nodes [b bezier/c] [o natural-number/c 3]) (listof vec?)]{
+                                                                            
+Produce a list of points removing all the control points from the bezier.}
+
+@defproc[(off-curve-nodes [b bezier/c] [o natural-number/c 3]) (listof vec?)]{
+                                                                            
+Produce a list of control points of the bezier curve.}
+
+@defproc[(end-points [b bezier/c]) (cons/c vec? vec?)]{
+                                                                            
+Produce a pair with the first and last point of the curve.}s
+
+@defproc[(line-segment? [s segment/c]) boolean?]{
+                                                 
+True if the segment represents a line (ie. the points are aligned)}
+
+@defproc[(canonical-line-segment [s cubic-segment/c]) cubic-segment/c]{
+                                                                       
+Produces a cubic line segment where control points are placed at the extrema.}
+
+@defproc[(split [s segment/c] [n (real-in 0 1)]) (values segment/c segment/c)]{
+                                                                       
+Splits the segment in two parts. If @racket[n] is 0 or 1 the first/second half is an empty list.}

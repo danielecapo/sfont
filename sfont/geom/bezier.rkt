@@ -20,7 +20,7 @@
   [on-curve-nodes (->* (bezier/c) (natural-number/c) (listof vec?))]
   [end-points (-> bezier/c (cons/c vec? vec?))]
   [off-curve-points (-> segment/c (listof vec?))]
-  [line-segment? (-> bezier/c boolean?)]
+  [line-segment? (-> segment/c boolean?)]
   [canonical-line-segment (-> cubic-segment/c cubic-segment/c)]
   [split (-> segment/c (real-in 0 1) (values segment/c segment/c))]
   [join-beziers (->* (bezier/c) () #:rest (listof bezier/c) bezier/c)]
