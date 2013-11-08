@@ -39,7 +39,7 @@
 
 (define-syntax use-only-glyphs 
   (syntax-rules ()
-    [(interpolate-glyphs gs . body)
+    [(_ gs . body)
      (parameterize [(mathfilter gs)] . body)]))
 
 ; Font (listof Symbol) -> Font
