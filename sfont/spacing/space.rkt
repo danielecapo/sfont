@@ -30,10 +30,10 @@
             [groups (name glyphs) ...]
             . spacing-forms)
      #'(let* ([name glyphs] ...)
-         (let ([f1 (foldl (lambda (n g f) (add-to-groups f n g))
-                          f
-                          (list 'name ...) 
-                          (list glyphs ...))])
+         (let ([f1 (struct-copy font f 
+                                [groups (apply hash-set* 
+                                               (font-groups f)
+                                               (append (list 'name glyphs) ...))])])
            (space f1 . spacing-forms)))]
     [(space f (name ...) : l r . spacing-forms)
      (for-each (lambda (n) (when (not (identifier? n))
