@@ -10,14 +10,14 @@
 (provide (except-out (all-from-out racket) + - * /)
          (contract-out
           [fontmath-object/c (-> any/c boolean?)]
-          [font-object/c (-> any/c boolean?)]
+          [font-intp-object/c (-> any/c boolean?)]
           [get-interpolable-fonts (->* () () #:rest (listof font?) (listof font?))]
           [rename prod * (->* (fontmath-object/c) () #:rest (listof fontmath-object/c) fontmath-object/c)]
           [rename add  + (->* (fontmath-object/c) () #:rest (listof fontmath-object/c) fontmath-object/c)]
           [rename sub  - (->* (fontmath-object/c) () #:rest (listof fontmath-object/c) fontmath-object/c)]
           [rename div  / (->* (fontmath-object/c) () #:rest (listof fontmath-object/c) fontmath-object/c)]
-          [x-> (-> font-object/c font-object/c)]
-          [y-> (-> font-object/c font-object/c)]
+          [x-> (-> font-intp-object/c font-intp-object/c)]
+          [y-> (-> font-intp-object/c font-intp-object/c)]
           [fix-components (-> font? font? font?)])
          define-interpolable-fonts
          define-space
@@ -29,7 +29,7 @@
    'fontmath-object/c
    (or/c vec? real? font? glyph? bezier/c)))
 
-(define font-object/c
+(define font-intp-object/c
   (flat-named-contract 
    'font-object/c
    (or/c vec? font? glyph? layer? contour? anchor? component? fontinfo/c kerning/c)))

@@ -53,6 +53,8 @@ The text to be printed. Every line is represented as a list of symbols (the name
                                        
 Determine wheter kerning is applied to the sample text.}
 
+@defthing[font-object/c flat-contract?] 
+{
 @defthing[name/c flat-contract?]{
                                  
 A name is a symbol.}
@@ -609,3 +611,124 @@ To make an example, this is a part of the definition of @racket[lowercase-tracy]
   h : (c mid) (b mid)
   ...)]
 }
+                             
+@section{Interpolations and font math}                             
+@defmodule[sfont/math]
+
+With this module it is possible to perform interpolations between fonts using the idea of 'glyph math' or 'font math'
+(see @link["http://www.robofab.org/howto/glyphmath.html"]{Robofab glyphmath} or 
+@link["https://github.com/typesupply/fontMath"]{Tal Leming's FontMath}).
+The idea is that glyphs can be treated like vectors defining two basic operations: sum and scalar multiplication,
+obviously the glyphs should be 'compatible' (the should have the same number of points).
+In the same way we can extends the same abstraction with fonts (they also have to be compatible).
+With this idea we can perform an interpolation between two fonts in a simple way: @racket[(+ a (* (- b a) f))]
+where @racket[a] and @racket[b] are fonts and @racket[f] is a number.
+
+The operations affect not only contours but also anchors, components, and font metric informations.
+The operation of making two or more fonts compatible can be tedious, therefore the module define
+functions and macros to do this:
+
+@defproc[(get-interpolable-fonts [fs font?] ...) (listof font?)]{
+                                                                 
+Produces a list of mutually interpolable fonts. The process will
+@itemlist[@item{keep only common glyphs}
+          @item{transform line segments in curve segments (with control points at extrema)}
+          @item{sort contours and points inside contours}
+          @item{remove components or anchors if they are not in the corresponding glyphs}
+          @item{sort components and anchors}
+          @item{keep only common font informations}]}
+
+@defform[(define-interpolable-fonts (id f) ...)]{
+                                                 
+Transforms every @racket[font] @racket[f] like @racket[get-interpolable-fonts]
+and binds them to the corresponding @racket[id].
+
+@racketblock[(define-interpolable-fonts 
+               (light-c light-font)
+               (bold-c  bold-font)
+               (wide-c  wide-font))]
+
+Now @racket[light-c], @racket[bold-c] and @racket[wide-c] are interpolables fonts.}
+
+@defproc[(+ [o fontmath-object/c] [os fontmath-object/c] ...) fontmath-object/c]
+@defproc[(* [o fontmath-object/c] [os fontmath-object/c] ...) fontmath-object/c]
+@defproc[(- [o fontmath-object/c] [os fontmath-object/c] ...) fontmath-object/c]
+@defproc[(/ [o fontmath-object/c] [os fontmath-object/c] ...) fontmath-object/c]{
+                                                                                 
+Redefine arithmethic operations.}
+
+@defthing[fontmath-object/c flat-contract?]{
+                                            
+A @racket[fontmath-object/c] can be:  
+@itemlist[@item{a @racket[font]}
+          @item{a @racket[glyph]}
+          @item{a @racket[vec]}
+          @item{a @racket[bezier/c]}
+          @item{a @racket[real?]}]
+}
+
+With the mathematical abstraction we are using we can express something more than 
+interpolations. For example we can build a bold-wide from a light a bold and a wide.
+
+@racketblock[(define bold-wide 
+               (+ light-c
+                  (- bold-c light-c)
+                  (- wide-c light-c)))]
+
+To make this simpler Sfont has a macro that define an interpolation 'space'
+where one can simply write:
+
+@racketblock[(define bold-wide
+               (sp1
+                (+ sp1-bold-c sp1-wide-c)))]
+
+@defform[(define-space id (origin-id [font-id ...]))]{
+                                                
+Defines a space named @racket[id] that uses the font @racket[origin-id] as its
+origin.
+The 'space' is a procedure that produces a font.
+
+@racketblock[(define-space sp1 (light-c [bold-c wide-c]))]
+
+This line will define a procedure @racket[sp1] and two fonts: @racket[sp1-bold-c]
+(obtained with @racket[(- bold-c light-c)]) and @racket[sp1-wide-c] (obtained with
+@racket[(- wide-c light-c)]) that can be used like the example above.
+
+In this 'space' the interpolations between light and bold can be expressed with
+
+@racket[(sp1 (* sp1-bold-c 0.6))] 
+
+that is equivalent to:
+
+@racket[(+ light-c (* (- bold-c light-c) 0.6))] .} 
+                                                  
+@defproc[(x-> [o font-intp-object/c]) font-intp-object/c]
+@defproc[(y-> [o font-intp-object/c]) font-intp-object/c]{
+                                               
+Projections of the object on the x and y axes. 
+These projections can be useful to obtain the so-called 
+@link["http://www.lucasfonts.com/about/interpolation-theory/"]{'anisotropic' interpolations.}
+
+@racketblock[(sp1 (+ (* (x-> sp1-bold-c) 0.6)
+                     (* (y-> sp1-bold-c) 0.4)))]
+
+It will increase contrast.
+}
+
+@defthing[font-intp-object/c flat-contract?]{
+                                             
+A font object that can be interpolated:
+
+@itemlist[@item{a @racket[font]}
+          @item{a @racket[glyph]}
+          @item{a @racket[layer]}
+          @item{a @racket[contour]}
+          @item{a @racket[anchor]}
+          @item{a @racket[component]}
+          @item{@racket[fontinfo/c]}
+          @item{a @racket[kerning/c]}]}
+
+
+
+
+
