@@ -942,6 +942,45 @@ True if the segment represents a line (ie. the points are aligned)}
                                                                        
 Produces a cubic line segment where control points are placed at the extrema.}
 
-@defproc[(split [s segment/c] [n (real-in 0 1)]) (values segment/c segment/c)]{
+@defproc[(split [s segment/c] [t (real-in 0 1)]) (values segment/c segment/c)]{
                                                                        
-Splits the segment in two parts. If @racket[n] is 0 or 1 the first/second half is an empty list.}
+Splits the segment in two parts. If @racket[t] is 0 or 1 the first/second half is an empty list.}
+
+@defproc[(join-beziers [b1 bezier/c] [b bezier/c] ...) bezier/c]{
+                                                                       
+Concatenate bezier curves. If the last and first points of two consecutive curves are not @racket[vec-approx=] an error is raised.}
+
+@defproc[(point-at [s segment/c] [t (real-in 0 1)]) vec?]{
+                                                          
+Find the point on a segment at 'time' t.}                                                          
+
+                                         
+@defproc[(polygonize-segment [s segment/c] [n natural-number/c]) (listof vec?)]{
+                                                          
+Transform the segment in a polygon with @racket[n] sides.}   
+                                                          
+@defproc[(end-points-bounding-box [s segment/c]) bounding-box/c]{
+                                                          
+Produces the bounding box of the line segment that joins the endpoints of the bezier segment.}
+
+@defproc[(end-points-at-extrema? [s segment/c]) boolean?]{
+                                                          
+True if the bounding-box of the segment and @racket[end-points-bounding-box] are the same.} 
+                                                                                           
+@defproc[(segment-bounding-box [s segment/c]) bounding-box/c]{
+                                                          
+Produces the bounding-box of the segment.}
+
+@defproc[(bezier-bounding-box [b bezier/c] [o natural-number/c 3]) bounding-box/c]{
+                                                          
+Produces the bounding-box of the bezier curve.}
+
+@defproc[(bezier-signed-area [b bezier/c] [o natural-number/c 3] [s natural-number/c 200]) real?]{
+                                                          
+The area of the bezier curve of order @racket[o]. 
+The curve will be trasformed in a polygon, @racket[s] controls in how many sides every segment is divided.
+Positive if the curve is counter-clockwise.}
+
+@defproc[(bezier-area [b bezier/c] [o natural-number/c 3] [s natural-number/c 200]) (and/c real? positive?)]{
+                                                          
+The absolute value of @racket[bezier-signed-area].}
