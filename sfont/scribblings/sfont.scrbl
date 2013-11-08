@@ -1,6 +1,7 @@
 #lang scribble/manual
 @(require scribble/eval
-          "../main.rkt")
+          "../main.rkt"
+          "../parametric/fontwriter.rkt")
 
 @title{Sfont: play with fonts in Racket}
 
@@ -11,7 +12,8 @@
                      slideshow/pict-convert
                      sfont
                      sfont/spacing/space
-                     sfont/geometry))
+                     sfont/geometry
+                     sfont/parametric/fontwriter))
 
 
 
@@ -1034,6 +1036,14 @@ and a the horizontal line y = h.}
                                                                         
 True if the point is inside the bezier curve.}
 
+@defproc[(bezier->path [b cubic-bezier/c] [path (is-a?/c dc-path%)]) (is-a?/c dc-path%)]{
+                                                                        
+Write the bezier to a @racket[dc-path%].}
+
+@defproc[(print-beziers [b cubic-bezier/c] ...) pict?]{
+                                                       
+Print a graphic representation of the cubic bezier curves.}                                                       
+
 @subsubsection{Boolean operations}
 
 @defproc[(bezier-subtract [b1 closed-bezier/c] [b2 closed-bezier/c]) (listof closed-bezier/c)]{
@@ -1076,3 +1086,209 @@ True if the bounding boxes overlap.}
 @defproc[(include-bounding-box? [bb1 bounding-box/c] [bb2 bounding-box/c]) boolean?]{
                                                                                        
 True if the second bounding box is surrounded by the first one.}
+
+@section{Parametric fonts and font macros}
+
+@defmodule[sfont/parametric/fontwriter]
+
+The modules described above are useful for reading, modifying and inspecting fonts.
+However, to define new fonts sfont has macros tha should be easier to use.
+
+
+@subsection{Bezier curves}
+
+Instead of writing a bezier curve point by point the macro @racket[~] is provided,
+we will discuss how to use it with examples:
+
+@defform[(~ path-element ...)]
+
+The simplest use is equivalent to specify a cubic bezier point by point
+@(define ss-eval (make-base-eval))
+@(void (interaction-eval #:eval ss-eval (require sfont/parametric/fontwriter
+                                                 slideshow/pict
+                                                 sfont/geometry
+                                                 racket/math
+                                                 sfont)))
+
+@interaction[#:eval ss-eval
+                    (~ (0 0) (55 0) (45 100) (100 100))]
+
+A line is expressed with a double hyphen, @racket[--] (from now on the
+bezier curves will be printed with @racket[print-beziers]):
+
+@interaction[#:eval ss-eval
+                    (print-beziers
+                     (~ (0 0) -- (500 0) -- (500 500) -- (0 500) -- (0 0)))]
+
+To close the curve, instead of repeating the firt point it is possible to use
+the @racket[cycle] command:
+
+@interaction[#:eval ss-eval
+                    (print-beziers
+                     (~ (0 0) -- (500 0) -- (500 500) -- (0 500) -- cycle))]
+
+Coordinates can be relative to the last point:
+@interaction[#:eval ss-eval
+                    (print-beziers
+                     (~ (0 0) -- (\@ 500 0) -- (\@ 0 500) -- (\@ -500 0) -- cycle))]
+
+Or using an angle and a distance
+@interaction[#:eval ss-eval
+                    (print-beziers
+                     (~ (0 0) -- (\@° 0 500) -- (\@° (* pi 2/3) 500) -- cycle))]
+
+Curve segments can be defined in an alternative way:
+@interaction[#:eval ss-eval
+                    (print-beziers
+                     (~ (0 0) (500 0 0.55) (500 500) -- (0 500) -- cycle))]
+
+where control points are obtained interpolating between @racket[(0 0)] and @racket[(500 0)]
+(with an interpolation factor @racket[0.55]) and between @racket[(500 500)] and @racket[(500 0)];
+
+Finally we can @racket[insert] another bezier inside @racket[~] (the part inserted is joined to the rest with
+line segments).
+@interaction[#:eval ss-eval
+                    (define b1 (~ (100 0) -- (100 600)))
+                    (print-beziers
+                     (~ (-100 0) (insert b1) cycle))]
+
+@subsection{Glyphs and Fonts}
+
+@defform[(glyph. name 
+                 maybe-locals
+                 [metrics left-form right-form]
+                 [contours contour ...])]
+
+@defform*[((font. name 
+                  [alignments alignment-form ...]
+                  maybe-variables
+                  [glyphs glyph-form ...])
+           (font. (name (args default-value) ...)
+                  [alignments alignment-form ...]
+                  maybe-variables
+                  [glyphs glyph-form ...]))]
+
+An example for glyphs:
+@interaction[#:eval ss-eval
+                    (glyph. 'o
+                            [locals (weight 100)
+                                    (width 400)
+                                    (height 500)]
+                            [metrics 20 20]
+                            [contours
+                            (~ (0 0) -- (\@ width 0) -- (\@ 0 height) -- (\@ (- width) 0) -- cycle)
+                            (~ (weight weight) 
+                               -- (\@ 0 (- height (* 2 weight))) 
+                               -- (\@ (- width (* 2 weight)) 0) 
+                               -- (\@ 0 (- (* 2 weight) height))
+                               -- cycle)])]
+
+Fonts can be defined in two ways: the first one creates a @racket[font],
+the second produces an anonymous procedure that can be called with the
+arguments defined and that produces a @racket[font].
+
+@racketblock[(define f (font. (squarefont (weight 100) (width 200))
+                              ...))]
+
+@racket[f] can be called with keyword arguments @racket[(f #:weight 120 #:width 210)].
+
+The body of the font can then use @racket[weight] and @racket[width] to create new @racket[font]s.
+
+The creation of parametric fonts can then be made easier since the designer decide which 'parameter' will be exposed,
+while other 'hidden' variables can be defined in the @racket[maybe-variables] part.
+
+A complex example taken from the @racket[sfont-examples] collection:
+
+@racketblock[(define sq 
+  (font. (squarefont  [x-height 500] [width 0.5] [weight 0.5]) 
+        ;; here we define a font named squarefont with parameters
+        ;; x-height, width and weight
+        ;; the parameters need a default value
+      (alignments
+       ;; the alignments are written in the form
+       ;; [name value amount-of-overshoots].
+       ;; It is required to mark with :use-as-descender and :use-as-ascender
+       ;; two alignments that will be used as the font ascender and descender fields
+       ;; in fontinfo: notice that the (+ ascender (abs descender)) is the UPM value
+       ;; so if you want UPM to be 1000 you have to provide the right values.
+       ;; Aligments are used with functions alg, ovs and ovs-height
+       ;; for example (with parameter x-height set to 500)
+       ;; (alg xh)        -> 500
+       ;; (ovs xh)        -> 510
+       ;; (ovs-height xh) ->  10
+       
+         [base 0 -10]
+         [xh x-height 10]
+         [desc* (/ (- x-height 1000) 2) 0 :font-descender]
+         [asc* (- x-height (alg desc*)) 0 :font-ascender]
+         [dsc (+ (alg desc*) 10) -10]
+         [ascender (- (alg asc*) 10) 10])
+      (variables
+       ;; Variables are defined here
+       ;; their scope is the whole font
+       
+         [gw (* 1000 width)]
+         [v-stem (* x-height weight 0.333)]
+         [h-stem (* v-stem 0.9)]
+         [space (/ (- gw (* 2 v-stem)) 2)]
+         [x1 space]
+         [y1 (alg base)]
+         [ym (/ x-height 2)]
+         [x2 (+ space gw (- v-stem))]
+         [a-cnt (list (rect x1 y1 gw h-stem)
+                      (rect x1 y1 v-stem ym)
+                      (rect x1 (- ym (/ h-stem 2)) gw h-stem)
+                      (rect x2 y1 v-stem x-height)
+                      (rect x1 (- x-height h-stem) gw h-stem))])
+     (glyphs
+      ;; Glyphs follow the variables section.
+      ;; We can also provide a list of glyphs here.
+        (glyph. 'a
+               ; every glyph has a name 
+               (metrics space space)
+               ; an advance form
+               [contours a-cnt]
+               ;inside the contours section we can insert contours 
+               ;or list of contours
+               )
+        (glyph. 'b
+               (metrics space (/--/ (+ gw space space)))
+               [contours
+                (rect x1 y1 v-stem (alg ascender))
+                (rect x1 y1 gw x-height)
+                (reverse (rect (+ x1 v-stem) (+ y1 h-stem) 
+                               (- gw (* 2 v-stem)) (- x-height (* 2 h-stem))))])
+        (glyph. 'c
+               (locals [term ym])
+               ; local variables can be defined inside a glyph
+               (metrics (/--/ (+ gw space space)) space)
+               [contours
+                (rect x1 y1 v-stem x-height)
+                (rect x1 (- x-height h-stem) gw h-stem)
+                (rect x1 y1 gw h-stem)
+                (rect (+ x1 gw (- v-stem)) (- x-height term) v-stem term)])
+        (glyph. 'd
+               (metrics -- (/--/ (+ gw space space)))
+               [contours
+                (rect x1 y1 gw x-height)
+                (reverse (rect (+ x1 v-stem) (+ y1 h-stem) 
+                               (- gw (* 2 v-stem)) (- x-height (* 2 h-stem))))
+                (rect (+ x1 gw (- v-stem)) y1 v-stem (alg ascender))])
+        (glyph. 'e
+               (metrics space (/--/ (+ gw space space)))
+               [contours
+                (map (lambda (c) (from ((+ space (/ gw 2)) (/ x-height 2))
+                                       (rotate. c pi)))
+                     a-cnt)])
+        (glyph. 'o
+               (metrics space space)
+               [contours
+                (rect x1 y1 gw x-height)
+                (reverse (rect (+ x1 v-stem) (+ y1 h-stem) 
+                               (- gw (* 2 v-stem)) (- x-height (* 2 h-stem))))]))))]
+
+
+
+
+
+

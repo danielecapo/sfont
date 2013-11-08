@@ -6,9 +6,7 @@
          "bounding-box.rkt"
          "../utilities.rkt")
 
-(provide 
- print-beziers
- bezier->path
+(provide  
  (contract-out
   [bezier/c (-> any/c boolean?)]
   [segment/c (-> any/c boolean?)]
@@ -47,7 +45,8 @@
   [bezier-union (-> closed-bezier/c closed-bezier/c (listof closed-bezier/c))]
   [bezier-intersection (-> closed-bezier/c closed-bezier/c (listof closed-bezier/c))]
   [split-at-point (-> segment/c vec? (values segment/c segment/c))]
-  ))
+  [bezier->path (-> cubic-bezier/c (is-a?/c dc-path%) (is-a?/c dc-path%))]
+  [print-beziers (->* () () #:rest (listof cubic-bezier/c) pict:pict?)]))
   
 
 ; Data Definition
