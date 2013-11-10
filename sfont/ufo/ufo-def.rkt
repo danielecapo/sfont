@@ -274,7 +274,13 @@
 ;;; fontinfo should be defined better
 (define images/c (flat-named-contract 'images/c any/c))
 
-
+; Font -> Pict
+(define (font->pict f)
+  (let ([ascender (dict-ref (font-fontinfo f) 'ascender 750)]
+        [descender (dict-ref (font-fontinfo f) 'descender -250)]
+        [glyphs (map (lambda (g) (draw-glyph (decompose-glyph f g)))
+                     (get-glyphs f (unique-letters (display-text))))])
+    (pictf:font ascender descender glyphs (lambda (p) (apply kerning-value f p)))))
 
 ;;; Font
 ;;; (font Number String HashTable HashTable HashTable String (listOf Glyph) (listOf Layer) HashTable ... ...)
@@ -333,17 +339,6 @@
    (define (reflect-y f)
      (apply-font-trans f super-reflect-y))])
 
-
-
-; Font -> Pict
-(define (font->pict f)
-  (let ([ascender (dict-ref (font-fontinfo f) 'ascender 750)]
-        [descender (dict-ref (font-fontinfo f) 'descender -250)]
-        [glyphs (map (lambda (g) (draw-glyph (decompose-glyph f g)))
-                     (get-glyphs f (unique-letters (display-text))))])
-    (pictf:font ascender descender glyphs (lambda (p) (apply kerning-value f p)))))
-  
-  
 
 
 ; Font (T -> T) . T1 -> Font
@@ -411,6 +406,15 @@
                  [anchors (map t (layer-anchors l))]
                  [contours (map t (layer-contours l))])))
  
+; Glyph -> Pict
+(define (glyph->pict g)
+  (let* ([cs (map-contours contour->bezier g)]
+         [bb (if (null? cs)
+                 (cons (vec 0 0) (vec 0 0))
+                 (apply combine-bounding-boxes
+                        (map bezier-bounding-box cs)))])
+    (pictf:glyph (draw-glyph g) bb 750 1000)))
+
 ;;; Glyph
 ;;; (glyph Natural Symbol Advance (listOf Unicode) String Image (listOf Layer) HashTable)
 (struct glyph (name advance unicodes note image layers lib) 
@@ -450,15 +454,6 @@
   (define (reflect-y g)
     (apply-glyph-trans g super-reflect-y))])
 
-
-; Glyph -> Pict
-(define (glyph->pict g)
-  (let* ([cs (map-contours contour->bezier g)]
-         [bb (if (null? cs)
-                 (cons (vec 0 0) (vec 0 0))
-                 (apply combine-bounding-boxes
-                        (map bezier-bounding-box cs)))])
-    (pictf:glyph (draw-glyph g) bb 750 1000)))
 
 ; Glyph  (T . ... -> T) . ... -> Glyph
 ; apply a geometric transformations to a glyph

@@ -52,6 +52,10 @@ The size of the font.}
                                                        
 The text to be printed. Every line is represented as a list of symbols (the name of glyphs). If a glyph is not in the font it is not shown.}
 
+@defproc[(font->pict [f font?]) pict?]{
+                                       
+Produces a @racket[pict].}                                       
+
 @defparam[show-kerning? show boolean?]{
                                        
 Determine wheter kerning is applied to the sample text.}
@@ -140,6 +144,10 @@ like glyphs in fonts can be passed as lists to the constructor).
 
 Transformations can be applied to glyphs, however only @racket[scale] will
 affect the advance width and height of the glyph.}
+                                
+@defproc[(glyph->pict [g glyph?]) pict?]{
+                                       
+Produces a @racket[pict].}                                
 
 @defstruct*[advance ((width real?) (height real?))]{
 
@@ -1170,18 +1178,19 @@ line segments).
 
 An example for glyphs:
 @interaction[#:eval ss-eval
-                    (glyph. 'o
-                            [locals (weight 100)
-                                    (width 400)
-                                    (height 500)]
-                            [metrics 20 20]
-                            [contours
-                            (~ (0 0) -- (\@ width 0) -- (\@ 0 height) -- (\@ (- width) 0) -- cycle)
-                            (~ (weight weight) 
-                               -- (\@ 0 (- height (* 2 weight))) 
-                               -- (\@ (- width (* 2 weight)) 0) 
-                               -- (\@ 0 (- (* 2 weight) height))
-                               -- cycle)])]
+                    (glyph->pict
+                     (glyph. 'o
+                             [locals (weight 100)
+                                     (width 400)
+                                     (height 500)]
+                             [metrics 20 20]
+                             [contours
+                              (~ (0 0) -- (\@ width 0) -- (\@ 0 height) -- (\@ (- width) 0) -- cycle)
+                              (~ (weight weight) 
+                                 -- (\@ 0 (- height (* 2 weight))) 
+                                 -- (\@ (- width (* 2 weight)) 0) 
+                                 -- (\@ 0 (- (* 2 weight) height))
+                                 -- cycle)]))]
 
 Fonts can be defined in two ways: the first one creates a @racket[font],
 the second produces an anonymous procedure that can be called with the
@@ -1200,95 +1209,98 @@ while other 'hidden' variables can be defined in the @racket[maybe-variables] pa
 A complex example taken from the @racket[sfont-examples] collection:
 
 @racketblock[(define sq 
-  (font. (squarefont  [x-height 500] [width 0.5] [weight 0.5]) 
-        ;; here we define a font named squarefont with parameters
-        ;; x-height, width and weight
-        ;; the parameters need a default value
-      (alignments
-       ;; the alignments are written in the form
-       ;; [name value amount-of-overshoots].
-       ;; It is required to mark with :use-as-descender and :use-as-ascender
-       ;; two alignments that will be used as the font ascender and descender fields
-       ;; in fontinfo: notice that the (+ ascender (abs descender)) is the UPM value
-       ;; so if you want UPM to be 1000 you have to provide the right values.
-       ;; Aligments are used with functions alg, ovs and ovs-height
-       ;; for example (with parameter x-height set to 500)
-       ;; (alg xh)        -> 500
-       ;; (ovs xh)        -> 510
-       ;; (ovs-height xh) ->  10
-       
-         [base 0 -10]
-         [xh x-height 10]
-         [desc* (/ (- x-height 1000) 2) 0 :font-descender]
-         [asc* (- x-height (alg desc*)) 0 :font-ascender]
-         [dsc (+ (alg desc*) 10) -10]
-         [ascender (- (alg asc*) 10) 10])
-      (variables
-       ;; Variables are defined here
-       ;; their scope is the whole font
-       
-         [gw (* 1000 width)]
-         [v-stem (* x-height weight 0.333)]
-         [h-stem (* v-stem 0.9)]
-         [space (/ (- gw (* 2 v-stem)) 2)]
-         [x1 space]
-         [y1 (alg base)]
-         [ym (/ x-height 2)]
-         [x2 (+ space gw (- v-stem))]
-         [a-cnt (list (rect x1 y1 gw h-stem)
-                      (rect x1 y1 v-stem ym)
-                      (rect x1 (- ym (/ h-stem 2)) gw h-stem)
-                      (rect x2 y1 v-stem x-height)
-                      (rect x1 (- x-height h-stem) gw h-stem))])
-     (glyphs
-      ;; Glyphs follow the variables section.
-      ;; We can also provide a list of glyphs here.
-        (glyph. 'a
-               ; every glyph has a name 
-               (metrics space space)
-               ; an advance form
-               [contours a-cnt]
-               ;inside the contours section we can insert contours 
-               ;or list of contours
-               )
-        (glyph. 'b
-               (metrics space (/--/ (+ gw space space)))
-               [contours
-                (rect x1 y1 v-stem (alg ascender))
-                (rect x1 y1 gw x-height)
-                (reverse (rect (+ x1 v-stem) (+ y1 h-stem) 
-                               (- gw (* 2 v-stem)) (- x-height (* 2 h-stem))))])
-        (glyph. 'c
-               (locals [term ym])
-               ; local variables can be defined inside a glyph
-               (metrics (/--/ (+ gw space space)) space)
-               [contours
-                (rect x1 y1 v-stem x-height)
-                (rect x1 (- x-height h-stem) gw h-stem)
-                (rect x1 y1 gw h-stem)
-                (rect (+ x1 gw (- v-stem)) (- x-height term) v-stem term)])
-        (glyph. 'd
-               (metrics -- (/--/ (+ gw space space)))
-               [contours
-                (rect x1 y1 gw x-height)
-                (reverse (rect (+ x1 v-stem) (+ y1 h-stem) 
-                               (- gw (* 2 v-stem)) (- x-height (* 2 h-stem))))
-                (rect (+ x1 gw (- v-stem)) y1 v-stem (alg ascender))])
-        (glyph. 'e
-               (metrics space (/--/ (+ gw space space)))
-               [contours
-                (map (lambda (c) (from ((+ space (/ gw 2)) (/ x-height 2))
-                                       (rotate. c pi)))
-                     a-cnt)])
-        (glyph. 'o
-               (metrics space space)
-               [contours
-                (rect x1 y1 gw x-height)
-                (reverse (rect (+ x1 v-stem) (+ y1 h-stem) 
-                               (- gw (* 2 v-stem)) (- x-height (* 2 h-stem))))]))))]
+               (font. (squarefont  [x-height 500] [width 0.5] [weight 0.5]) 
+                      (alignments
+                       [base 0 -10]
+                       [xh x-height 10]
+                       [desc* (/ (- x-height 1000) 2) 0 :font-descender]
+                       [asc* (- x-height (alg desc*)) 0 :font-ascender]
+                       [dsc (+ (alg desc*) 10) -10]
+                       [ascender (- (alg asc*) 10) 10])
+                      (variables
+                       [gw (* 1000 width)]
+                       [v-stem (* x-height weight 0.333)]
+                       [h-stem (* v-stem 0.9)]
+                       [space (/ (- gw (* 2 v-stem)) 2)]
+                       [x1 space]
+                       ...)
+                      (glyphs
+                       (glyph. 'a
+                               (metrics space space)
+                               [contours a-cnt])
+                       (glyph. 'b
+                               (metrics space (/--/ (+ gw space space)))
+                               [contours
+                                (rect x1 y1 v-stem (alg ascender))
+                                (rect x1 y1 gw x-height)
+                                (reverse (rect (+ x1 v-stem) (+ y1 h-stem) 
+                                               (- gw (* 2 v-stem)) (- x-height (* 2 h-stem))))])
+                       ...)))]
 
+Alignments are given in the form @racket[[name position overshoot-height]],
+to get the values back the procedures @racket[alg], @racket[ovs], @racket[ovs-height],
+are defined:
 
+@defthing[alignment/c flat-contract?]
 
+@defproc[(alg [a alignment/c]) real?]{
+                                      
+Produces the position of the alignment.}
 
+@defproc[(ovs [a alignment/c]) real?]{
+                                      
+Produces the position of the overshoot for the given alignment.}
 
+@defproc[(ovs-height [a alignment/c]) real?]{
+                                      
+Produces the height of the oveshoot for the given alignment.}
 
+@subsection{Other functions and macros}
+
+@defproc[(rect [x real?] [y real?] [w real?] [h real?]) cubic-bezier/c]{
+                                                                            
+Produces a cubic bezier path of a rectangle. @racket[x], and @racket[y]
+represent the lower left corner, @racket[w] and @racket[h], the width and height.}
+
+@defproc[(ellipse [x real?] [y real?] [w real?] [h real?]) cubic-bezier/c]{
+                                                                            
+Produces a cubic bezier path of an ellipse. @racket[x], and @racket[y]
+represent the lower left corner, @racket[w] and @racket[h], the width and height.}
+
+@defproc[(arc [cx real?] [cy real?] [r real?] [a real?]) cubic-bezier/c]{
+                                                                            
+Produces a cubic bezier path of an open arc. @racket[cx], and @racket[cy]
+represent the center, @racket[a] and @racket[r], the angle and radius.}
+
+@defproc[(remove~ [pt (and/c closed-bezier/c cubic-bezier/c)]
+                  [rm (and/c closed-bezier/c cubic-bezier/c)] ...)
+         (listof (and/c closed-bezier/c cubic-bezier/c))]{
+                                                          
+Remove the paths @racket[rm] from @racket[pt].}
+                                                         
+                                                         
+@defproc[(join~ [pt (and/c closed-bezier/c cubic-bezier/c)]
+                [pts (and/c closed-bezier/c cubic-bezier/c)] ...)
+         (listof (and/c closed-bezier/c cubic-bezier/c))]{
+                                                          
+Add the paths @racket[pts] to @racket[pt] (remove overlaps).}
+
+                                                         
+@deftogether[(@defform*[((translate. o arg tx ty)
+                         (translate. o from (x y) arg tx ty))]
+               @defform*[((rotate. o arg angle)
+                          (rotate. o from (x y) arg angle))]
+               @defform*[((scale. o arg fx [fy fx])
+                          (scale. o from (x y) arg fx [fy fx]))]
+               @defform*[((skew-x. o arg angle)
+                          (skew-x. o from (x y) arg angle))]
+               @defform*[((skew-y. o arg angle)
+                          (skew-y. o from (x y) arg angle))]
+               @defform*[((reflect-x. o arg)
+                          (reflect-x. o from (x y)))]
+               @defform*[((reflect-y. o arg)
+                          (reflect-y. o from (x y) arg))])]{
+                                                            
+Like the corresponding transformations, but can be used with bezier paths
+and with the @racket[from] command that specifies the center of trasformation.}
+                                                           

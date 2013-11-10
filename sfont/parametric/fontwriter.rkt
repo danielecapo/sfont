@@ -9,17 +9,19 @@
 (provide 
  (contract-out
   [alignment/c (-> any/c boolean?)]
-  [rect (-> real? real? real? real? bezier/c)]
-  [ellipse (-> real? real? real? real? bezier/c)]
-  [arc (-> real? real? real? real? bezier/c)]
+  [rect (-> real? real? real? real? cubic-bezier/c)]
+  [ellipse (-> real? real? real? real? cubic-bezier/c)]
+  [arc (-> real? real? real? real? cubic-bezier/c)]
   [alg (-> alignment/c real?)]
   [ovs (-> alignment/c real?)]
   [ovs-height (-> alignment/c real?)]
-  [remove~ (->* (bezier/c) () #:rest (listof (and/c bezier/c closed?)) (listof (and/c bezier/c closed?)))]
-  [join~ (->* (bezier/c) () #:rest (listof (and/c bezier/c closed?)) (listof (and/c bezier/c closed?)))])
+  [remove~ (->* (and/c closed-bezier/c cubic-bezier/c) () #:rest (listof (and/c closed-bezier/c cubic-bezier/c)) 
+                (listof (and/c closed-bezier/c cubic-bezier/c)))]
+  [join~ (->* (and/c closed-bezier/c cubic-bezier/c) () #:rest (listof (and/c closed-bezier/c cubic-bezier/c)) 
+              (listof (and/c closed-bezier/c cubic-bezier/c)))])
  glyph.
  font.
- from
+ ;from
  ~
  translate.
  rotate.
