@@ -13,6 +13,7 @@
                      sfont
                      sfont/space
                      sfont/geometry
+                     sfont/navigator
                      sfont/parametric/fontwriter
                      sfont/utilities
                      sfont/windows))
@@ -22,6 +23,7 @@
 Sfont is a collection for writing, reading and modifying fonts in the 
 @link["http://unifiedfontobject.org/"]{UFO format}.
 
+@table-of-contents[]
 
 @section{Font structures and contracts}
 
@@ -624,7 +626,56 @@ To make an example, this is a part of the definition of @racket[lowercase-tracy]
   h : (c mid) (b mid)
   ...)]
 }
-                             
+ 
+@section{Accessing and modifying data}
+
+@defmodule[sfont/navigator]
+@deftogether[(@defform[(fref ref-form ...)]
+               @defform[(fset [ref-form ...] value)]
+               @defform[(fupdate [ref-form ...] update-proc)])]{
+
+These macros define another way to access the structures defined above.
+For example
+@racketblock[(fref f 
+                   [glyph 'a] 
+                   [layer foreground]
+                   [contours \@ 2]
+                   [points \@ 3]
+                   pos
+                   x)]
+produces the @racket[vec-x] of @racket[point-pos] etc.
+The form @racket[(fref f [glyph 'a])] is like calling @racket[(get-glyph f 'a)].
+
+The form @racket[(fref g [layer foreground])] is like calling @racket[(get-layer g foreground)].
+
+The form @racket[(fref l [contours \@ 2])] gets the third contour of the layer, 
+the @racket[\@] can be used when the result is a sequence, to refer to a specific element in the sequence.
+
+Setting a value is similar:
+
+@racketblock[(fset [f 
+                    [glyph 'a] 
+                    [layer foreground]
+                    [contours \@ 2]
+                    [points \@ 3]
+                    pos
+                    x]
+                   200)]
+The first part between brackets uses the same conventions seen above, the second part is the new value.
+
+The last form @racket[fupdate] update a value with a procedure. 
+@racketblock[(fupdate [f 
+                       [glyph 'a] 
+                       [layer foreground]
+                       [contours \@ 2]
+                       [points \@ 3]
+                       pos
+                       x]
+                      (lambda (x) (+ x 100)))]
+
+The effect, here, is shifting a point rightward.
+}
+ 
 @section{Interpolations and font math}                             
 @defmodule[sfont/math]
 
@@ -1355,8 +1406,7 @@ An example that uses the font @racket[sq] in the sfont-examples directory.
              
              (main)]
 }
-
-                           
+                         
 @section{Utilities}
 
 @defmodule[sfont/utilities]
