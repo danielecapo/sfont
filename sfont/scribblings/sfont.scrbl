@@ -57,10 +57,7 @@ The size of the font.}
 @defparam[display-text text (listof (listof symbol?))]{
                                                        
 The text to be printed. Every line is represented as a list of symbols (the name of glyphs). If a glyph is not in the font it is not shown.}
-
-@defproc[(font->pict [f font?]) pict?]{
-                                       
-Produces a @racket[pict].}                                       
+                                
 
 @defparam[show-kerning? show boolean?]{
                                        
@@ -149,10 +146,7 @@ like glyphs in fonts can be passed as lists to the constructor).
 
 Transformations can be applied to glyphs, however only @racket[scale] will
 affect the advance width and height of the glyph.}
-                                
-@defproc[(glyph->pict [g glyph?]) pict?]{
-                                       
-Produces a @racket[pict].}                                
+                                                       
 
 @defstruct*[advance ((width real?) (height real?))]{
 

@@ -79,8 +79,6 @@
      (smooth boolean?)
      (name (or/c string? #f))
      (identifier (or/c symbol? #f)))]
-  [font->pict (-> font? pict?)]
-  [glyph->pict (-> glyph? pict?)]
   [get-layer (->* (glyph?) (name/c) (or/c layer? #f))]
   [map-layers (->* ((-> layer? any/c) glyph?) (#:sorted boolean?) (listof any/c))]
   [for-each-layers (->* ((-> layer? any/c) glyph?) (#:sorted boolean?) void?)]
