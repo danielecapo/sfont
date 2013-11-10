@@ -45,7 +45,10 @@ The way they are printed depends on the parameters @racket[display-size], @racke
 and @racket[show-kerning?].
 
 Glyphs and layers are stored internally in hash tables so they can be easily accessed by name,
-however the guard of font accept list of glyphs and layer-infos and transform them in hash tables.}
+however the guard of font accept list of glyphs and layer-infos and transform them in hash tables.
+
+Fonts, like all the structures defined below (with the exception of @racket[advance])
+implement the @racket[gen:geometric] interface.}
 
 @defparam[display-size size natural-number/c]{
                                               
@@ -784,6 +787,8 @@ It will increase contrast.
 @defmodule[sfont/geometry]
 
 This is the module for vector operations, transformations and bezier curves.
+
+@defthing[gen:geometric any/c]{Generic interface that defines methods for geometric transformations.}
 
 @defparam[precision p real?]{A parameter that controls rounding.}
 

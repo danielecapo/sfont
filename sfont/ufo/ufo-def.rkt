@@ -1079,13 +1079,16 @@
 ; (listOf Point) -> (listOf Point) 
 ; produce a list of points where the first element is always an on-curve point
 (define (ensure-first-on-curve pts)
-  (match pts
-    [(list-rest (point _ 'move _ _ _) pr) pts]
-    [(list-rest (point _ 'curve _ _ _) pr) pts]
-    [(list-rest (point _ 'line _ _ _) pr) pts]
-    [(list-rest (point _ 'qcurve _ _ _) pr) pts]
-    [(list-rest (point _ 'offcurve _ _ _) pr) 
-     (ensure-first-on-curve (append pr (list (car pts))))]))
+  (if (andmap (lambda (p) (eq? (point-type p) 'offcurve))
+              pts)
+      pts
+      (match pts
+        [(list-rest (point _ 'move _ _ _) pr) pts]
+        [(list-rest (point _ 'curve _ _ _) pr) pts]
+        [(list-rest (point _ 'line _ _ _) pr) pts]
+        [(list-rest (point _ 'qcurve _ _ _) pr) pts]
+        [(list-rest (point _ 'offcurve _ _ _) pr) 
+         (ensure-first-on-curve (append pr (list (car pts))))])))
            
 ; Contour -> Contour
 ; produce a contour with the 'smooth' field when needed
@@ -1123,6 +1126,7 @@
                       
 ; Contour -> Bezier
 ; Transform a contour in a cubic bezier curve (i.e. all segments are made by 4 points)
+; This function should be rewritten in a less horrible style
 (define (contour->bezier c)
   (letrec ((process-quadratic-implicit 
             (lambda (pts [acc '()])
@@ -1136,6 +1140,8 @@
                   (cdr pts) (append acc (list (car pts)
                                        (point (vec+ v (vec* (vec- v1 v) 0.5))
                                               'qcurve #f #f #f))))]
+                [(list (point _ 'offcurve _ _ _)) 
+                 (append (cdr acc) (take acc 2))]
                 [(list-rest (point _ 'offcurve _ _ _)
                             (point _ 'qcurve _ _ _)
                             pr)
@@ -1155,6 +1161,7 @@
                             (point v1 'qcurve _ _ _)
                             _) 
                  (flattener (cdr pts) (append acc (list v v v1)))]
+                
                 [(list-rest (point v 'qcurve _ _ _)
                             (point v1 'offcurve _ _ _)
                             (point v2 'qcurve _ _ _)
@@ -1164,6 +1171,11 @@
                                              (vec+ v (vec* (vec- v1 v) (/ 2 3)))
                                              (vec+ v2 (vec* (vec- v1 v2) (/ 2 3))))))]
                 [(list-rest (point _ 'qcurve _ _ _) 
+                            (point _ 'offcurve _ _ _) 
+                            (point _ 'offcurve _ _ _)
+                            _)
+                 (flattener (process-quadratic-implicit pts) acc)]
+                [(list-rest (point _ 'offcurve _ _ _) 
                             (point _ 'offcurve _ _ _) 
                             (point _ 'offcurve _ _ _)
                             _)
@@ -1300,30 +1312,8 @@
 
 ; Contour -> Contour
 (define (reverse-quadratic c)
-  (letrec ([aux (lambda (pts)
-                  (match pts
-                    [(list _) '()]
-                    [(list-rest (point _ 'offcurve _ _ _) (point v 'line a b c) r)
-                     (cons (point v 'qcurve a b c)
-                           (aux (cons (cadr pts) r)))]
-                    [(list-rest (point _ 'line _ _ _) (point v 'qcurve a b c)  r)
-                     (cons (point v 'line a b c)
-                           (aux (cons (cadr pts) r)))]
-                    [(list-rest (point _ 'line _ _ _) (point _ 'line _ _ _)  r)
-                     (cons (cadr pts)
-                           (aux (cons (cadr pts) r)))]
-                    [(list-rest (point _ 'qcurve _ _ _) (point _ 'offcurve _ _ _)  r)
-                     (cons (cadr pts)
-                           (aux (cons (cadr pts) r)))]
-                    [(list-rest (point _ 'offcurve _ _ _) (point _ 'offcurve _ _ _)  r)
-                     (cons (cadr pts)
-                           (aux (cons (cadr pts) r)))]
-                    [(list-rest (point _ 'offcurve _ _ _) (point _ 'qcurve _ _ _)  r)
-                     (cons (cadr pts)
-                           (aux (cons (cadr pts) r)))]))])
-    (struct-copy contour c
-                 [points (let ([pts (reverse (contour-points c))])
-                           (aux (append pts (list (car pts)))))])))
+  (struct-copy contour c
+               [points (reverse (contour-points c))]))
     
                   
     
