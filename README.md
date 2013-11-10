@@ -84,7 +84,7 @@ By default the font is written in the UFO2 format (and it loses layers, guidelin
 
 ### Navigating the font
 
-The module `navigator.rkt` defines three macros that can be used to access font data in an easier way.
+The module `sfont/navigator` defines three macros that can be used to access font data in an easier way.
 
 ```
 (fref f
@@ -125,6 +125,41 @@ If you want to update data with a function
 	 x)
 	(lambda (x) (+ x 20)))
 ```
+### Interpolations
+
+The module `sfont/math` defines functions for interpolations.
+```
+(define-interpolable-fonts 
+	[light light-font]
+	[bold  bold-font]
+	[wide  wide-font])
+```
+
+Defines three new fonts that can be interpolated (removing the glyphs that can't be made interpolables, and doing other things to maximize the compatibility.)
+
+Now you can use arithmetic signs on them:
+
+```
+(+ (light (* (- bold light) 0.2)))
+```
+To further simplify operations it is possible to define a *space* with one of the fonts on the *origin*
+
+```
+(define-space s1 (light [bold wide]))
+```
+`define-space` creates two names `s1-bold` and `s1-wide` (the resulting fonts of `(- bold light)` and `(- wide light)`) that can be used with the space to write:
+
+```
+(s1 (* 0.2 s1-bold))
+```
+that is equivalent to the interpolation given above `(+ (light (* (- bold light) 0.2)))`, or something more complex like:
+
+
+```
+(s1 (+ (* 0.3 s1-bold) (0.7 s1-wide)))
+```
+
+
 
 ### Spacing fonts
 
