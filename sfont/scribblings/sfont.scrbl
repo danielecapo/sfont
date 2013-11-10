@@ -1304,3 +1304,54 @@ Add the paths @racket[pts] to @racket[pt] (remove overlaps).}
 Like the corresponding transformations, but can be used with bezier paths
 and with the @racket[from] command that specifies the center of trasformation.}
                                                            
+@section{Graphical interfaces}
+@defmodule[sfont/gui/simple-frames]
+
+@defproc[(animate [font-proc (-> real? font?)]
+                  [width natural-number/c]
+                  [height natural-number/c]
+                  [start real? 0]
+                  [end real? 100]
+                  [inc-proc (-> real? real?)
+                            (curry + 10)])
+         font?]{
+                
+Creates an animation window, the @racket[font-proc] procedure
+takes a number produced by the @racket[inc-proc] procedure
+and produces a font; @racket[inc-proc] updates the 'counter'
+value (starting from @racket[start]) and end when the @racket[end]
+value is reached, returning the last font produced by @racket[font-proc].}
+               
+@defform[(animate-fonts f ...)]{
+                                
+Given some interpolabel fonts produces a new animation that interpolates between the fonts.}
+
+@defform[(slider-application
+          [font font-proc final-proc]
+          [sliders (slider-name slider-min slider-max init-value) ...]
+          [text txt size])]{
+
+Produces a 'thunk' that, when called, creates a new application with sliders that control the font procedure.
+The number of arguments that @racket[font-proc] accepts is equal
+to the number of sliders, with the same order.
+The @racket[text] form specifies a string to initialize the text field, 
+and a size.
+The @racket[final-proc] is a procedure that will be called before saving the font.
+
+An example that uses the font @racket[sq] in the sfont-examples directory.
+
+@racketblock[(define (sq-proc weight width)
+               (sq #:weight (/ weight 1000) #:width (/ width 1000)))
+      
+             (define main
+               (slider-application
+                [font sq-proc identity]
+                [sliders
+                 (weight 0 1000 500)
+                 (width 0 1000 500)]
+                [text "cabde o bacco" 100]))
+             
+             (main)]
+}
+
+          
