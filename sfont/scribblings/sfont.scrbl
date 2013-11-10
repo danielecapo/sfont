@@ -1169,7 +1169,7 @@ we will discuss how to use it with examples:
 The simplest use is equivalent to specify a cubic bezier point by point
 @(define ss-eval (make-base-eval))
 @(void (interaction-eval #:eval ss-eval (require sfont/parametric/fontwriter
-                                                 
+                                                 slideshow/pict-convert
                                                  sfont/geometry
                                                  racket/math
                                                  sfont)))
@@ -1234,7 +1234,7 @@ line segments).
 
 An example for glyphs:
 @interaction[#:eval ss-eval
-                    (glyph->pict
+                    (pict-convert
                      (glyph. 'o
                              [locals (weight 100)
                                      (width 400)
