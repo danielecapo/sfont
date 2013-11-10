@@ -1,8 +1,9 @@
-#lang slideshow
+#lang racket
 
 
 (require racket/draw
-         "geometry.rkt"
+         slideshow/pict
+         (prefix-in geom: "geometry.rkt")
          "utilities.rkt")
 
 (provide 
@@ -96,7 +97,7 @@
     (send dc translate kv 0)
     (define path (new dc-path%))
     
-    (for-each (lambda (c) (bezier->path c path))
+    (for-each (lambda (c) (geom:bezier->path c path))
               (contours glyph))
     (send dc draw-path path 0 0 'winding)
     (send dc translate (advance glyph) 0)))
@@ -171,11 +172,11 @@
 ; Glyph BoundingBox (Number or False) (Number or False) -> pict
 ; Draw the glyph
 (define (pictf:glyph g bb [ascender #f] [upm #f])
-  (let* ([vbb (vec- (cdr bb) (car bb))]
-         [w (vec-x vbb)]
-         [h (vec-y vbb)]
-         [x-min (vec-x (car bb))]
-         [by-max (vec-y (cdr bb))]
+  (let* ([vbb (geom:vec- (cdr bb) (car bb))]
+         [w (geom:vec-x vbb)]
+         [h (geom:vec-y vbb)]
+         [x-min (geom:vec-x (car bb))]
+         [by-max (geom:vec-y (cdr bb))]
          [y-max (if ascender
                     (max by-max ascender)
                     by-max)]

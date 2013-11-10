@@ -1,6 +1,5 @@
-compiled/*
-*/compiled/*
-sfont/compiled/*
-sfont/*/compiled/*
+doc
+compiled
 *~
 *.ufo
+.DS_Store

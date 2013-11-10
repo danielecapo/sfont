@@ -1,7 +1,6 @@
-#lang scribble/manual
-@(require scribble/eval
-          "../main.rkt"
-          "../parametric/fontwriter.rkt")
+#lang scribble/doc
+@(require scribble/manual
+          scribble/eval)
 
 @title{Sfont: play with fonts in Racket}
 
