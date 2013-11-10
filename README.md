@@ -4,7 +4,7 @@
 The goal of this project is to produce a library to work with fonts in Racket.
 The idea is that using the ability of DrRacket to draw images in the REPL a similar software can be used for teaching and making experiment with 'parametric' definitions of fonts in an interective environment.
 
-**Beware that this project is far from being 'stable' (it may change without warning).**
+**This project can change in the future.**
 
 You can see three screencasts here:
 
@@ -37,13 +37,8 @@ Every comment, suggestion and critique is welcome.
 Nice things that can be added to this library:
 
 - Validation of UFOs
-- Documentation
 - Export to (and import from) fontforge sfd format
 - Export and import glyphs in SVG
-- Better macros for parametric definitions of fonts
-- OpenType Tables instead of a string to represents features
-- Implementing metafont paths
-- ...
 
 ## Usage
 
@@ -211,8 +206,8 @@ If the glyph has components you have to pass the 'context' (the font) to `space-
 ```
 (kern fo
 	[groups 
-		(left  (rounded_left '(o b p)))
-		(right (diagonal_right '(v w y)))]
+		(side1 [rounded_left '(o b p)])
+		(side2 [diagonal_right '(v w y)])]
 	@ rounded_left @ diagonal_right : -40
 	o o : 20)
 ```
