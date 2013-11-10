@@ -79,7 +79,8 @@
      (smooth boolean?)
      (name (or/c string? #f))
      (identifier (or/c symbol? #f)))]
-  
+  [font->pict (-> font? pict?)]
+  [glyph->pict (-> glyph? pict?)]
   [get-layer (->* (glyph?) (name/c) (or/c layer? #f))]
   [map-layers (->* ((-> layer? any/c) glyph?) (#:sorted boolean?) (listof any/c))]
   [for-each-layers (->* ((-> layer? any/c) glyph?) (#:sorted boolean?) void?)]
@@ -305,13 +306,7 @@
           (let ([glyphs (map (lambda (g) (draw-glyph (decompose-glyph f g)))
                              (get-glyphs f (unique-letters text)))])
             (draw-font-dc dc ascender descender leading glyphs (lambda (p) (apply kerning-value f p)) size text)))))
-  #:property prop:pict-convertible 
-  (lambda (f)
-    (let ([ascender (dict-ref (font-fontinfo f) 'ascender 750)]
-          [descender (dict-ref (font-fontinfo f) 'descender -250)]
-          [glyphs (map (lambda (g) (draw-glyph (decompose-glyph f g)))
-                       (get-glyphs f (unique-letters (display-text))))])
-      (pictf:font ascender descender glyphs (lambda (p) (apply kerning-value f p)))))
+  #:property prop:pict-convertible font->pict
   #:methods gen:geometric
   [(define/generic super-transform transform)
    (define/generic super-translate translate)
@@ -337,6 +332,19 @@
      (apply-font-trans f super-reflect-x))
    (define (reflect-y f)
      (apply-font-trans f super-reflect-y))])
+
+
+
+; Font -> Pict
+(define (font->pict f)
+  (let ([ascender (dict-ref (font-fontinfo f) 'ascender 750)]
+        [descender (dict-ref (font-fontinfo f) 'descender -250)]
+        [glyphs (map (lambda (g) (draw-glyph (decompose-glyph f g)))
+                     (get-glyphs f (unique-letters (display-text))))])
+    (pictf:font ascender descender glyphs (lambda (p) (apply kerning-value f p)))))
+  
+  
+
 
 ; Font (T -> T) . T1 -> Font
 ; Produce a new Font applying the transformation
@@ -415,14 +423,7 @@
                  (make-immutable-hash (map (lambda (l) (cons (layer-name l) l)) layers)))
              lib))
   #:transparent
-  #:property prop:pict-convertible 
-  (lambda (g)
-    (let* ([cs (map-contours contour->bezier g)]
-           [bb (if (null? cs)
-                   (cons (vec 0 0) (vec 0 0))
-                   (apply combine-bounding-boxes
-                          (map bezier-bounding-box cs)))])
-      (pictf:glyph (draw-glyph g) bb 750 1000)))
+  #:property prop:pict-convertible glyph->pict
   #:methods gen:geometric
   [(define/generic super-transform transform)
    (define/generic super-translate translate)
@@ -448,6 +449,16 @@
     (apply-glyph-trans g super-reflect-x))
   (define (reflect-y g)
     (apply-glyph-trans g super-reflect-y))])
+
+
+; Glyph -> Pict
+(define (glyph->pict g)
+  (let* ([cs (map-contours contour->bezier g)]
+         [bb (if (null? cs)
+                 (cons (vec 0 0) (vec 0 0))
+                 (apply combine-bounding-boxes
+                        (map bezier-bounding-box cs)))])
+    (pictf:glyph (draw-glyph g) bb 750 1000)))
 
 ; Glyph  (T . ... -> T) . ... -> Glyph
 ; apply a geometric transformations to a glyph
