@@ -64,8 +64,7 @@ Produces a @racket[pict].}
                                        
 Determine wheter kerning is applied to the sample text.}
 
-@defthing[font-object/c flat-contract?] 
-{
+
 @defthing[name/c flat-contract?]{
                                  
 A name is a symbol.}
@@ -1166,7 +1165,7 @@ we will discuss how to use it with examples:
 The simplest use is equivalent to specify a cubic bezier point by point
 @(define ss-eval (make-base-eval))
 @(void (interaction-eval #:eval ss-eval (require sfont/parametric/fontwriter
-                                                 slideshow/pict
+                                                 
                                                  sfont/geometry
                                                  racket/math
                                                  sfont)))
