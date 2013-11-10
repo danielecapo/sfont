@@ -186,8 +186,8 @@
 ; Vec -> Real
 ; produce the vector's length
 (define (vec-length v) 
-  (sqrt (+ (square (vec-x v))
-           (square (vec-y v)))))
+  (sqrt (+ (sqr (vec-x v))
+           (sqr (vec-y v)))))
 
 ; Vec -> Real
 ; produce the vector's angle (counterclockwise)

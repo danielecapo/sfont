@@ -21,7 +21,7 @@
               (listof (and/c closed-bezier/c cubic-bezier/c)))])
  glyph.
  font.
- ;from
+ from
  ~
  translate.
  rotate.

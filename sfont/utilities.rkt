@@ -7,7 +7,6 @@
  (contract-out
   [n-groups (-> (listof any/c) natural-number/c (listof (listof any/c)))]
   [num->int (-> rational? integer?)]
-  [square (-> number? number?)]
   [double (-> number? number?)]
   [° (-> real? real?)]
   [pi/2 real?]
@@ -47,8 +46,6 @@
        (newline)
        expr)]))
 
-; Number -> Number
-(define (square n) (* n n))
 
 ; Number -> Number 
 (define (double n) (* n 2))
@@ -56,7 +53,7 @@
 ; Real -> Real
 ; convert from degree to radians
 (define (° d)
-  (* (/ d 180) pi))
+  (degrees->radians d))
 
 ; common angles
 (define pi/2 (/ pi 2))

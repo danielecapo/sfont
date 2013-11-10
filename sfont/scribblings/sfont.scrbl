@@ -1354,4 +1354,29 @@ An example that uses the font @racket[sq] in the sfont-examples directory.
              (main)]
 }
 
-          
+                           
+@section{Utilities}
+
+@defmodule[sfont/utilities]
+
+@defproc[(double [n real?]) real?]{Doubles a number.}
+
+@defproc[(° [d real?]) real?]{Convert degrees in radians.}
+
+@deftogether[(@defthing[pi/2 real?]
+               @defthing[pi/3 real?]
+               @defthing[pi/4 real?]
+               @defthing[pi/6 real?]
+               @defthing[2pi real?])]{Common angles.}
+                                     
+@defproc[(string->text [str string?]) (listof (listof symbol?))]{
+                                                                 
+Produces a 'text' that can be used with @racket[display-text]:
+                                        
+@racketblock[(display-text (string->text "Straße"))]}   
+                                                     
+@defproc[(unicode [n name/c]) (listof natural-number/c)]{
+                                                         
+Produces a list of Unicode codes for a given name 
+(using the @link["http://partners.adobe.com/public/developer/en/opentype/glyphlist.txt"](Adobe Glyph List).}
+
