@@ -11,9 +11,11 @@
                      racket/contract/base
                      slideshow/pict-convert
                      sfont
-                     sfont/spacing/space
+                     sfont/space
                      sfont/geometry
-                     sfont/parametric/fontwriter))
+                     sfont/parametric/fontwriter
+                     sfont/utilities
+                     sfont/windows))
 
 
 
@@ -502,7 +504,7 @@ the glyph is showed at the REPL, with @racket[print-glyph], however, the right v
 
 @section{Spacing fonts}
 
-@defmodule[sfont/spacing/space]
+@defmodule[sfont/space]
 
 This module define functions and macros for spacing fonts. 
 
@@ -1305,7 +1307,7 @@ Like the corresponding transformations, but can be used with bezier paths
 and with the @racket[from] command that specifies the center of trasformation.}
                                                            
 @section{Graphical interfaces}
-@defmodule[sfont/gui/simple-frames]
+@defmodule[sfont/windows]
 
 @defproc[(animate [font-proc (-> real? font?)]
                   [width natural-number/c]
@@ -1378,5 +1380,5 @@ Produces a 'text' that can be used with @racket[display-text]:
 @defproc[(unicode [n name/c]) (listof natural-number/c)]{
                                                          
 Produces a list of Unicode codes for a given name 
-(using the @link["http://partners.adobe.com/public/developer/en/opentype/glyphlist.txt"](Adobe Glyph List).}
+(using the @link["http://partners.adobe.com/public/developer/en/opentype/glyphlist.txt"]{Adobe Glyph List}).}
 
