@@ -1,7 +1,8 @@
 #lang racket
 
 (require "../sfont/parametric/fontwriter.rkt"
-         "../sfont/main.rkt")
+         "../sfont/main.rkt"
+         "../sfont/utilities.rkt")
 
 (provide sq)
 
@@ -41,7 +42,7 @@
           [xh x-height 10]
           [desc* (/ (- x-height 1000) 2) 0 :font-descender]
           [asc* (- x-height (alg desc*)) 0 :font-ascender]
-          [dsc (+ (alg desc*) 10) -10]
+          [descender (+ (alg desc*) 10) -10]
           [ascender (- (alg asc*) 10) 10])
          (variables
           ;; Variables are defined here
@@ -55,11 +56,21 @@
           [y1 (alg base)]
           [ym (/ x-height 2)]
           [x2 (+ space gw (- v-stem))]
-          [a-cnt (list (rect x1 y1 gw h-stem)
+          [a-cnts (list (rect x1 y1 gw h-stem)
                        (rect x1 y1 v-stem ym)
                        (rect x1 (- ym (/ h-stem 2)) gw h-stem)
                        (rect x2 y1 v-stem x-height)
-                       (rect x1 (- x-height h-stem) gw h-stem))])
+                       (rect x1 (- x-height h-stem) gw h-stem))]
+          [xh-stem (rect 0 y1 v-stem x-height)]
+          [asc-stem (rect 0 y1 v-stem (alg ascender))]
+          [desc-stem (rect 0 (alg descender) v-stem (- x-height (alg descender)))]
+          [hor-stem (rect 0 y1 gw h-stem)]
+          [counter-o (reverse (rect (+ 0 v-stem) 
+                                    (+ y1 h-stem) 
+                                    (- gw (* 2 v-stem)) 
+                                    (- x-height (* 2 h-stem))))]
+          [o-cnts (list (rect 0 y1 gw x-height)
+                        counter-o)])
          (glyphs
           ;; Glyphs follow the variables section.
           ;; We can also provide a list of glyphs here.
@@ -67,44 +78,78 @@
                   ; every glyph has a name 
                   (metrics space space)
                   ; an advance form
-                  [contours a-cnt]
+                  [contours a-cnts]
                   ;inside the contours section we can insert contours 
                   ;or list of contours
                   )
           (glyph. 'b
                   (metrics space (/--/ (+ gw space space)))
                   [contours
-                   (rect x1 y1 v-stem (alg ascender))
-                   (rect x1 y1 gw x-height)
-                   (reverse (rect (+ x1 v-stem) (+ y1 h-stem) 
-                                  (- gw (* 2 v-stem)) (- x-height (* 2 h-stem))))])
+                   asc-stem
+                   o-cnts])
           (glyph. 'c
                   (locals [term ym])
                   ; local variables can be defined inside a glyph
-                  (metrics (/--/ (+ gw space space)) space)
+                  (metrics space space)
                   [contours
-                   (rect x1 y1 v-stem x-height)
-                   (rect x1 (- x-height h-stem) gw h-stem)
-                   (rect x1 y1 gw h-stem)
-                   (rect (+ x1 gw (- v-stem)) (- x-height term) v-stem term)])
+                   xh-stem
+                   (translate. hor-stem 0 (- x-height h-stem))
+                   hor-stem
+                   (rect (- gw v-stem) (- x-height term) v-stem term)])
           (glyph. 'd
-                  (metrics -- (/--/ (+ gw space space)))
+                  (metrics space space)
                   [contours
-                   (rect x1 y1 gw x-height)
-                   (reverse (rect (+ x1 v-stem) (+ y1 h-stem) 
-                                  (- gw (* 2 v-stem)) (- x-height (* 2 h-stem))))
-                   (rect (+ x1 gw (- v-stem)) y1 v-stem (alg ascender))])
+                   o-cnts
+                   (translate. asc-stem (- gw h-stem) 0)])
           (glyph. 'e
                   (metrics space (/--/ (+ gw space space)))
                   [contours
                    (map (lambda (c) (from ((+ space (/ gw 2)) (/ x-height 2))
                                           (rotate. c pi)))
-                        a-cnt)])
+                        a-cnts)])
+          (glyph. 'f
+                  (metrics (space (/ x-height 2)) 0)
+                  [contours 
+                   asc-stem
+                   (rect 0 (- (alg ascender) h-stem) (* gw 2/3) h-stem)
+                   (rect (- (* gw 1/6)) (- x-height h-stem) (* gw 2/3) h-stem)])
+          (glyph. 'g
+                  (metrics space space)
+                  [contours 
+                   o-cnts
+                   (translate. desc-stem (- gw h-stem) 0)
+                   (translate. hor-stem 0 (alg descender))])
+          (glyph. 'h
+                  (metrics space space)
+                  [contours 
+                   asc-stem
+                   (translate. hor-stem 0 (- x-height h-stem))
+                   (translate. xh-stem (- gw v-stem) 0)])
+          (glyph. 'i
+                  (metrics space space)
+                  [contours 
+                   xh-stem
+                   (rect 0 (* x-height 1.2) v-stem h-stem)])
+          (glyph. 'l
+                  (metrics space space)
+                  [contours 
+                   asc-stem])
+          (glyph. 'n
+                  (metrics space space)
+                  [contours 
+                   xh-stem
+                   (translate. hor-stem 0 (- x-height h-stem))
+                   (translate. xh-stem (- gw v-stem) 0)])
+          (glyph. 'm
+                  (metrics space space)
+                  [contours 
+                   xh-stem
+                   (translate. hor-stem 0 (- x-height h-stem))
+                   (translate. xh-stem (- gw v-stem) 0)
+                   (translate. xh-stem (double (- gw v-stem)) 0)])
+          
           (glyph. 'o
                   (metrics space space)
-                  [contours
-                   (rect x1 y1 gw x-height)
-                   (reverse (rect (+ x1 v-stem) (+ y1 h-stem) 
-                                  (- gw (* 2 v-stem)) (- x-height (* 2 h-stem))))]))))
+                  [contours o-cnts]))))
         
 (sq)
