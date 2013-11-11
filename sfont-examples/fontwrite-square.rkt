@@ -74,6 +74,8 @@
          (glyphs
           ;; Glyphs follow the variables section.
           ;; We can also provide a list of glyphs here.
+          (glyph. 'space
+                  (metrics -- (/--/ (double space))))
           (glyph. 'a
                   ; every glyph has a name 
                   (metrics space space)
@@ -141,15 +143,84 @@
                    (translate. hor-stem 0 (- x-height h-stem))
                    (translate. xh-stem (- gw v-stem) 0)])
           (glyph. 'm
-                  (metrics space space)
+                  [locals (counter-width (* (- gw (double v-stem)) 0.8))]
+                  (metrics space space)                  
                   [contours 
                    xh-stem
-                   (translate. hor-stem 0 (- x-height h-stem))
-                   (translate. xh-stem (- gw v-stem) 0)
-                   (translate. xh-stem (double (- gw v-stem)) 0)])
+                   (translate. (rect 0 0 
+                                     (+ (double (+ counter-width v-stem)) v-stem) 
+                                     h-stem) 
+                               0 (- x-height h-stem))
+                   (translate. xh-stem (+ counter-width v-stem) 0)
+                   (translate. xh-stem (double (+ counter-width v-stem)) 0)])
           
           (glyph. 'o
                   (metrics space space)
-                  [contours o-cnts]))))
-        
+                  [contours o-cnts])
+          (glyph. 'p
+                  (metrics space space)
+                  [contours 
+                   o-cnts
+                   desc-stem])
+          (glyph. 'q
+                  (metrics space space)
+                  [contours 
+                   o-cnts
+                   (translate. desc-stem (- gw h-stem) 0)])
+          (glyph. 'r
+                  (metrics space (/ space 2))
+                  [contours
+                   xh-stem
+                   (translate.
+                    (scale. hor-stem 3/5 1)
+                    0 (- x-height h-stem))])
+          (glyph. 's
+                  [locals (half-xhs (scale. xh-stem 1 0.5))]
+                  (metrics space space)
+                  [contours
+                   hor-stem
+                   (translate. hor-stem 0 (/ (- x-height h-stem) 2))
+                   (translate. hor-stem 0 (- x-height h-stem))
+                   (translate. half-xhs (- gw v-stem) 0)
+                   (translate. half-xhs 0 (/ x-height 2))])
+          (glyph. 't
+                  (metrics (space (/ x-height 2)) 
+                           ((* space 1.8) (/ x-height 2)))
+                  [contours
+                   (rect (- (* gw 1/6)) (- x-height h-stem) (* gw 2/3) h-stem)
+                   (rect 0 0 v-stem 
+                         (+ x-height (/ (- (alg ascender)
+                                           x-height)
+                                        2)))])
+          (glyph. 'u
+                  (metrics space space)
+                  [contours 
+                   xh-stem
+                   hor-stem
+                   (translate. xh-stem (- gw v-stem) 0)])
+          (glyph. 'v
+                  [locals (half-xhs (scale. xh-stem 1 0.5))]
+                  (metrics space space)
+                  [contours
+                   (translate. (rect 0 0 (- gw (double v-stem)) h-stem) v-stem 0)
+                   (translate. half-xhs 0 (/ x-height 2))
+                   (translate. half-xhs v-stem 0)
+                   (translate. half-xhs (- gw v-stem) (/ x-height 2))
+                   (translate. half-xhs (- gw (double v-stem)) 0)])
+          (glyph. 'z
+                  [locals (half-xhs (scale. xh-stem 1 0.5))]
+                  (metrics space space)
+                  [contours
+                   hor-stem
+                   (translate. hor-stem 0 (/ (- x-height h-stem) 2))
+                   (translate. hor-stem 0 (- x-height h-stem))
+                   (translate. half-xhs (- gw v-stem) (/ x-height 2))
+                   half-xhs])
+          )))
+                   
+(display-size 80)  
+(display-text 
+ (string->text "abcdefghilm
+nopqrstuvz"))
+ 
 (sq)
