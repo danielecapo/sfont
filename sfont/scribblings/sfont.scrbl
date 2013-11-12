@@ -1377,7 +1377,7 @@ value is reached, returning the last font produced by @racket[font-proc].}
 Given some interpolabel fonts produces a new animation that interpolates between the fonts.}
 
 @defform[(slider-application
-          [font font-proc final-proc]
+          [font-proc final-proc]
           [sliders (slider-name slider-min slider-max init-value) ...]
           [text txt size])]{
 
@@ -1399,7 +1399,7 @@ An example that uses the font @racket[sq] in the sfont-examples directory.
                 [sliders
                  (weight 0 1000 500)
                  (width 0 1000 500)]
-                [text "cabde o bacco" 100]))
+                [text "ciao ciao" 100]))
              
              (main)]
 }
