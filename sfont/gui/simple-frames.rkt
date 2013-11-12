@@ -112,8 +112,8 @@
 
 ; See below for an example
 (define-syntax slider-application
-  (syntax-rules (font sliders update)
-    [(_ [font font-proc final-proc] 
+  (syntax-rules (sliders update)
+    [(_ [font-proc final-proc] 
         [sliders (sl-name sl-min sl-max init) ...]
         [text txt sz])
      (let ([w (world (slider-editor 
@@ -121,8 +121,7 @@
                       (make-immutable-hash (list (cons 'sl-name init) ...))))]
            [f-proc font-proc]
            [fi-proc final-proc])
-       (lambda ()
-         (let* ([slider-updater (lambda (f v can)
+       (let* ([slider-updater (lambda (f v can)
                                   (begin
                                     (set-world-current-state! 
                                      w 
@@ -173,9 +172,8 @@
                              (send dc set-smoothing 'smoothed)
                              (let* ([e (world-current-state w)]
                                     [is (map ((curry get-input) e) '(sl-name ...))])
-                               (parameterize ([display-text (slider-editor-text e)]
-                                              [display-size (slider-editor-size e)])
-                                 ((get-drawing-proc (apply f-proc is)) dc 1.2 (display-text) (display-size)))))])]
+                               ((get-drawing-proc (apply f-proc is)) 
+                                dc 1.2 (slider-editor-text e) (slider-editor-size e))))])]
                 [t (new text-field%
                         [label "Text"]
                         [parent tf]
@@ -200,8 +198,7 @@
                                                    (apply f-proc 
                                                           (map ((curry get-input) (world-current-state w)) '(sl-name ...))))
                                                 filepath
-                                                #:overwrite #t))))])])
-           
+                                                #:overwrite #t))))])])          
            (let ([sl-name (new slider%
                                [parent sls]
                                [style '(horizontal vertical-label)]
@@ -211,7 +208,9 @@
                                [init-value (get-input (world-current-state w) 'sl-name)]
                                [callback (lambda (s e) (slider-updater 'sl-name (send s get-value) can))])]
                  ...)
+             (lambda ()
              (send frame show #t)))))]))
+       
 
 
 ;(require "../../sfont-examples/fontwrite-square.rkt")

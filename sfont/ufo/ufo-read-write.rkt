@@ -133,6 +133,13 @@
 (define-syntax-rule (not-default val defaultvalue expr)
     (if (equal? val defaultvalue) '() (list expr)))
 
+; Number->String
+(define (number->ufostring n)
+  (number->string
+   (if (integer? n)
+       (inexact->exact n)
+       (exact->inexact n))))
+
 ; Glif -> Xexpr
 ; produce an Xexpr representation of the glyph
 (define (glif->xexpr g)
@@ -142,7 +149,7 @@
                 [#f '()]
                 [(glif format name advance codes note image 
                             guidelines anchors contours components lib)
-                 `(glyph ((format ,(number->string format))
+                 `(glyph ((format ,(number->ufostring format))
                           (name ,(symbol->string name)))
                          ,(aux advance)
                          ,@(map (lambda (c) `(unicode ((hex ,(unicode->string c))))) codes)
@@ -156,28 +163,28 @@
                          ,@(not-default lib (make-immutable-hash) `(lib () ,(dict->xexpr lib)))
                          )]
                 [(advance width height)
-                 `(advance (,@(list `(width ,(number->string width)))
-                            ,@(not-default height 0 `(width ,(number->string height)))))]
+                 `(advance (,@(list `(width ,(number->ufostring width)))
+                            ,@(not-default height 0 `(width ,(number->ufostring height)))))]
                 [(image filename (trans-mat xs xys yxs ys xo yo) color)
                  `((image ((fileName ,filename)
-                           ,@(not-default xs 1 `(xScale ,(number->string xs)))
-                           ,@(not-default xys 0 `(xyScale ,(number->string xys)))
-                           ,@(not-default yxs 0 `(yxScale ,(number->string yxs)))
-                           ,@(not-default ys 1 `(yScale ,(number->string ys)))
-                           ,@(not-default xo 0 `(xOffset ,(number->string xo)))
-                           ,@(not-default yo 0 `(yOffset ,(number->string yo)))
+                           ,@(not-default xs 1 `(xScale ,(number->ufostring xs)))
+                           ,@(not-default xys 0 `(xyScale ,(number->ufostring xys)))
+                           ,@(not-default yxs 0 `(yxScale ,(number->ufostring yxs)))
+                           ,@(not-default ys 1 `(yScale ,(number->ufostring ys)))
+                           ,@(not-default xo 0 `(xOffset ,(number->ufostring xo)))
+                           ,@(not-default yo 0 `(yOffset ,(number->ufostring yo)))
                            ,@(not-default color #f `(color ,(color->string color))))))]
                 
                 [(guideline (vec x y) angle name color identifier)
-                 `(guideline (,@(not-default x #f `(x ,(number->string x)))
-                              ,@(not-default y #f `(y ,(number->string y)))
-                              ,@(not-default angle #f `(angle ,(number->string angle)))
+                 `(guideline (,@(not-default x #f `(x ,(number->ufostring x)))
+                              ,@(not-default y #f `(y ,(number->ufostring y)))
+                              ,@(not-default angle #f `(angle ,(number->ufostring angle)))
                               ,@(not-default name #f `(name ,name))
                               ,@(not-default color #f `(color ,(color->string color)))
                               ,@(not-default identifier #f `(identifier ,(symbol->string identifier)))))]
                 [(anchor (vec x y) name color identifier)
-                 `(anchor (,@(not-default x #f `(x ,(number->string x)))
-                           ,@(not-default y #f `(y ,(number->string y)))
+                 `(anchor (,@(not-default x #f `(x ,(number->ufostring x)))
+                           ,@(not-default y #f `(y ,(number->ufostring y)))
                            ,@(not-default name #f `(name ,name))
                            ,@(not-default color #f `(color ,(color->string color)))
                            ,@(not-default identifier #f `(identifier ,(symbol->string identifier)))))]
@@ -185,8 +192,8 @@
                  `(contour (,@(not-default id #f `(identifier ,(symbol->string id))))
                            ,@(map (lambda (p) (aux p)) points))]
                 [(point (vec x y) type smooth name id)
-                 `(point ((x ,(number->string x)) 
-                          (y ,(number->string y))
+                 `(point ((x ,(number->ufostring x)) 
+                          (y ,(number->ufostring y))
                           ,@(not-default type 'offcurve `(type ,(symbol->string type)))
                           ,@(not-default smooth #f `(smooth "yes"))
                           ,@(not-default name #f `(name ,name))
@@ -194,12 +201,12 @@
                 
                 [(component base (trans-mat xs xys yxs ys xo yo) id)
                  `(component ((base ,(symbol->string base))
-                              ,@(not-default xs 1 `(xScale ,(number->string xs)))
-                              ,@(not-default xys 0 `(xyScale ,(number->string xys)))
-                              ,@(not-default yxs 0 `(yxScale ,(number->string yxs)))
-                              ,@(not-default ys 1 `(yScale ,(number->string ys)))
-                              ,@(not-default xo 0 `(xOffset ,(number->string xo)))
-                              ,@(not-default yo 0 `(yOffset ,(number->string yo)))
+                              ,@(not-default xs 1 `(xScale ,(number->ufostring xs)))
+                              ,@(not-default xys 0 `(xyScale ,(number->ufostring xys)))
+                              ,@(not-default yxs 0 `(yxScale ,(number->ufostring yxs)))
+                              ,@(not-default ys 1 `(yScale ,(number->ufostring ys)))
+                              ,@(not-default xo 0 `(xOffset ,(number->ufostring xo)))
+                              ,@(not-default yo 0 `(yOffset ,(number->ufostring yo)))
                               ,@(not-default id #f `(identifier ,(symbol->string id)))))]
       
       )))]
