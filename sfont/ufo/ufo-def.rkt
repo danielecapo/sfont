@@ -869,7 +869,7 @@
 ; Round the coordinates of the font 
 (define (font-round f)
   (struct-copy font f
-               [glyphs (map-glyphs layer-round f)]
+               [glyphs (map-glyphs glyph-round f)]
                [kerning (kerning-round (font-kerning f))]))
 
 ; Layer -> Layer
