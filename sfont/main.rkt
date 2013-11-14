@@ -1,11 +1,11 @@
 #lang racket
 
-(require "ufo/ufo-def.rkt"
-         "ufo/ufo-read-write.rkt"
-         "fontpict.rkt")
+(require "private/ufo/ufo-def.rkt"
+         "private/ufo/ufo-read-write.rkt"
+         "private/fontpict.rkt")
 
-(provide (all-from-out "ufo/ufo-def.rkt")
-         (all-from-out "ufo/ufo-read-write.rkt")
+(provide (all-from-out "private/ufo/ufo-def.rkt"
+                       "private/ufo/ufo-read-write.rkt")
          display-size
          display-text
          display-pen

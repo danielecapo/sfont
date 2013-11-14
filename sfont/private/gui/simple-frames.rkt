@@ -2,8 +2,8 @@
 
 (require "draw-property.rkt"
          racket/gui/base
-         "../main.rkt"
-         "../utilities.rkt")
+         "../../main.rkt"
+         "../../utilities.rkt")
 
 (provide 
  (contract-out 

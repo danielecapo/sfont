@@ -1,8 +1,8 @@
 #lang racket
 
 (require "geometric-generic.rkt"
-         "../properties.rkt"
-         "../utilities.rkt"
+         "../../properties.rkt"
+         "../../utilities.rkt"
          racket/generic)
 
 (provide 

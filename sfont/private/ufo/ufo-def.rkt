@@ -1,9 +1,9 @@
 #lang racket
 
-(require "../geometry.rkt"
-         "../properties.rkt"
+(require "../../geometry.rkt"
+         "../../properties.rkt"
          "../fontpict.rkt"
-         "../utilities.rkt"
+         "../../utilities.rkt"
          "../gui/draw-property.rkt"
          racket/generic
          (planet wmfarr/plt-linalg:1:13/matrix)

@@ -1,7 +1,7 @@
 #lang racket
 
-(require "../main.rkt"
-         "../geometry.rkt")
+(require "../../main.rkt"
+         "../../geometry.rkt")
 
 
 (provide 

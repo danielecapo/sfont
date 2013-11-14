@@ -1,6 +1,6 @@
 #lang racket
 
-(require "ufo/ufo-def.rkt"
+(require "private/ufo/ufo-def.rkt"
          "geometry.rkt"
          "utilities.rkt"
          (for-syntax racket/syntax))

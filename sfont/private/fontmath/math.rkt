@@ -1,10 +1,10 @@
 #lang racket
 (require "interpolables.rkt"
          "info-kern-math.rkt"
-         "../main.rkt"
-         "../geometry.rkt"
-         "../properties.rkt"
-         "../utilities.rkt"
+         "../../main.rkt"
+         "../../geometry.rkt"
+         "../../properties.rkt"
+         "../../utilities.rkt"
          (for-syntax racket/syntax))
 
 (provide (except-out (all-from-out racket) + - * /)

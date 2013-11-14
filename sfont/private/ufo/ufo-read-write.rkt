@@ -3,7 +3,7 @@
 (require "plists.rkt"
          "ufo-def.rkt"
          "names.rkt"
-         "../geometry.rkt"
+         "../../geometry.rkt"
          xml
          xml/path
          xml/plist)

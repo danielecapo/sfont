@@ -1,7 +1,7 @@
 #lang racket
-(require "../geometry.rkt"
-         "../main.rkt"
-         "../utilities.rkt"
+(require "../../geometry.rkt"
+         "../../main.rkt"
+         "../../utilities.rkt"
          "../spacing/space.rkt"
          (for-syntax racket/list))
 

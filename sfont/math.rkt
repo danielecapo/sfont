@@ -2,6 +2,6 @@
 
 ;;; used only to simplify the use of math
 
-(require "fontmath/math.rkt")
+(require "private/fontmath/math.rkt")
 
-(provide (all-from-out "fontmath/math.rkt"))
+(provide (all-from-out "private/fontmath/math.rkt"))

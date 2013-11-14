@@ -4,7 +4,7 @@
          (prefix-in pict: slideshow/pict)
          "vec.rkt"
          "bounding-box.rkt"
-         "../utilities.rkt")
+         "../../utilities.rkt")
 
 (provide  
  (contract-out

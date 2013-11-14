@@ -1,3 +1,3 @@
 #lang racket
-(require "spacing/space.rkt")
-(provide (all-from-out "spacing/space.rkt"))
+(require "private/spacing/space.rkt")
+(provide (all-from-out "private/spacing/space.rkt"))

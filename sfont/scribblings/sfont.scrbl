@@ -13,7 +13,7 @@
                      sfont/space
                      sfont/geometry
                      sfont/navigator
-                     sfont/parametric/fontwriter
+                     sfont/parametric
                      sfont/utilities
                      sfont/windows))
 
@@ -780,7 +780,7 @@ It will increase contrast.
 
 @defmodule[sfont/geometry]
 
-This is the module for vector operations, transformations and bezier curves.
+This is the module for vector operations, transformations and bezier paths.
 
 @defthing[gen:geometric any/c]{Generic interface that defines methods for geometric transformations.}
 
@@ -963,7 +963,7 @@ True if the line segment v1-v2 intersects the vertical line passing from (v, 0).
 
 @subsection{Bezier Curves}
 
-In Sfont a 'bezier curve' is a list of @racket[vec], a segment is a bezier curve
+In Sfont a 'bezier path' is a list of @racket[vec], a segment is a bezier path
 with only two 'on-curve' points.
 
 
@@ -979,7 +979,7 @@ True if the first and last points coincide.}
 
 @defproc[(segments [b bezier/c] [o natural-number/c 3]) (listof segment/c)]{
                                                                             
-'Explodes' a curve in a list of segments. The optional arguments declares the 'order' of the bezier curve
+'Explodes' a path in a list of segments. The optional arguments declares the 'order' of the bezier path
 (basically: the number of control points for each segments plus one, cubic beziers have two points, quadratic one, etc.}
 
 @defproc[(on-curve-points [b bezier/c] [o natural-number/c 3]) (listof vec?)]{
@@ -988,11 +988,11 @@ Produce a list of points removing all the control points from the bezier.}
 
 @defproc[(off-curve-points [b bezier/c] [o natural-number/c 3]) (listof vec?)]{
                                                                             
-Produce a list of control points of the bezier curve.}
+Produce a list of control points of the bezier path.}
 
 @defproc[(end-points [b bezier/c]) (cons/c vec? vec?)]{
                                                                             
-Produce a pair with the first and last point of the curve.}s
+Produce a pair with the first and last point of the path.}
 
 @defproc[(line-segment? [s segment/c]) boolean?]{
                                                  
@@ -1008,11 +1008,11 @@ Splits the segment in two parts. If @racket[t] is 0 or 1 the first/second half i
 
 @defproc[(split-at-point [s segment/c] [v vec?]) (values segment/c segment/c)]{
                                                                                
-Like @racket[split] but try to split the curve near the point provided.}                                                                               
+Like @racket[split] but try to split the path near the point provided.}                                                                               
 
 @defproc[(join-beziers [b1 bezier/c] [b bezier/c] ...) bezier/c]{
                                                                        
-Concatenate bezier curves. If the last and first points of two consecutive curves are not @racket[vec-approx=] an error is raised.}
+Concatenate bezier paths. If the last and first points of two consecutive paths are not @racket[vec-approx=] an error is raised.}
 
 @defproc[(point-at [s segment/c] [t (real-in 0 1)]) vec?]{
                                                           
@@ -1037,13 +1037,13 @@ Produces the bounding-box of the segment.}
 
 @defproc[(bezier-bounding-box [b bezier/c] [o natural-number/c 3]) bounding-box/c]{
                                                           
-Produces the bounding-box of the bezier curve.}
+Produces the bounding-box of the bezier path.}
 
 @defproc[(bezier-signed-area [b bezier/c] [o natural-number/c 3] [s natural-number/c 200]) real?]{
                                                           
-The area of the bezier curve of order @racket[o]. 
-The curve will be trasformed in a polygon, @racket[s] controls in how many sides every segment is divided.
-Positive if the curve is counter-clockwise.}
+The area of the bezier path of order @racket[o]. 
+The path will be trasformed in a polygon, @racket[s] controls in how many sides every segment is divided.
+Positive if the path is counter-clockwise.}
 
 @defproc[(bezier-area [b bezier/c] [o natural-number/c 3] [s natural-number/c 200]) (and/c real? positive?)]{
                                                           
@@ -1051,15 +1051,15 @@ The absolute value of @racket[bezier-signed-area].}
 
 @defproc[(clockwise? [b bezier/c]) boolean?]{
                                    
-True if the curve is clockwise.}
+True if the path is clockwise.}
 
 @defproc[(clockwise [b bezier/c]) bezier/c]{
                                    
-Reverses the curve if it isn't clockwise.}
+Reverses the path if it isn't clockwise.}
 
 @defproc[(cubic-bezier-intersections [b1 cubic-bezier/c] [b2 cubic-bezier/c]) (listof vec?)]{
                                                                                  
-Produces a list of intersections between the two cubic bezier curves.}
+Produces a list of intersections between the two cubic bezier paths.}
 
 @defproc[(cubic-segments-intersections [s1 cubic-segment/c] [s2 cubic-segment/c]) (listof vec?)]{
                                                                                  
@@ -1079,20 +1079,20 @@ Produces a list of intersections between the bezier segment and a the vertical l
 
 @defproc[(bezier-intersect-hor [h real?] [s segment/c]) (listof vec?)]{
                                                                         
-Produces a list of intersections between the bezier curve and a the horizontal line y = h.}
+Produces a list of intersections between the bezier path and a the horizontal line y = h.}
 
 @defproc[(bezier-intersect-vert [v real?] [s segment/c]) (listof vec?)]{
                                                                         
-Produces a list of intersections between the bezier curve and a the vertical line x = v.}
+Produces a list of intersections between the bezier path and a the vertical line x = v.}
 
 @defproc[(bezier-boundaries-hor [h real?] [s segment/c]) bounding-box/c]{
                                                                         
-Produces the bounding box of the intersections between the bezier curve
+Produces the bounding box of the intersections between the bezier path
 and a the horizontal line y = h.}
 
 @defproc[(point-inside-bezier? [v vec?] [b closed-bezier/c]) boolean?]{
                                                                         
-True if the point is inside the bezier curve.}
+True if the point is inside the bezier path.}
 
 @defproc[(bezier->path [b cubic-bezier/c] [path (is-a?/c dc-path%)]) (is-a?/c dc-path%)]{
                                                                         
@@ -1100,22 +1100,22 @@ Write the bezier to a @racket[dc-path%].}
 
 @defproc[(print-beziers [b cubic-bezier/c] ...) pict?]{
                                                        
-Print a graphic representation of the cubic bezier curves.}                                                       
+Print a graphic representation of the cubic bezier paths.}                                                       
 
 @subsubsection{Boolean operations}
 
 @defproc[(bezier-subtract [b1 closed-bezier/c] [b2 closed-bezier/c]) (listof closed-bezier/c)]{
                                                                         
-Subtract the second closed bezier curve from the first, produces a list of closed bezier curves.}
+Subtract the second closed bezier path from the first, produces a list of closed bezier paths.}
 
 @defproc[(bezier-union [b1 closed-bezier/c] [b2 closed-bezier/c]) (listof closed-bezier/c)]{
                                                                         
-Add the second closed bezier curve to the first, produces a list of closed bezier curves
-(if the curves don't intersect, for example, the two original curves are returned).}
+Add the second closed bezier path to the first, produces a list of closed bezier paths
+(if the paths don't intersect, for example, the two original paths are returned).}
 
 @defproc[(bezier-intersection [b1 closed-bezier/c] [b2 closed-bezier/c]) (listof closed-bezier/c)]{
                                                                         
-Intersect the second closed bezier curve with the first, produces a list of closed bezier curves.}
+Intersect the second closed bezier path with the first, produces a list of closed bezier paths.}
 
 
 @subsection{Bounding Boxes}
@@ -1147,22 +1147,22 @@ True if the second bounding box is surrounded by the first one.}
 
 @section{Parametric fonts and font macros}
 
-@defmodule[sfont/parametric/fontwriter]
+@defmodule[sfont/parametric]
 
 The modules described above are useful for reading, modifying and inspecting fonts.
 However, to define new fonts sfont has macros tha should be easier to use.
 
 
-@subsection{Bezier curves}
+@subsection{Bezier paths}
 
-Instead of writing a bezier curve point by point the macro @racket[~] is provided,
+Instead of writing a bezier path point by point the macro @racket[~] is provided,
 we will discuss how to use it with examples:
 
 @defform[(~ path-element ...)]
 
 The simplest use is equivalent to specify a cubic bezier point by point
 @(define ss-eval (make-base-eval))
-@(void (interaction-eval #:eval ss-eval (require sfont/parametric/fontwriter
+@(void (interaction-eval #:eval ss-eval (require sfont/parametric
                                                  slideshow/pict-convert
                                                  sfont/geometry
                                                  racket/math
@@ -1172,13 +1172,13 @@ The simplest use is equivalent to specify a cubic bezier point by point
                     (~ (0 0) (55 0) (45 100) (100 100))]
 
 A line is expressed with a double hyphen, @racket[--] (from now on the
-bezier curves will be printed with @racket[print-beziers]):
+bezier paths will be printed with @racket[print-beziers]):
 
 @interaction[#:eval ss-eval
                     (print-beziers
                      (~ (0 0) -- (500 0) -- (500 500) -- (0 500) -- (0 0)))]
 
-To close the curve, instead of repeating the firt point it is possible to use
+To close the path, instead of repeating the firt point it is possible to use
 the @racket[cycle] command:
 
 @interaction[#:eval ss-eval

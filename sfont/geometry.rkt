@@ -1,9 +1,9 @@
 #lang racket
-(require "geom/vec.rkt"
-         "geom/bounding-box.rkt"
-         "geom/bezier.rkt")
+(require "private/geom/vec.rkt"
+         "private/geom/bounding-box.rkt"
+         "private/geom/bezier.rkt")
 
-(provide (all-from-out "geom/vec.rkt")
-         (all-from-out "geom/bounding-box.rkt")
-         (all-from-out "geom/bezier.rkt"))
+(provide (all-from-out "private/geom/vec.rkt"
+                       "private/geom/bounding-box.rkt"
+                       "private/geom/bezier.rkt"))
          

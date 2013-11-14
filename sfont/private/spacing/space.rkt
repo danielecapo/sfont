@@ -1,6 +1,6 @@
 #lang racket
-(require "../main.rkt"
-         "../geometry.rkt"
+(require "../../main.rkt"
+         "../../geometry.rkt"
          (for-syntax racket/syntax
                      racket/list))
 

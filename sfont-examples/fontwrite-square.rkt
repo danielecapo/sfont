@@ -1,6 +1,6 @@
 #lang racket
 
-(require "../sfont/parametric/fontwriter.rkt"
+(require "../sfont/parametric.rkt"
          "../sfont/main.rkt"
          "../sfont/utilities.rkt")
 

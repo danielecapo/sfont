@@ -3,8 +3,8 @@
 
 (require racket/draw
          slideshow/pict
-         (prefix-in geom: "geometry.rkt")
-         "utilities.rkt")
+         (prefix-in geom: "../geometry.rkt")
+         "../utilities.rkt")
 
 (provide 
  (contract-out
