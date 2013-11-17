@@ -425,6 +425,21 @@
              lib))
   #:transparent
   #:property prop:pict-convertible glyph->pict
+  #:property prop:draw (lambda (g)
+                         (let* ([cs (map-contours contour->bezier g)]
+                                [bb (if (null? cs)
+                                        (cons (vec 0 0) (vec 0 0))
+                                        (apply combine-bounding-boxes
+                                               (map bezier-bounding-box cs)))]
+                                [vbb (vec- (cdr bb) (car bb))]
+                                [w (vec-x vbb)]
+                                [h (vec-y vbb)]
+                                [x-min (vec-x (car bb))]
+                                [by-max (vec-y (cdr bb))])
+                           (lambda (dc height upm)
+                             (let ([f (/ height upm)])
+                               (draw-glyph-dc dc g f x-min by-max)))))
+                                
   #:methods gen:geometric
   [(define/generic super-transform transform)
    (define/generic super-translate translate)
