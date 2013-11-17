@@ -1,8 +1,10 @@
 #lang racket
 
-(require racket/generic)
+(require racket/generic
+         "private/gui/draw-property.rkt")
 
-(provide (all-defined-out))
+(provide (all-defined-out)
+         (all-from-out "private/gui/draw-property.rkt"))
 
 ;;; property prop:has-matrix  
 ;;; Used for objects that have transformation matrix (like components)

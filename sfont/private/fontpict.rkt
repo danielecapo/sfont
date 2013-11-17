@@ -171,15 +171,15 @@
   
 ; Glyph BoundingBox (Number or False) (Number or False) -> pict
 ; Draw the glyph
-(define (pictf:glyph g bb [ascender #f] [upm #f])
+(define (pictf:glyph g bb [upm #f])
   (let* ([vbb (geom:vec- (cdr bb) (car bb))]
          [w (geom:vec-x vbb)]
          [h (geom:vec-y vbb)]
          [x-min (geom:vec-x (car bb))]
          [by-max (geom:vec-y (cdr bb))]
-         [y-max (if ascender
-                    (max by-max ascender)
-                    by-max)]
+;         [y-max (if ascender
+;                    (max by-max ascender)
+;                    by-max)]
          [f (cond [upm (/ 400 upm)]
                   [(> h 0) (/ 400 h)]
                   [else 1])])

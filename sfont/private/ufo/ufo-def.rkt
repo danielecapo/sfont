@@ -4,7 +4,6 @@
          "../../properties.rkt"
          "../fontpict.rkt"
          "../../utilities.rkt"
-         "../gui/draw-property.rkt"
          racket/generic
          (planet wmfarr/plt-linalg:1:13/matrix)
          slideshow/pict-convert
@@ -411,7 +410,7 @@
                  (cons (vec 0 0) (vec 0 0))
                  (apply combine-bounding-boxes
                         (map bezier-bounding-box cs)))])
-    (pictf:glyph (draw-glyph g) bb 750 1000)))
+    (pictf:glyph (draw-glyph g) bb 1000)))
 
 ;;; Glyph
 ;;; (glyph Natural Symbol Advance (listOf Unicode) String Image (listOf Layer) HashTable)
@@ -856,14 +855,13 @@
     (if (not gp) 
         (error "Glyph not in font")
         (let* ([g (decompose-glyph f (get-glyph f gn))]
-               [ascender (hash-ref (font-fontinfo f) 'ascender 750)]
                [upm (hash-ref (font-fontinfo f) 'unitsPerEm 1000)]
                [cs (map-contours contour->bezier g)]
                [bb (if (null? cs)
                        (cons (vec 0 0) (vec 0 0))
                        (apply combine-bounding-boxes
                               (map bezier-bounding-box cs)))])
-          (pictf:glyph (draw-glyph g) bb ascender upm)))))
+          (pictf:glyph (draw-glyph g) bb upm)))))
                      
 ; Font -> Font
 ; Round the coordinates of the font 

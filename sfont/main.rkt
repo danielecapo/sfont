@@ -11,4 +11,8 @@
          display-pen
          show-kerning?
          set-contour-view!
-         with-contour-view)
+         with-contour-view
+         draw-font-dc
+         draw-glyph-dc
+         lines
+         unique-letters)
