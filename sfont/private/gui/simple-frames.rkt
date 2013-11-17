@@ -154,12 +154,16 @@
                 [sidebar (new vertical-panel%
                               [parent pan]
                               [stretchable-width #f]
-                              [alignment '(right bottom)])]
+                              [alignment '(left top)])]
                 
-                [sls (new vertical-pane%
+                [sls (new vertical-panel%
                           [parent sidebar]
                           [min-width 300]
-                          [stretchable-width #f])]
+                          [min-height 250]
+                          [style '(auto-vscroll)]
+                          [alignment '(left top)]
+                          [stretchable-width #f]
+                          [border 10])]
                 [can (new canvas%
                           [parent pan]
                           [min-width 700]
@@ -187,9 +191,12 @@
                            [init-value (number->string (slider-editor-size (world-current-state w)))]
                            [callback (lambda (cf e) (size-updater (send cf get-value) can))]
                            [stretchable-width #f])]
+                [gen-pane (new horizontal-pane%
+                               [parent sidebar]
+                               [alignment '(right bottom)])]
                 [generate (new button%
                                [label "Generate"]
-                               [parent sidebar]
+                               [parent gen-pane]
                                [callback (lambda (b e)
                                            (let ([filepath (put-file "Generate UFO" frame #f "untitled.ufo" "ufo")])
                                              (when filepath
