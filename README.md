@@ -14,6 +14,11 @@ https://vimeo.com/70019868
 
 http://vimeo.com/73070195
 
+I've added another video to show how to build a simple application with sliders.
+
+https://vimeo.com/79304761
+
+
 At the moment it can be used to read and write fonts in the UFO format. It can (but it is not tested in a serious way) read from UFO 2 and UFO 3, covert UFO 2 to UFO 3 and UFO 3 to UFO 2.
 
 It can export the font in a minimal type1 plain text format that can be used by AFDKO to produce an otf font file, or converted in a pfa format with the command type1 (available with AFDKO), however, this is no longer necessary since the latest version (september 2013) AFDKO supports UFOs.
@@ -42,7 +47,7 @@ Nice things that can be added to this library:
 
 ## Usage
 
-### Functional style
+### Immutability
 
 Everything here is or should be immutable (at least, I tried to make everything immutable).
 This means that operations like converting to UFO3 etc., will actually return a NEW font.

@@ -5,7 +5,7 @@
 (provide 
  (contract-out 
   [type1/c (-> any/c boolean?)]
-  [write-type1 (->* (type1/c path-string?) (boolean?) any)]
+  [write-type1 (->* (type1/c path-string?) (#:overwrite boolean?) any)]
   [type1->string (-> type1/c string?)]))
 
 ;; write a better contract :)
@@ -282,7 +282,7 @@ cleartomark
   
 
 ; Type1 Path -> Any
-(define (write-type1 f path [overwrite #t])
+(define (write-type1 f path #:overwrite [overwrite #t])
   (with-output-to-file path
     (lambda () (printf (type1->string f)))
     #:exists (if overwrite 'replace 'error)))
