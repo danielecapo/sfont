@@ -138,7 +138,7 @@
                           (list 'n2 ...)
                           (list gs2 ...))
                           ])
-         (kern f . kern-forms))]
+         (kern f1 . kern-forms))]
     [(_ f . kern-forms) #'(let ([fo f]
                                 [kh (make-hash)])
                             (struct-copy font fo
@@ -146,8 +146,8 @@
      
 
 (define-syntax (make-kerns stx)
-  (syntax-case stx (: @)
-    [(make-kerns f1 #f . kern-forms)
+  (syntax-case stx (: @ _)
+    [(make-kerns f1 _ . kern-forms)
      #'(let ([k (make-hash)])
        (make-kerns f1 k . kern-forms))]
     [(make-kerns f1 kh @ l r : v . kern-forms)
@@ -155,7 +155,7 @@
     [(make-kerns f1 kh l @ r : v . kern-forms)
      #'(make-kerns f1 (add-kern kh 'l (right-kern-group 'r) v) . kern-forms)] 
     [(make-kerns f1 kh @ l @ r : v . kern-forms)
-     #'(make-kerns f1 (add-kern kh (left-kern-group 'l) (left-kern-group 'l) v) . kern-forms)] 
+     #'(make-kerns f1 (add-kern kh (left-kern-group 'l) (right-kern-group 'r) v) . kern-forms)] 
     [(make-kerns f1 kh l r : v . kern-forms)
      (begin
        (unless (identifier? #'l)
@@ -166,14 +166,12 @@
     [(make-kerns f1 kh) #'(make-immutable-kerning kh)]))
 
     
-(define-syntax add-kern
-  (syntax-rules ()
-    [(add-kern k l r v)
-       (begin
-         (if (hash-has-key? k l)
-             (hash-set! (hash-ref k l) r v)
-             (hash-set! k l (make-hash (list (cons r v)))))    
-         k)]))
+(define (add-kern k l r v)
+  (begin
+    (if (hash-has-key? k l)
+        (hash-set! (hash-ref k l) r v)
+        (hash-set! k l (make-hash (list (cons r v)))))    
+    k))
 
 (define (make-immutable-kerning k)
   (make-immutable-hash
