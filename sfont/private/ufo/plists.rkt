@@ -99,7 +99,8 @@
 (define (write-dict d path)
   (call-with-output-file path
    (lambda (out) 
-     (write-plist (dict->plist d) out))
+     (parameterize [(empty-tag-shorthand 'always)]
+       (write-plist (dict->plist d) out)))
     #:exists 'replace))
 
 ; Path -> DictPlist
