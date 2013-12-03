@@ -20,7 +20,8 @@
 (define bounding-box/c 
   (flat-named-contract 'bounding-box/c 
                        (lambda (bb)
-                         (or #f (and (cons? bb)
+                         (or (eq? bb #f)
+                             (and (cons? bb)
                                      (vec? (car bb))
                                      (vec? (cdr bb))
                                      (>= (vec-x (cdr bb))

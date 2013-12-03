@@ -694,7 +694,7 @@
 (define glyph-bounding-box 
   (case-lambda
     [(g f)
-     (glyph-bounding-box (decompose-glyph f g) f)]
+     (glyph-bounding-box (decompose-glyph f g))]
     [(g)
      (let ([cs (layer-contours (get-layer g foreground))])
        (if (null? cs)
