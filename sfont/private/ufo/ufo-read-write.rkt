@@ -437,19 +437,20 @@
     (when (and dict (> (dict-count dict) 0))
       (write-dict dict path)))
   (define (write-kerning k path)
-    (let* ([k-list (sorted-kerning-list k)]
-           [k-plist 
-            (cons 'dict
-                  (for/list ([el k-list])
-                    `(assoc-pair ,(symbol->string (car el))
-                                 ,(cons 'dict
-                                        (for/list ([el2 (cdr el)])
-                                          `(assoc-pair ,(symbol->string (car el2))
-                                                       ,(dict->plist (cdr el2))))))))])
-      (call-with-output-file path
-        (lambda (out) 
-          (write-plist k-plist out))
-        #:exists 'replace)))
+    (when (and k (> (dict-count k) 0))
+      (let* ([k-list (sorted-kerning-list k)]
+             [k-plist 
+              (cons 'dict
+                    (for/list ([el k-list])
+                      `(assoc-pair ,(symbol->string (car el))
+                                   ,(cons 'dict
+                                          (for/list ([el2 (cdr el)])
+                                            `(assoc-pair ,(symbol->string (car el2))
+                                                         ,(dict->plist (cdr el2))))))))])
+        (call-with-output-file path
+          (lambda (out) 
+            (write-plist k-plist out))
+          #:exists 'replace))))
                                               
   (define (write-directory dir path [proc #f])
     (when dir
