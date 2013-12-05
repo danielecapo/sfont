@@ -12,7 +12,7 @@
  (contract-out
   [read-ufo (->* (path-string?)  font?)]
   [write-ufo (->* (font? path-string?) 
-                 (#:format (list/c 2 3)
+                 (#:format (one-of/c 2 3)
                   #:overwrite boolean?)
                  void?)]))
 
@@ -321,19 +321,27 @@
   (define (read-layers)
     (let ([layers (read-from-plist (make-ufo-path "layercontents.plist"))])
       (map (lambda (l)
-             (let ([info (read-layerinfo (cadr l))])
+             (let* ([layer-dir (cadr l)]
+                    [layer-name 
+                     (if (equal? layer-dir "glyphs")
+                         "public.default"
+                         (car l))]
+                    [info (read-layerinfo layer-dir)])
                (if info
                    (layer-info
-                    (string->symbol (car l))
+                    (string->symbol layer-name)
                     (if (dict-ref info 'color #f)
                         (ensure-color (dict-ref info 'color))
                         #f)
                     (dict-ref info 'lib (make-immutable-hash)))
-                   (layer-info (string->symbol (car l)) #f (make-immutable-hash)))))
+                   (layer-info (string->symbol layer-name) #f (make-immutable-hash)))))
            (if layers layers (list (list "public.default" "glyphs"))))))
   (define (read-layer-glifs)
     (let ([layers (read-from-plist (make-ufo-path "layercontents.plist"))])
-      (map (lambda (l) (cons (string->symbol (car l)) (read-glifs (cadr l))))          
+      (map (lambda (l) (cons (if (equal? (cadr l) "glyphs")
+                                 foreground
+                                 (string->symbol (car l)))
+                             (read-glifs (cadr l))))          
            (if layers layers (list (list "public.default" "glyphs"))))))
   (define (read-glifs glifsdir)
     (let* ([glifspath (make-ufo-path glifsdir)]
@@ -433,8 +441,8 @@
 (define (writer f path format [proc-data #f] [proc-images #f])
   (define (make-ufo-path file)
     (build-path path file))
-  (define (write-on-plist dict path)
-    (when (and dict (> (dict-count dict) 0))
+  (define (write-on-plist dict path [force #f])
+    (when (and dict (or force (> (dict-count dict) 0)))
       (write-dict dict path)))
   (define (write-kerning k path)
     (when (and k (> (dict-count k) 0))
@@ -475,15 +483,17 @@
                     (match layers
                       [(list) acc]
                       [(list-rest (layer-info 'public.default _ _) rest-layers)
-                       (aux (cons (cons 'public.default "glyphs") acc)
+                       (aux (cons (cons foreground "glyphs") acc)
                             rest-layers
                             (cons "glyphs" names))]
                       [(list-rest (layer-info l _ _) rest-layers)
                        (let ([name (namesymbol->filename l "glyphs." "" names)])
                                 (aux (cons (cons l name) acc)
                                      rest-layers
-                                     (cons name names)))]))])                
-      (reverse (aux '() (hash-values (font-layers f)) '()))))
+                                     (cons name names)))]))])
+      (if (= format 2) 
+          (list (cons foreground "glyphs")) 
+          (reverse (aux '() (map cdr (font-layers f)) '())))))
   
   (define layers-names (get-layers-names))
   (define (write-glyphs l glyphsdir)
@@ -503,23 +513,21 @@
                                      acc)
                                  (cons name names))))]))])
       (write-on-plist (aux (hash-values (font-glyphs f)) '() '())
-                      (build-path glyphsdir "contents.plist"))))
+                      (build-path glyphsdir "contents.plist")
+                      #t)))
       
   (define (write-layers)
-    (let* ([l (if (= format 3)
-                  (font-layers f)
-                  (hash foreground (hash-ref (font-layers f) foreground)))])
-      (for-each (lambda (l)
-                  (begin
-                    (let ([dir (make-ufo-path (cdr l))]
-                          [la (car l)])
-                      (make-directory dir)
-                      (write-glyphs la dir)
-                      (when (= format 3)
-                        (write-layerinfo la dir)))))
-                layers-names)))
+    (for-each (lambda (l)
+                (begin
+                  (let ([dir (make-ufo-path (cdr l))]
+                        [la (car l)])
+                    (make-directory dir)
+                    (write-glyphs la dir)
+                    (when (= format 3)
+                      (write-layerinfo la dir)))))
+              layers-names))
   (define (write-layerinfo l dir)
-    (let ([li (hash-ref (font-layers f) l)])
+    (let ([li (dict-ref (font-layers f) l)])
       (when (and li
                  (or (layer-info-color li)
                      (> (hash-count (layer-info-lib li)) 0)))

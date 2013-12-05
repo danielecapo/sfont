@@ -30,7 +30,7 @@
    (kerning kerning/c)
    (features features/c) 
    (glyphs (or/c (listof glyph?) (hash/c name/c glyph? #:immutable #t)))
-   (layers (or/c (listof layer-info?) (hash/c name/c layer-info? #:immutable #t)))
+   (layers (or/c (listof layer-info?) (listof (cons/c name/c layer-info?))))
    (lib lib/c) 
    (data data/c) 
    (images images/c))]
@@ -78,6 +78,8 @@
      (smooth boolean?)
      (name (or/c string? #f))
      (identifier (or/c symbol? #f)))]
+  [set-font-layer (-> font? layer-info? font?)]
+  [remove-font-layer (-> font? name/c font?)]
   [get-layer (->* (glyph?) (name/c) (or/c layer? #f))]
   [map-layers (->* ((-> layer? any/c) glyph?) (#:sorted boolean?) (listof any/c))]
   [for-each-layers (->* ((-> layer? any/c) glyph?) (#:sorted boolean?) void?)]
@@ -293,11 +295,11 @@
                             glyphs
                             (make-immutable-hash (hash->list glyphs)))
                     (glyphlist->hashglyphs glyphs))
-                    (if (hash? layers)
-                        (if (immutable? layers)
-                            layers
-                            (make-immutable-hash (hash->list layers)))
-                    (make-immutable-hash (map (lambda (l) (cons (layer-info-name l) l)) layers)))
+                    (if (dict? layers)
+                        layers
+                        (map (lambda (l) 
+                               (cons (layer-info-name l) l)) 
+                             layers))
                     lib 
                     data 
                     images))
@@ -567,6 +569,22 @@
 ;;; Unicode
 ;;; Unicode is a Number
 
+; Font LayerInfo -> Font
+; inserts a new layer in the font layers field
+(define (set-font-layer f new-li)
+  (let ([new-name (layer-info-name new-li)]
+        [layers (font-layers f)])
+    (struct-copy font f
+                 [layers (if (dict-has-key? layers new-name)
+                             (dict-set layers new-name new-li)
+                             (append layers
+                                     (list (cons new-name new-li))))])))
+
+; Font Symbol -> Font
+; remove a layer from the font layers field
+(define (remove-font-layer f l)
+  (struct-copy font f 
+               [layers (dict-remove (font-layers f) l)]))
 
 ;; Glyph [Symbol] -> Layer or False
 (define (get-layer g [l foreground])
@@ -623,7 +641,7 @@
 (define (remove-glyph f g)
   (struct-copy font f [glyphs (hash-remove (font-glyphs f) g)]))
     
-; Font Glyph]-> Font
+; Font Glyph -> Font
 ; produce a new font with the glyph inserted in the given layer
 (define (insert-glyph f g)
   (struct-copy font f [glyphs (hash-set (font-glyphs f)
