@@ -27,11 +27,11 @@
 (define-syntax (fref stx)
   (syntax-case stx (--> @)
     [(_ o (field --> proc0 . procs)) 
-     #'((apply compose (reverse (list proc0 . procs)))  (lookup getter o 'field))]
+     #'((apply compose (reverse (list proc0 . procs)))  (fref o field))]
     [(_ o (field @ i)) 
      #'(let ([s (lookup getter o 'field)])
-         (cond [(list? s) (list-ref s i)]
-               [(dict? s) (dict-ref s i)]))]
+         (cond [(dict? s) (dict-ref s i)]
+               [(list? s) (list-ref s i)]))]
     [(_ o (field arg0 . args)) #'(lookup getter o 'field arg0 . args)]
     [(_ o field) 
      (unless (identifier? #'field) 
@@ -50,7 +50,7 @@
          
 
 (define-syntax (fset stx)
-  (syntax-case stx (--> @)
+  (syntax-case stx  (@)
     [(_ (o (field @ i)) v)
      #'(fset (o field) (set-in-sequence (fref o field) i v))]
     [(_ (o (field arg0 . args)) v)

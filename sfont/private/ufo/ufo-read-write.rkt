@@ -315,34 +315,36 @@
            (hash-map g (lambda (name content)
                          (cons name (map string->symbol content)))))
           (make-immutable-hash))))
+  (define layers 
+    (let ([l (read-from-plist (make-ufo-path "layercontents.plist"))])
+      (if l
+          (if (memf (lambda (la) (equal? (second la) "glyphs")) l)                   
+              (map (lambda (la) (if (equal? (second la) "glyphs")
+                                    (list "public.default" "glyphs")
+                                    la))
+                   l)
+              (error "The font doesn't have the required default layer"))
+          (list (list "public.default" "glyphs")))))
   (define (read-layerinfo glyphsdir)
     (read-from-plist 
      (build-path (make-ufo-path glyphsdir) "layerinfo.plist")))
   (define (read-layers)
-    (let ([layers (read-from-plist (make-ufo-path "layercontents.plist"))])
-      (map (lambda (l)
-             (let* ([layer-dir (cadr l)]
-                    [layer-name 
-                     (if (equal? layer-dir "glyphs")
-                         "public.default"
-                         (car l))]
-                    [info (read-layerinfo layer-dir)])
-               (if info
-                   (layer-info
-                    (string->symbol layer-name)
-                    (if (dict-ref info 'color #f)
-                        (ensure-color (dict-ref info 'color))
-                        #f)
-                    (dict-ref info 'lib (make-immutable-hash)))
-                   (layer-info (string->symbol layer-name) #f (make-immutable-hash)))))
-           (if layers layers (list (list "public.default" "glyphs"))))))
+    (map (lambda (l)
+           (let* ([layer-dir (cadr l)]
+                  [layer-name (car l)]
+                  [info (read-layerinfo layer-dir)])
+             (if info
+                 (layer-info
+                  (string->symbol layer-name)
+                  (if (dict-ref info 'color #f)
+                      (ensure-color (dict-ref info 'color))
+                      #f)
+                  (dict-ref info 'lib (make-immutable-hash)))
+                 (layer-info (string->symbol layer-name) #f (make-immutable-hash)))))
+         layers))
   (define (read-layer-glifs)
-    (let ([layers (read-from-plist (make-ufo-path "layercontents.plist"))])
-      (map (lambda (l) (cons (if (equal? (cadr l) "glyphs")
-                                 foreground
-                                 (string->symbol (car l)))
-                             (read-glifs (cadr l))))          
-           (if layers layers (list (list "public.default" "glyphs"))))))
+    (map (lambda (l) (cons (string->symbol (car l)) (read-glifs (cadr l))))          
+         layers))
   (define (read-glifs glifsdir)
     (let* ([glifspath (make-ufo-path glifsdir)]
            [contents (read-from-plist (build-path glifspath "contents.plist"))])
@@ -491,9 +493,11 @@
                                 (aux (cons (cons l name) acc)
                                      rest-layers
                                      (cons name names)))]))])
-      (if (= format 2) 
-          (list (cons foreground "glyphs")) 
-          (reverse (aux '() (map cdr (font-layers f)) '())))))
+      (if (dict-has-key? (font-layers f) foreground)
+          (if (= format 2) 
+              (list (cons foreground "glyphs")) 
+              (reverse (aux '() (map cdr (font-layers f)) '())))
+          (error "The font doesn't have the required public.default layer"))))
   
   (define layers-names (get-layers-names))
   (define (write-glyphs l glyphsdir)
