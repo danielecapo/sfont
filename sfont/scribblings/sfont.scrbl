@@ -35,7 +35,7 @@ Sfont is a collection for writing, reading and modifying fonts in the
                   [glyphs (or/c (listof glyph?) 
                                 (hash/c name/c glyph? #:immutable #t))]
                   [layers (or/c (listof layer-info?) 
-                                (hash/c name/c layer-info? #:immutable #t))]
+                                (listof (cons/c name/c layer-info?)))]
                   [lib lib/c]
                   [data data/c]
                   [images images/c])]{
@@ -44,8 +44,10 @@ Font structures are @racket[pict-convertible?] and are printed at the REPL.
 The way they are printed depends on the parameters @racket[display-size], @racket[display-text] 
 and @racket[show-kerning?].
 
-Glyphs and layers are stored internally in hash tables so they can be easily accessed by name,
-however the guard of font accept list of glyphs and layer-infos and transform them in hash tables.
+Glyphs are stored internally in an hash table so they can be easily accessed by name,
+however the guard of font accept a list of glyphs and transform it in hash table.
+Font layers informations are stored in an association list (to preserve the order)
+and, like glyphs, the guard accepts a list of layer-info and transform it in an hash table.
 
 Fonts, like all the structures defined below (with the exception of @racket[advance])
 implement the @racket[gen:geometric] interface.}
