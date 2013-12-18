@@ -83,7 +83,7 @@
   [get-layer (->* (glyph?) (name/c) (or/c layer? #f))]
   [map-layers (->* ((-> layer? any/c) glyph?) (#:sorted boolean?) (listof any/c))]
   [for-each-layers (->* ((-> layer? any/c) glyph?) (#:sorted boolean?) void?)]
-  [filter-glyphs (-> (-> glyph? boolean?) font? (listof glyph?))]
+  [filter-glyphs (-> (-> glyph? any/c) font? (listof glyph?))]
   [set-layer (-> glyph? layer? glyph?)]
   [get-glyph (-> font? name/c (or/c glyph? #f))]
   [get-glyphs (-> font? (listof name/c) (listof glyph?))]

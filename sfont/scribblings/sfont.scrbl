@@ -237,7 +237,7 @@ Functionally insert (produces a new font) the glyph @emph{g} in @emph{f}.}
 
 @defproc[(map-glyphs [proc (-> glyph? any/c)] [f font?]  [#:sorted sorted boolean? #f]) (listof any/c)]
 @defproc[(for-each-glyphs [proc (-> glyph? any/c)] [f font?]  [#:sorted sorted boolean? #f]) void?]
-@defproc[(filter-glyphs [proc (-> glyph? boolean?)] [f font?]) (listof glyph?)]{                                                                              
+@defproc[(filter-glyphs [proc (-> glyph? any/c)] [f font?]) (listof glyph?)]{                                                                              
 Like @racket[map] @racket[for-each] and @racket[filter], but the procedures are applied 
 to the glyphs in the given font. If @racket[sorted] 
 is @racket[#t] in @racket[map-glyphs] and @racket[for-each-glyphs] the glyphs will be sorted by name before
