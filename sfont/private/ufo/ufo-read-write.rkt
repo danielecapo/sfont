@@ -463,10 +463,20 @@
           #:exists 'replace))))
                                               
   (define (write-directory dir path [proc #f])
-    (when dir
+    (if dir
       (if proc
           (proc path)
-          (copy-directory/files dir path))))
+          (unless (and (directory-exists? path)
+                       (= (file-or-directory-identity path)
+                          (file-or-directory-identity dir)))
+            (begin
+              (when (directory-exists? path)
+                (delete-directory/files path))
+              (copy-directory/files dir path))))
+      (begin
+        (when (directory-exists? path)
+          (delete-directory/files path))
+        (make-directory path))))
   (define (write-on-text-file text path)
     (when text
       (let ([text (string-trim text)])
@@ -569,6 +579,7 @@
                (string=? (bytes->string/utf-8 (filename-extension path))
                          "ufo"))
     (error (format "Expected ufo extension, but given ~a" path)))
+  
   (let ([writer (writer f path format #f #f)])
     (if (and (directory-exists? path) (not overwrite))
         (error "The file already exists, use #:overwrite to force writing")
@@ -576,6 +587,12 @@
           (if (directory-exists? path)
               (clean-ufo-dir path)
               (make-directory path))
+          (when (and (= format 2)
+                     (directory-exists? (build-path path "images")))
+            (delete-directory/files (build-path path "images")))
+          (when (and (= format 2)
+                     (directory-exists? (build-path path "data")))
+            (delete-directory/files (build-path path "data")))
           (cond [(= format 2) (write-ufo2 writer)]
                 [(= format 3) (write-ufo3 writer)]
                 [#t (error "I can only write Ufo 2 and Ufo 3 files")])))))
@@ -599,7 +616,7 @@
                             "lib.plist"
                             "layercontents.plist"))]
           [dirs (map (curry build-path path)
-                     (list "glyphs" "images" "data"))]
+                     (list "glyphs"))] ;"images" "data"))]
           [gdirs (map (curry build-path path)
                       (filter (lambda (s)
                                 (and (> (string-length s) 7)
