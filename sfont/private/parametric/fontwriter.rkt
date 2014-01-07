@@ -31,9 +31,23 @@
  reflect-x.
  reflect-y.)
 
+(define (line-intersection a alpha b beta)
+  (let* ([det (- (* (sin alpha) (cos beta))
+                 (* (cos alpha) (sin beta)))]
+         [ba (vec- b a)]
+         [bax (vec-x ba)]
+         [bay (vec-y ba)])
+    (if (= 0 det) 
+        #f
+        (let ([l (/ (- (* (cos beta) bay)
+                       (* (sin beta) bax)) 
+                    det)])
+          (vec (+ (vec-x a) (* l (cos alpha)))
+               (+ (vec-y a) (* l (sin alpha))))))))
+          
 
 (define-syntax (parse-curves stx)
-  (syntax-case stx (@ @° insert)
+  (syntax-case stx (@ @° insert °)
     [(_ (insert i) path-element . r)
      (syntax-case #'path-element (insert @)
        [(@ insert o) 
@@ -51,6 +65,18 @@
         #'(let* ([b i]
                  [n (car b)])
             (join-subpaths b (parse-curves path-element . r)))])]
+    [(_ (x1 y1 . t1) (° a1 a2 . t2) (x2 y2 . t3) . r)
+     #'(let* ([xp x1]
+              [yp y1]
+              [xn x2]
+              [yn y2]
+              [angle1 a1]
+              [angle2 a2]
+              [i (line-intersection (vec xp yp) angle1
+                                    (vec xn yn) angle2)])
+         (if (not i)
+             (error #f "Angles don't converge.")
+             (parse-curves (xp yp . t1) ((vec-x i) (vec-y i) . t2) (xn yn . t3) . r)))]
     [(_ (x y) path-element . r)
      (syntax-case #'path-element (@ @° insert)
        [(insert i) #'(join-subpaths (list (vec x y)) (parse-curves  (insert i) . r))]

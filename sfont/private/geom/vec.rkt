@@ -183,6 +183,12 @@
 (define (vec->list v)
   (list (vec-x v) (vec-y v)))
 
+; Real Real -> Vec
+; produce a vector from polar coordinates
+(define (polar->vec angle len)
+  (vec (* len (cos angle))
+       (* len (sin angle))))
+
 ; Vec -> Real
 ; produce the vector's length
 (define (vec-length v) 
