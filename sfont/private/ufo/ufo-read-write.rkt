@@ -235,7 +235,7 @@
       path
     (lambda (o)
       (parameterize ([empty-tag-shorthand 'always])
-                   (write-xml 
+                   (display-xml 
                     (document
                      (prolog (list (p-i (location 1 0 1) 
                                         (location 1 38 39) 
