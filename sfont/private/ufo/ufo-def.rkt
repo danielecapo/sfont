@@ -1304,6 +1304,7 @@
                   (match lop
                     [(list) #t]
                     [(list-rest (point _ 'curve _ _ _) r) #f]
+                    [(list-rest (point _ 'line _ _ _) r) #f]
                     [(list-rest (point _ 'qcurve _ _ _) r) #t]
                     [(list-rest (point _ 'offcurve _ _ _) (point _ 'offcurve _ _ _) (point _ 'offcurve _ _ _) r)
                      #t]

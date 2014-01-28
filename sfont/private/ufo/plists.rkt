@@ -80,18 +80,18 @@
 ; produce an dict plist from a xexpr
 (define (xexpr->dict x)
   (match x
-    [(list 'dict null entries ...) (make-immutable-hash (xexpr->dict entries))]
-    [(list (list 'key null k) v entries ...) 
+    [(list 'dict (list) entries ...) (make-immutable-hash (xexpr->dict entries))]
+    [(list (list 'key (list) k) v entries ...) 
      (cons (cons (string->symbol k) (xexpr->dict v))
            (xexpr->dict entries))]
-    [(list 'integer null n) (string->number n)]
-    [(list 'real null n) (string->number n)]
-    [(list 'string null s) s]
-    [(list 'string null) ""]
-    [(list 'false null) #f]
-    [(list 'true null) #t]
-    [(list 'array null elts ...) (map xexpr->dict elts)]
-    [null null]
+    [(list 'integer (list) n) (string->number n)]
+    [(list 'real (list) n) (string->number n)]
+    [(list 'string (list) s) s]
+    [(list 'string (list)) ""]
+    [(list 'false (list)) #f]
+    [(list 'true (list)) #t]
+    [(list 'array (list) elts ...) (map xexpr->dict elts)]
+    [(list) (list)]
     [_ (error (~a "xexpr->dict: " x " is an invalid plist"))]))
 
 ; DictPlist Path -> Any

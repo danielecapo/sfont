@@ -34,7 +34,7 @@
 ; Font Boolean Boolean -> Font
 (define (prepare-font f [weak #t] [auto-directions #f])
   (struct-copy font (if auto-directions (correct-directions f) f)
-               [layers (list (hash-ref (font-layers f) foreground))]
+               [layers (list (dict-ref (font-layers f) foreground))]
                [fontinfo (prepare-info (font-fontinfo f))]
                [kerning (prepare-kerning (font-kerning f))]
                [glyphs (map-glyphs (curryr prepare-glyph weak) f)]))
@@ -70,7 +70,7 @@
 ; Glyph Boolean -> Glyph
 (define (prepare-glyph g [weak #t])
   (struct-copy glyph g
-               [layers (list (prepare-layer (get-layer g foreground)))]))
+               [layers (list (prepare-layer (get-layer g foreground) weak))]))
 
 ; (listof Anchor) -> (listof Anchor)
 (define (sort-anchors loa)
@@ -156,7 +156,7 @@
 (define (compatible-list-of-glyphs log1 log2)
   (let ([cl (map (lambda (g1 g2)
                    (let-values ([(ng1 ng2) (compatible-glyphs g1 g2)])
-                     (cons g1 g2)))
+                     (cons ng1 ng2)))
                  log1 
                  log2)])
     (values (filter identity (map car cl))
@@ -176,8 +176,8 @@
   (let ([cs1 (layer-contours l1)]
         [cs2 (layer-contours l2)])
     (cond [(not (= (length cs1) (length cs2))) (values #f #f)]
-          [(andmap (lambda (a b) (= (length (contour-points a)) (length (contour-points b))))
-                     cs1 cs2)
+          [(not (andmap (lambda (a b) (= (length (contour-points a)) (length (contour-points b))))
+                        cs1 cs2))
            (values #f #f)]
           [else (let-values (((c1 c2) (compatible-components (layer-components l1)
                                                              (layer-components l2)))
@@ -383,7 +383,8 @@
          [l1 (length p1)]
          [l2 (length p2)])
     (or (and (contour-open? c1) (not (contour-open? c2)))
-        (and (and (contour-open? c1) (contour-open? c2))
+        (and (or (and (contour-open? c1) (contour-open? c2))
+                 (and (not (contour-open? c1)) (not (contour-open? c2))))
              (or
               (< l1 l2)
               (and (= l1 l2)
