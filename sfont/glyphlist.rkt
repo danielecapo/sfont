@@ -4289,11 +4289,15 @@
    'zukatakana #x30BA))
 
 (define a-unicode-to-name
-  (make-immutable-hash
-   (hash-map adobe-glyph-list
-             (lambda (k v) (cons v k)))))
+  (make-immutable-hash 
+   (let ([vs (hash-values adobe-glyph-list)]
+         [ls (hash->list adobe-glyph-list)])
+     (map (lambda (u)
+            (cons u
+                  (map car (filter (lambda (p) (= u (cdr p))) ls))))
+          vs))))
 
 (define (get-name-by-code c)
-  (hash-ref a-unicode-to-name c #f))
+  (let ([f (hash-ref a-unicode-to-name c #f)])
+    (if f (car f) f)))
 
-  

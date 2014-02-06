@@ -11,8 +11,24 @@
  space 
  kern
  space-glyph
- define-spacing-rule)
+ define-spacing-rule
+ groups
+ @
+ --
+ <->
+ /--/
+ :
+ side1
+ side2)
  
+(define-syntax groups (syntax-rules ()))
+(define-syntax @ (syntax-rules ()))
+(define-syntax -- (syntax-rules ()))
+(define-syntax <-> (syntax-rules ()))
+(define-syntax /--/ (syntax-rules ()))
+(define-syntax : (syntax-rules ()))
+(define-syntax side1 (syntax-rules ()))
+(define-syntax side2 (syntax-rules ()))
 
 ; Font Symbol (listof Symbol) -> Font
 (define (add-to-groups f g gs)
@@ -22,7 +38,7 @@
 ; space macro
 ; The error messages should be more helpful
 (define-syntax (space stx)
-  (syntax-case stx (groups : @)
+  (syntax-case stx (groups : @ -- <-> /--/)
     [(space) 
      (raise-syntax-error #f "Expected Font" stx)]
     [(space f) #'f]
@@ -60,7 +76,7 @@
 
 
 (define-syntax (space-glyph stx)
-  (syntax-case stx (/--/)
+  (syntax-case stx (/--/ -- <->)
     [(_) (raise-syntax-error #f "Expected glyph and spacing forms" stx)]
     [(_ g) (raise-syntax-error #f "Expected spacing forms" stx)]
     [(_ (g f)) (raise-syntax-error #f "Expected spacing forms" stx)]
@@ -108,6 +124,8 @@
            #'(adjust-sidebearings g l r))))]
     [(_ g left-form right-form)
      #'(space-glyph (g #f) left-form right-form)]))
+
+
   
 
 ; Symbol -> Symbol
@@ -146,8 +164,8 @@
      
 
 (define-syntax (make-kerns stx)
-  (syntax-case stx (: @ _)
-    [(make-kerns f1 _ . kern-forms)
+  (syntax-case stx (: @ --)
+    [(make-kerns f1 -- . kern-forms)
      #'(let ([k (make-hash)])
        (make-kerns f1 k . kern-forms))]
     [(make-kerns f1 kh @ l r : v . kern-forms)

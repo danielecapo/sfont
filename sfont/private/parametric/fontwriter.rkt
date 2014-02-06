@@ -29,7 +29,22 @@
  skew-x.
  skew-y.
  reflect-x.
- reflect-y.)
+ reflect-y.
+ @°
+ insert
+ ><
+ cycle
+ metrics
+ contours
+ locals
+ alignments
+ variables
+ glyphs
+ :font-ascender
+ :font-descender
+ --
+ <->
+ /--/)
 
 (define (line-intersection a alpha b beta)
   (let* ([det (- (* (sin alpha) (cos beta))
@@ -45,9 +60,23 @@
           (vec (+ (vec-x a) (* l (cos alpha)))
                (+ (vec-y a) (* l (sin alpha))))))))
           
+(define-syntax @° (syntax-rules ()))
+(define-syntax insert (syntax-rules ()))
+(define-syntax >< (syntax-rules ()))
+
+(define-syntax cycle (syntax-rules ()))
+(define-syntax metrics (syntax-rules ()))
+(define-syntax contours (syntax-rules ()))
+(define-syntax locals (syntax-rules ()))
+(define-syntax alignments (syntax-rules ()))
+(define-syntax variables (syntax-rules ()))
+(define-syntax glyphs (syntax-rules ()))
+(define-syntax :font-ascender (syntax-rules ()))
+(define-syntax :font-descender (syntax-rules ()))
+
 
 (define-syntax (parse-curves stx)
-  (syntax-case stx (@ @° insert °)
+  (syntax-case stx (@ @° insert ><)
     [(_ (insert i) path-element . r)
      (syntax-case #'path-element (insert @)
        [(@ insert o) 
@@ -65,7 +94,7 @@
         #'(let* ([b i]
                  [n (car b)])
             (join-subpaths b (parse-curves path-element . r)))])]
-    [(_ (x1 y1 . t1) (° a1 a2 . t2) (x2 y2 . t3) . r)
+    [(_ (x1 y1 . t1) (>< a1 a2 . t2) (x2 y2 . t3) . r)
      #'(let* ([xp x1]
               [yp y1]
               [xn x2]
@@ -143,7 +172,7 @@
 
 
 (define-syntax (~ stx)
-  (syntax-case stx (insert cycle)
+  (syntax-case stx (insert cycle --)
     [(_ f c ... cycle)
      (syntax-case #'f (insert)
        [(insert i) #'(let* ([b i]
@@ -291,7 +320,7 @@
 
 
 (define-syntax (glyph. stx)
-  (syntax-case stx (metrics contours locals)
+  (syntax-case stx (metrics contours locals -- <-> /--/)
     [(glyph. name 
              [metrics left-form right-form]
              . contour-form)

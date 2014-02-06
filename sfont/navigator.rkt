@@ -3,11 +3,14 @@
 (require "private/ufo/ufo-def.rkt"
          "geometry.rkt"
          "utilities.rkt"
+         (only-in "space.rkt" @)
          (for-syntax racket/syntax))
 
 (provide fref
          fset
-         fupdate)
+         fupdate
+         -->
+         @)
 
    
 ; (listof Pairs) Any/c Symbol Any/c ... -> Any/c
@@ -23,6 +26,7 @@
                           (aux (cdr t)))))])
     (aux dic)))
 
+(define-syntax --> (syntax-rules ()))
 
 (define-syntax (fref stx)
   (syntax-case stx (--> @)
