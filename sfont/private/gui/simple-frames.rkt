@@ -112,10 +112,10 @@
 
 ; See below for an example
 (define-syntax slider-application
-  (syntax-rules (sliders update)
+  (syntax-rules ()
     [(_ [font-proc final-proc] 
-        [sliders (sl-name sl-min sl-max init) ...]
-        [text txt sz])
+        [(sl-name sl-min sl-max init) ...]
+        [txt sz])
      (let ([w (world (slider-editor 
                       (string->text txt) sz 
                       (make-immutable-hash (list (cons 'sl-name init) ...))))]

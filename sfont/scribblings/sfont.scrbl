@@ -1380,8 +1380,8 @@ Given some interpolabel fonts produces a new animation that interpolates between
 
 @defform[(slider-application
           [font-proc final-proc]
-          [sliders (slider-name slider-min slider-max init-value) ...]
-          [text txt size])]{
+          [(slider-name slider-min slider-max init-value) ...]
+          [txt size])]{
 
 Produces a 'thunk' that, when called, creates a new application with sliders that control the font procedure.
 The number of arguments that @racket[font-proc] accepts is equal
@@ -1397,11 +1397,10 @@ An example that uses the font @racket[sq] in the sfont-examples directory.
       
              (define main
                (slider-application
-                [font sq-proc identity]
-                [sliders
-                 (weight 0 1000 500)
+                [sq-proc identity]
+                [(weight 0 1000 500)
                  (width 0 1000 500)]
-                [text "ciao ciao" 100]))
+                ["ciao ciao" 100]))
              
              (main)]
 }
