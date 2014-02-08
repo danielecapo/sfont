@@ -3,7 +3,7 @@
 (require "private/ufo/ufo-def.rkt"
          "geometry.rkt"
          "utilities.rkt"
-         (only-in "space.rkt" @)
+         (only-in "private/syntax-keywords.rkt" @ -->)
          (for-syntax racket/syntax))
 
 (provide fref
@@ -26,7 +26,6 @@
                           (aux (cdr t)))))])
     (aux dic)))
 
-(define-syntax --> (syntax-rules ()))
 
 (define-syntax (fref stx)
   (syntax-case stx (--> @)

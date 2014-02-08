@@ -1,6 +1,7 @@
 #lang racket
 (require "../../main.rkt"
          "../../geometry.rkt"
+         (only-in "../syntax-keywords.rkt" groups @ -- <-> /--/ : side1 side2)
          (for-syntax racket/syntax
                      racket/list))
 
@@ -21,14 +22,6 @@
  side1
  side2)
  
-(define-syntax groups (syntax-rules ()))
-(define-syntax @ (syntax-rules ()))
-(define-syntax -- (syntax-rules ()))
-(define-syntax <-> (syntax-rules ()))
-(define-syntax /--/ (syntax-rules ()))
-(define-syntax : (syntax-rules ()))
-(define-syntax side1 (syntax-rules ()))
-(define-syntax side2 (syntax-rules ()))
 
 ; Font Symbol (listof Symbol) -> Font
 (define (add-to-groups f g gs)

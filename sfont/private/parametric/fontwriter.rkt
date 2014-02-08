@@ -3,6 +3,7 @@
          "../../main.rkt"
          "../../utilities.rkt"
          "../spacing/space.rkt"
+         (only-in "../syntax-keywords.rkt" @° insert >< cycle metrics contours locals alignments variables glyphs :font-ascender :font-descender)
          (for-syntax racket/list))
 
 
@@ -61,19 +62,6 @@
           (vec (+ (vec-x a) (* l (cos alpha)))
                (+ (vec-y a) (* l (sin alpha))))))))
           
-(define-syntax @° (syntax-rules ()))
-(define-syntax insert (syntax-rules ()))
-(define-syntax >< (syntax-rules ()))
-
-(define-syntax cycle (syntax-rules ()))
-(define-syntax metrics (syntax-rules ()))
-(define-syntax contours (syntax-rules ()))
-(define-syntax locals (syntax-rules ()))
-(define-syntax alignments (syntax-rules ()))
-(define-syntax variables (syntax-rules ()))
-(define-syntax glyphs (syntax-rules ()))
-(define-syntax :font-ascender (syntax-rules ()))
-(define-syntax :font-descender (syntax-rules ()))
 
 
 (define-syntax (parse-curves stx)
