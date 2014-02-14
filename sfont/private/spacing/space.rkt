@@ -3,7 +3,8 @@
          "../../geometry.rkt"
          (only-in "../syntax-keywords.rkt"  : side1 side2)
          (for-syntax racket/syntax
-                     racket/list))
+                     racket/list
+                     syntax/parse))
 
 (provide
  (contract-out 
@@ -80,7 +81,7 @@
            #''op
            #'op))]))
 
-(define-syntax (space-glyph stx)
+(define-syntax (space-glyph-2 stx)
   (syntax-case stx ()
     [(_) (raise-syntax-error #f "Expected glyph and spacing forms" stx)]
     [(_ g) (raise-syntax-error #f "Expected spacing forms" stx)]
@@ -90,7 +91,67 @@
     [(_ g left-form right-form)
      #'(space-glyph (g #f) left-form right-form)]))
     
-
+(define-syntax (space-glyph stx)
+  (syntax-parse stx
+    #:datum-literals (-- <-> /--/)
+    [(_ (g:id f:id) -- --) #'g]
+    [(_ (g:id f:id) (/--/ l:expr) (/--/ right:expr))
+     (raise-syntax-error #f "Undefined spacing" stx)]
+    [(_ (g:id f:id) left:expr (/--/ --))
+     #'(struct-copy glyph (space-glyph (g f) left --) 
+                    [advance (advance (advance-width (glyph-advance g)) 
+                                      (advance-height (glyph-advance g)))])]
+    [(_ (g:id f:id) left:expr (/--/ right:expr))
+     #'(struct-copy glyph (space-glyph (g f) left --) 
+                    [advance (advance right (advance-height (glyph-advance g)))])]
+    
+    [(_ (g:id f:id) (/--/ --) right:expr)
+     #'(let* ([gn (space-glyph (g f) -- right)]
+              [adv (advance-width (glyph-advance gn))])
+         (adjust-sidebearings gn (- (advance-width (glyph-advance gn)) adv) 0))]
+    [(_ (g:id f:id) (/--/ left:expr) right:expr)
+     #'(let* ([gn (space-glyph (g f) -- right)]
+              [adv (advance-width (glyph-advance gn))])
+         (adjust-sidebearings gn (- left adv) 0))]
+    
+    [(_ (g:id f:id) (<-> left:expr) right:expr)
+     #'(space-glyph ((adjust-sidebearings g left 0) f) -- right)]
+    [(_ (g:id f:id) left:expr (<-> right:expr))
+     #'(space-glyph ((adjust-sidebearings g 0 right) f) left --)]
+    [(_ (g:id f:id) (l:expr h:expr) right:expr)
+     #'(let ([sb (if f 
+                     (get-sidebearings-at g f h)
+                     (get-sidebearings-at g h))])
+         (space-glyph ((adjust-sidebearings g (- l (car sb)) 0) f) -- right))]
+    [(_ (g:id f:id) left:expr (r:expr h:expr))
+     #'(let ([sb (if f 
+                     (get-sidebearings-at g f h)
+                     (get-sidebearings-at g h))])
+         (space-glyph ((adjust-sidebearings g 0 (- r (cdr sb))) f) left --))]
+    [(_ (g:id f:id) left:expr --)
+     #'(let ([sb (if f 
+                     (get-sidebearings g f)
+                     (get-sidebearings g))])
+         (adjust-sidebearings g (- left (car sb)) 0))]
+    [(_ (g:id f:id) -- right:expr)
+     #'(let ([sb (if f 
+                   (get-sidebearings g f)
+                   (get-sidebearings g))])
+         (adjust-sidebearings g 0 (- right (cdr sb))))]
+    [(_ (g:id f:id) left:expr right:expr)
+     #'(let ([sb (if f 
+                   (get-sidebearings g f)
+                   (get-sidebearings g))])
+       (adjust-sidebearings g (- left (car sb)) (- right (cdr sb))))]
+    [(_ (g:id f:expr) left:expr right:expr)
+     #'(let ([f1 f])
+         (space-glyph (g f1) left right))]
+    [(_ (g:expr f:expr) left:expr right:expr)
+     #'(let ([g1 g])
+         (space-glyph (g1 f) left right))]
+    [(_ g:expr left:expr right:expr)
+     #'(space-glyph (g #f) left right)]))
+    
 
 #;
 (define-syntax (space-glyph stx)
@@ -348,3 +409,4 @@
   X : d d
   Y : d d
   Z : c c)
+
