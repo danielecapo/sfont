@@ -1,7 +1,7 @@
 #lang racket
 (require "../../main.rkt"
          "../../geometry.rkt"
-         (only-in "../syntax-keywords.rkt" groups @ -- <-> /--/ : side1 side2)
+         (only-in "../syntax-keywords.rkt"  : side1 side2)
          (for-syntax racket/syntax
                      racket/list))
 
@@ -13,11 +13,6 @@
  kern
  space-glyph
  define-spacing-rule
- groups
- @
- --
- <->
- /--/
  :
  side1
  side2)
@@ -31,13 +26,15 @@
 ; space macro
 ; The error messages should be more helpful
 (define-syntax (space stx)
-  (syntax-case stx (groups : @ -- <-> /--/)
+  (syntax-case stx (:)
     [(space) 
      (raise-syntax-error #f "Expected Font" stx)]
     [(space f) #'f]
     [(space f 
-            [groups (name glyphs) ...]
+            [groups-kw (name glyphs) ...]
             . spacing-forms)
+     (unless (eq? 'groups (syntax->datum #'groups-kw))
+       (raise-syntax-error #f "Expected groups" stx #'groups-kw))
      #'(let* ([name glyphs] ...)
          (let ([f1 (struct-copy font f 
                                 [groups (apply hash-set* 
@@ -55,9 +52,12 @@
        (raise-syntax-error #f "Expected identifier" stx #'name))
      #'(let ([fo f])
          (space (insert-glyph fo (space-glyph ((get-glyph fo 'name) fo) l r)) . spacing-forms))]
-    [(space f @ group : l r . spacing-forms)
-     (unless (identifier? #'group)
-       (raise-syntax-error #f "Expected identifier" stx #'group))
+    [(space f ref-group group : l r . spacing-forms)
+     (begin
+       (unless (identifier? #'group)
+         (raise-syntax-error #f "Expected identifier" stx #'group))
+       (unless (eq? '@ (syntax->datum #'ref-group))
+         (raise-syntax-error #f "Unknow operator" stx #'ref-group)))
      #'(let* ([fo f]
               [gr (hash-ref (font-groups f) 'group #f)])
          (space 
@@ -67,9 +67,34 @@
           . spacing-forms))]))
 
 
+(define-syntax (parse-space-form stx)
+  (syntax-case stx ()
+    [(_ (first-op second-op)) 
+     #'(list (parse-space-form first-op) 
+             (parse-space-form second-op))]
+    [(_ op) 
+     (let ([s (syntax->datum #'op)])
+       (if (or (eq? s '--)
+               (eq? s '<->)
+               (eq? s '/--/))
+           #''op
+           #'op))]))
 
 (define-syntax (space-glyph stx)
-  (syntax-case stx (/--/ -- <->)
+  (syntax-case stx ()
+    [(_) (raise-syntax-error #f "Expected glyph and spacing forms" stx)]
+    [(_ g) (raise-syntax-error #f "Expected spacing forms" stx)]
+    [(_ (g f)) (raise-syntax-error #f "Expected spacing forms" stx)]
+    [(_ (g f) left-form right-form)
+       #'(space-glyph-fn g f (parse-space-form left-form) (parse-space-form right-form))]
+    [(_ g left-form right-form)
+     #'(space-glyph (g #f) left-form right-form)]))
+    
+
+
+#;
+(define-syntax (space-glyph stx)
+  (syntax-case stx ()
     [(_) (raise-syntax-error #f "Expected glyph and spacing forms" stx)]
     [(_ g) (raise-syntax-error #f "Expected spacing forms" stx)]
     [(_ (g f)) (raise-syntax-error #f "Expected spacing forms" stx)]
@@ -119,6 +144,51 @@
      #'(space-glyph (g #f) left-form right-form)]))
 
 
+(define (space-glyph-fn g f left right)
+  (match (list left right)
+    [(list '-- '--) g]
+    [(list _ (list '/--/ '--))
+     (struct-copy glyph (space-glyph-fn g f left '--) [advance (advance (advance-width (glyph-advance g)) (advance-height (glyph-advance g)))])]
+    [(list _ (list '/--/ value))
+     (struct-copy glyph (space-glyph-fn g f left '--) [advance (advance value (advance-height (glyph-advance g)))])]
+    [(list (list '/--/ '--) _)
+     (let* ([gn (space-glyph-fn g f '-- right)]
+            [adv (advance-width (glyph-advance gn))])
+       (adjust-sidebearings gn (- (advance-width (glyph-advance gn)) adv) 0))]
+    [(list (list '/--/ value) _)
+     (let* ([gn (space-glyph-fn g f '-- right)]
+            [adv (advance-width (glyph-advance gn))])
+       (adjust-sidebearings gn (- value adv) 0))]
+    [(list (list '<-> l) _)
+     (space-glyph-fn (adjust-sidebearings g l 0) f '-- right)]
+    [(list _ (list '<-> r))
+     (space-glyph-fn (adjust-sidebearings g 0 r) f left '--)]
+    [(list (list l h) _)
+     (let ([sb (if f 
+                   (get-sidebearings-at g f h)
+                   (get-sidebearings-at g h))])
+       (space-glyph-fn (adjust-sidebearings g (- l (car sb)) 0) f '-- right))]
+    [(list _ (list r h))
+     (let ([sb (if f 
+                   (get-sidebearings-at g f h)
+                   (get-sidebearings-at g h))])
+       (space-glyph-fn (adjust-sidebearings g 0 (- r (cdr sb))) f left '--))]
+    [(list l '--)
+     (let ([sb (if f 
+                   (get-sidebearings g f)
+                   (get-sidebearings g))])
+       (adjust-sidebearings g (- l (car sb)) 0))]
+    [(list '-- r)
+     (let ([sb (if f 
+                   (get-sidebearings g f)
+                   (get-sidebearings g))])
+       (adjust-sidebearings g 0 (- r (cdr sb))))]
+    [(list l r)
+     (let ([sb (if f 
+                   (get-sidebearings g f)
+                   (get-sidebearings g))])
+       (adjust-sidebearings g (- l (car sb)) (- r (cdr sb))))]
+    [_ (error (format "Unknonwn spacing form ~a ~a" left right))]))
   
 
 ; Symbol -> Symbol
