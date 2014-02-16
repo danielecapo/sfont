@@ -42,19 +42,47 @@
 ;  (syntax-parse stx
 ;    [(_ f:id (
 
+(begin-for-syntax
+(define-syntax-class unchange-form
+    #:datum-literals (--)
+    #:description "unchange spacing form"
+    (pattern --))
+  (define-syntax-class advance-form
+    #:datum-literals (/--/)
+    #:description "advance spacing form"
+    (pattern (/--/ val:expr)))
+  (define-syntax-class adjust-form
+    #:datum-literals (<->)
+    #:description "adjust spacing form"
+    (pattern (<-> val:expr)))
+  (define-syntax-class height-form
+    #:description "sidebearing at height spacing form"
+    (pattern (val:expr height:expr)))
+  (define-syntax-class sidebearing-form
+    #:description "sidebearing spacing form"
+    (pattern val:expr))
+  (define-syntax-class spacing-form
+    #:description "spacing form"
+    (pattern s:unchange-form)
+    (pattern s:advance-form)
+    (pattern s:adjust-form)
+    (pattern s:height-form)
+    (pattern s:sidebearing-form)))
+
+
 (define-syntax (space stx)
   (define-splicing-syntax-class simple-spacing
     #:description "single glyph spacing"
     #:datum-literals (:)
-    (pattern (~seq g:id : left:expr right:expr)))
+    (pattern (~seq g:id : left:spacing-form right:spacing-form)))
   (define-splicing-syntax-class class-spacing
     #:description "class spacing"
     #:datum-literals (@ :)
-    (pattern (~seq @ g:id : left:expr right:expr)))
+    (pattern (~seq @ g:id : left:spacing-form right:spacing-form)))
   (define-splicing-syntax-class inline-group-spacing
     #:description "inline group spacing"
     #:datum-literals (:)
-    (pattern (~seq  (g:id ...) : left:expr right:expr)))
+    (pattern (~seq  (g:id ...) : left:spacing-form right:spacing-form)))
   (define-splicing-syntax-class spacing-rule
     #:description "spacing rule"
     (pattern ss:simple-spacing)
@@ -161,31 +189,7 @@
      #'(space-glyph (g #f) left-form right-form)]))
     
 (define-syntax (space-glyph stx)
-  (define-syntax-class unchange-form
-    #:datum-literals (--)
-    #:description "unchange spacing form"
-    (pattern --))
-  (define-syntax-class advance-form
-    #:datum-literals (/--/)
-    #:description "advance spacing form"
-    (pattern (/--/ val:expr)))
-  (define-syntax-class adjust-form
-    #:datum-literals (<->)
-    #:description "adjust spacing form"
-    (pattern (<-> val:expr)))
-  (define-syntax-class height-form
-    #:description "sidebearing at height spacing form"
-    (pattern (val:expr height:expr)))
-  (define-syntax-class sidebearing-form
-    #:description "sidebearing spacing form"
-    (pattern val:expr))
-  (define-syntax-class spacing-form
-    #:description "spacing form"
-    (pattern s:unchange-form)
-    (pattern s:advance-form)
-    (pattern s:adjust-form)
-    (pattern s:height-form)
-    (pattern s:sidebearing-form))
+  
   
   (syntax-parse stx
     #:datum-literals (-- <-> /--/)
