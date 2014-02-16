@@ -1,7 +1,7 @@
 #lang racket
 (require "../../main.rkt"
          "../../geometry.rkt"
-         (only-in "../syntax-keywords.rkt"  : side1 side2)
+         (only-in "../syntax-keywords.rkt" side1 side2)
          syntax/parse
          (for-syntax racket/syntax
                      racket/list
@@ -15,7 +15,6 @@
  kern
  space-glyph
  define-spacing-rule
- :
  side1
  side2)
  
@@ -43,7 +42,7 @@
 ;    [(_ f:id (
 
 (begin-for-syntax
-(define-syntax-class unchange-form
+  (define-syntax-class unchange-form
     #:datum-literals (--)
     #:description "unchange spacing form"
     (pattern --))
@@ -56,11 +55,13 @@
     #:description "adjust spacing form"
     (pattern (<-> val:expr)))
   (define-syntax-class height-form
+    #:datum-literals (^)
     #:description "sidebearing at height spacing form"
-    (pattern (val:expr height:expr)))
+    (pattern (^ val:expr height:expr)))
   (define-syntax-class sidebearing-form
     #:description "sidebearing spacing form"
     (pattern val:expr))
+    
   (define-syntax-class spacing-form
     #:description "spacing form"
     (pattern s:unchange-form)
@@ -387,6 +388,37 @@
                                 [kh (make-hash)])
                             (struct-copy font fo
                                          [kerning (make-kerns fo kh . kern-forms)]))]))
+
+(define-syntax (kern-1 stx)
+  (define-syntax-class binding-group
+    #:description "binding group"
+    (pattern (name:id glyphs:expr)))
+  (define-syntax-class side1
+    #:description "side1 kerning groups"
+    #:datum-literals (side1)
+    (pattern (side1 g:binding-group ...)
+             #:with (name ...) #'(g.name ...)
+             #:with (glyphs ...) #'(g.glyphs ...)))
+  (define-syntax-class side2
+    #:description "side2 kerning group"
+    #:datum-literals (side2)
+    (pattern (side2 g:binding-group ...)
+             #:with (name ...) #'(g.name ...)
+             #:with (glyphs ...) #'(g.glyphs ...)))
+  (define-syntax-class group
+    #:description "kerning group"
+    (pattern g:side1)
+    (pattern g:side2))
+  (define-syntax-class groups
+    #:description "kerning groups"
+    #:datum-literals (groups)
+    (pattern (groups g0:group g1:group))
+    (pattern (groups g0:group)))
+             
+  (syntax-parse
+   
+   [(_ f:id gs:groups r:expr ...)
+    ]))
      
 
 (define-syntax (make-kerns stx)
@@ -449,31 +481,31 @@
    [d min]
    [e o]
    [f (floor (* c-adj o))])
-  a : -- (b mid)
-  b : (a mid) e
+  a : -- (^ b mid)
+  b : (^ a mid) e
   c : e f
-  d : e (a mid)
+  d : e (^ a mid)
   e : e f
   f : -- --
   g : -- --
-  h : (c mid) (b mid)
-  i : (c mid) (a mid)
-  j : (a mid) (a mid)
-  k : (c mid) d
-  l : (c mid) (a mid)
-  m : (a mid) (b mid)
-  n : (a mid) (b mid)
+  h : (^ c mid) (^ b mid)
+  i : (^ c mid) (^ a mid)
+  j : (^ a mid) (^ a mid)
+  k : (^ c mid) d
+  l : (^ c mid) (^ a mid)
+  m : (^ a mid) (^ b mid)
+  n : (^ a mid) (^ b mid)
   o : e e
-  p : (c mid) e
-  q : e (a mid)
-  r : (a mid) d
+  p : (^ c mid) e
+  q : e (^ a mid)
+  r : (^ a mid) d
   s : -- --
   t : -- --
-  u : (b mid) (b mid)
+  u : (^ b mid) (^ b mid)
   v : d d
   w : d d
   x : d d
-  y : (d xh) (d xh)
+  y : (^ d xh) (^ d xh)
   z : -- --)
                          
 (define-spacing-rule
@@ -486,26 +518,26 @@
    [d min]
    [e o])
   A : d d
-  B : (a mid) c
+  B : (^ a mid) c
   C : e c
-  D : (a mid) e
-  E : (a mid) c
-  F : (a mid) c
-  G : e (b (/ mid 2.5))
-  H : (a mid) (a mid)
-  I : (a mid) (a mid)
-  J : d (a mid)
-  K : (a mid) d
-  L : (a mid) d
-  M : (b mid) (a mid)
-  N : (b mid) (b mid)
+  D : (^ a mid) e
+  E : (^ a mid) c
+  F : (^ a mid) c
+  G : e (^ b (/ mid 2.5))
+  H : (^ a mid) (^ a mid)
+  I : (^ a mid) (^ a mid)
+  J : d (^ a mid)
+  K : (^ a mid) d
+  L : (^ a mid) d
+  M : (^ b mid) (^ a mid)
+  N : (^ b mid) (^ b mid)
   O : e e
-  P : (a mid) e
-  Q : (e mid) (e mid)
-  R : (a mid) d
+  P : (^ a mid) e
+  Q : (^ e mid) (^ e mid)
+  R : (^ a mid) d
   S : -- --
   T : d d
-  U : (a mid) (b mid)
+  U : (^ a mid) (^ b mid)
   V : d d
   W : d d
   X : d d
