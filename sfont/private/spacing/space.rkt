@@ -55,6 +55,11 @@
     #:description "inline group spacing"
     #:datum-literals (:)
     (pattern (~seq  (g:id ...) : left:expr right:expr)))
+  (define-splicing-syntax-class spacing-rule
+    #:description "spacing rule"
+    (pattern ss:simple-spacing)
+    (pattern cs:class-spacing)
+    (pattern is:inline-group-spacing))
   (define-syntax-class groups
     #:description "spacing groups"
     #:datum-literals (groups)
@@ -82,9 +87,10 @@
                                                (append (list 'g.name g.glyphs) ...))])])
            (space f1 r ...))]
     [(_ f:id) #'f]
-    [(_ f:expr . rest)
+    [(_ f:id r1:expr r:expr ...) (raise-syntax-error #f "Invalid spacing rule" stx #'r1)]
+    [(_ f:expr r:expr ...)
      #'(let ([f1 f])
-         (space f1 . rest))]))
+         (space f1 r ...))]))
 
 ; space macro
 ; The error messages should be more helpful
