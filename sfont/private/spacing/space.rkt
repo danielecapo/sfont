@@ -15,6 +15,7 @@
  kern
  space-glyph
  define-spacing-rule
+ add-to-groups
  side1
  side2)
  
@@ -393,32 +394,77 @@
   (define-syntax-class binding-group
     #:description "binding group"
     (pattern (name:id glyphs:expr)))
-  (define-syntax-class side1
-    #:description "side1 kerning groups"
-    #:datum-literals (side1)
-    (pattern (side1 g:binding-group ...)
+  (define-syntax-class side-groups
+    #:description "side kerning groups"
+    (pattern (side g:binding-group ...)
              #:with (name ...) #'(g.name ...)
-             #:with (glyphs ...) #'(g.glyphs ...)))
-  (define-syntax-class side2
-    #:description "side2 kerning group"
-    #:datum-literals (side2)
-    (pattern (side2 g:binding-group ...)
-             #:with (name ...) #'(g.name ...)
-             #:with (glyphs ...) #'(g.glyphs ...)))
-  (define-syntax-class group
-    #:description "kerning group"
-    (pattern g:side1)
-    (pattern g:side2))
+             #:with (glyphs ...) #'(g.glyphs ...)
+             #:fail-unless (or (eq? 'side1 (syntax->datum #'side))
+                                (eq? 'side2 (syntax->datum #'side)))
+             "Invalide side name"))  
   (define-syntax-class groups
     #:description "kerning groups"
     #:datum-literals (groups)
-    (pattern (groups g0:group g1:group))
-    (pattern (groups g0:group)))
+    (pattern (groups g0:side-groups g1:side-groups))
+    (pattern (groups g0:side-groups)))
+  (syntax-parse stx
+                [(_ f:id g:groups k:expr ...)
+                 (syntax-parse #'g
+                   [(groups g0:side-groups g1:side-groups)
+                    #'(let ([f1 (foldl (lambda (n g fo) 
+                                         (add-to-side-group fo n 'g0.side g))
+                                       f
+                                       (list 'g0.name ...)
+                                       (list g0.glyphs ...))])
+                        (kern-1 f [groups g1] k ...))]
+                   [(groups g0:side-groups)
+                    #'(let ([f1 (foldl (lambda (n g fo) 
+                                         (add-to-side-group fo n 'g0.side g))
+                                       f
+                                       (list 'g0.name ...)
+                                       (list g0.glyphs ...))])
+                        (kern-1 f k ...))])]
+                [(_ f:id k:expr ...)
+                 #'(let ([kh (make-hash)])
+                     (struct-copy font f
+                                  [kerning (make-kerns-1 kh k ...)]))]
+                [(_ f:expr r:expr ...)
+                 #'(let ([f1 f])
+                     (kern-1 f1 r ...))]))
+                
+                
+(define-syntax (make-kerns-1 stx)
+  (define-splicing-syntax-class kern-class-ref
+    #:description "kern class reference"
+    #:datum-literals (@)
+    (pattern (~seq @ k:id)))
+  (define-splicing-syntax-class kern-id
+    #:description "kern identifier"
+    (pattern k:kern-class-ref)
+    (pattern (~seq k:id)))
+  (define-splicing-syntax-class kern-rule
+    #:description "kern rule"
+    #:datum-literals (:)
+    (pattern (~seq l:kern-id r:kern-id : value:expr)))
+  (syntax-parse stx
+    [(_ k:id kern0:kern-rule kern:kern-rule ...)
+     (with-syntax ([left (syntax-parse #'kern0.l
+                           [(ki:kern-class-ref)
+                            #'(left-kern-group 'ki.k)]
+                           [(ki:id) #''ki])]
+                   [right (syntax-parse #'kern0.r
+                            [(ki:kern-class-ref)
+                             #'(right-kern-group 'ki.k)]
+                            [(ki:id) #''ki])])
+       #'(let ([kh (add-kern k left right kern0.value)])
+           (make-kerns-1 kh kern ...)))]
+    [(_ k:id)
+     #'(make-immutable-kerning k)]))
+       
              
-  (syntax-parse
-   
-   [(_ f:id gs:groups r:expr ...)
-    ]))
+    
+                 
+             
      
 
 (define-syntax (make-kerns stx)
