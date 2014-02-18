@@ -1,7 +1,7 @@
 #lang racket
 (require "../../main.rkt"
          "../../geometry.rkt"
-         (only-in "space.rkt" add-to-groups)
+         "utils.rkt"
          syntax/parse
          (for-syntax racket/syntax
                      racket/list

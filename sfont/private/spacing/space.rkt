@@ -1,7 +1,7 @@
 #lang racket
 (require "../../main.rkt"
          "../../geometry.rkt"
-         
+         "utils.rkt"
          syntax/parse
          (for-syntax racket/syntax
                      racket/list
@@ -13,16 +13,8 @@
   [uppercase-tracy (-> font? real? real? real? real? font?)])
  space 
  space-glyph
- define-spacing-rule
- add-to-groups)
+ define-spacing-rule)
  
-
-; Font Symbol (listof Symbol) -> Font
-(define (add-to-groups f g gs)
-  (struct-copy font f 
-               [groups (hash-set (font-groups f) g gs)]))
-
-
 
 (begin-for-syntax
   (define-syntax-class unchange-form
