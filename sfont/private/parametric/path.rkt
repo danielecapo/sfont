@@ -1,11 +1,30 @@
 #lang racket
 (require "../../geometry.rkt"
-       
+         "../../utilities.rkt"
+         (only-in "fontwriter.rkt" 
+                  from
+                  translate.
+                  rotate.
+                  scale.
+                  skew-x.
+                  skew-y.
+                  reflect-x.
+                  reflect-y.)
          (for-syntax racket/list
                      syntax/parse))
 
-(provide ~)
+(provide 
+ (contract-out
+  [rect (-> real? real? real? real? cubic-bezier/c)]
+  [ellipse (-> real? real? real? real? cubic-bezier/c)]
+  [arc (-> real? real? real? real? cubic-bezier/c)]
+  [remove~ (->* (and/c closed-bezier/c cubic-bezier/c) () #:rest (listof (and/c closed-bezier/c cubic-bezier/c)) 
+                (listof (and/c closed-bezier/c cubic-bezier/c)))]
+  [join~ (->* (and/c closed-bezier/c cubic-bezier/c) () #:rest (listof (and/c closed-bezier/c cubic-bezier/c)) 
+              (listof (and/c closed-bezier/c cubic-bezier/c)))])
+ ~)
 
+; Vec Real Vec Real -> (Vec or False)
 (define (line-intersection a alpha b beta)
   (let* ([det (- (* (sin alpha) (cos beta))
                  (* (cos alpha) (sin beta)))]
@@ -172,6 +191,69 @@
 
 
 
+; Bezier  Bezier ... -> (listof Bezier)
+(define (remove~ pt . from-pt)
+  (foldl (lambda (p acc)
+           (append acc (bezier-subtract p pt)))
+         null
+         from-pt))
 
-(let ([b  (~ (10 10) -- (20 10) -- (20 20))])
-    (~ (20 20) -- (-20 40) -- cycle))
+; Bezier  Bezier ... -> (listof Bezier)
+(define (join~ pt . pts)
+  (if (null? pts)
+      (list pt)
+      (let* ([bb (bezier-bounding-box pt)]
+             [overlaps 
+              (filter (lambda (pi) 
+                        (overlap-bounding-boxes?  bb (bezier-bounding-box pi))) 
+                      pts)]
+             [non-overlaps
+              (set->list (set-subtract (list->set pts) (list->set overlaps)))])
+        (if (null? overlaps)
+            (append (list pt)
+                    (apply join~ pts))
+            (let ([j (bezier-union pt (car overlaps))])
+              (if (= (length j) 1)
+                  (apply join~ (car j) (append (cdr overlaps) non-overlaps))
+                  (append (list (car overlaps))
+                          (apply join~ pt (append (cdr overlaps) non-overlaps)))))))))
+
+
+; Real, Real, Real, Real -> Bezier
+; produce a rectangle (as a bezier curve) with lower left corner in (x, y) with width w and height h
+(define (rect x y w h)
+  (let ([x2 (+ x w)]
+        [y2 (+ y h)])
+    (~ (x y) -- (x2 y) -- (x2 y2) -- (x y2) -- (x y))))
+
+
+; Real, Real, Real, Real -> Bezier
+; produce an ellipse (as a bezier curve) with lower left corner (of the bounding box) in (x, y) with width w and height h
+(define (ellipse x y w h)
+  (let* ([x2 (+ x w)]
+         [y2 (+ y h)]
+         [xm (* (+ x x2) 0.5)]
+         [ym (* (+ y y2) 0.5)]
+         [t 0.551915])
+    (~ (x2 ym) (x2 y2 t) (xm y2)
+       (x y2 t) (x ym)
+       (x y t) (xm y)
+       (x2 y t) (x2 ym))))
+
+
+; Real Real Real Real -> Bezier
+; produce an arc with center (cx cy) radius r and angle a
+(define (arc cx cy r a)
+  (let* ([x1 (+ cx r)]
+         [y2 (+ cy r)]
+         [seg (~ (x1 cy) (x1 y2 0.551915) (cx y2))])
+    (cond [(< a pi/2)
+           (let-values ([(a b) (split seg (/ a pi/2))])
+             a)]
+          [(= a pi/2) seg]
+          [(= a 2pi) (ellipse (- cx r) (- cy r) (* 2 r) (* 2 r))]
+          [(> a 2pi) (error "arc: angle is greater than 2pi")]
+          [(> a pi/2) (join-subpaths seg 
+                                     (from (cx cy) 
+                                           (rotate. (arc cx cy r (- a pi/2))
+                                                    pi/2)))])))
