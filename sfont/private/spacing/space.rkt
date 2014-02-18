@@ -1,7 +1,7 @@
 #lang racket
 (require "../../main.rkt"
          "../../geometry.rkt"
-         (only-in "../syntax-keywords.rkt" side1 side2)
+         
          syntax/parse
          (for-syntax racket/syntax
                      racket/list
@@ -12,12 +12,9 @@
   [lowercase-tracy (->* (font? real? real? real? real?) (real? real?) font?)]
   [uppercase-tracy (-> font? real? real? real? real? font?)])
  space 
- kern
  space-glyph
  define-spacing-rule
- add-to-groups
- side1
- side2)
+ add-to-groups)
  
 
 ; Font Symbol (listof Symbol) -> Font
@@ -25,22 +22,7 @@
   (struct-copy font f 
                [groups (hash-set (font-groups f) g gs)]))
 
-;
-;(define-syntax (space-1 stx)
-;  (define-syntax-class simple-spacing
-;    #:description "single glyph spacing"
-;    (pattern (g:id left:expr right:expr)))
-;  (define-syntax-class class-spacing
-;    #:description "class spacing"
-;    #:datum-literals (@)
-;    (pattern (@ g:id left:expr right:expr)))
-;  (define-syntax-class inline-class-spacing
-;    #:description "class spacing"
-;    (pattern ((g:id ...) left:expr right:expr)))
-;  
-;    
-;  (syntax-parse stx
-;    [(_ f:id (
+
 
 (begin-for-syntax
   (define-syntax-class unchange-form
@@ -61,8 +43,7 @@
     (pattern (^ val:expr height:expr)))
   (define-syntax-class sidebearing-form
     #:description "sidebearing spacing form"
-    (pattern val:expr))
-    
+    (pattern val:expr))    
   (define-syntax-class spacing-form
     #:description "spacing form"
     (pattern s:unchange-form)
@@ -122,77 +103,10 @@
      #'(let ([f1 f])
          (space f1 r ...))]))
 
-; space macro
-; The error messages should be more helpful
-#;
-(define-syntax (space stx)
-  (syntax-case stx (:)
-    [(space) 
-     (raise-syntax-error #f "Expected Font" stx)]
-    [(space f) #'f]
-    [(space f 
-            [groups-kw (name glyphs) ...]
-            . spacing-forms)
-     (unless (eq? 'groups (syntax->datum #'groups-kw))
-       (raise-syntax-error #f "Expected groups" stx #'groups-kw))
-     #'(let* ([name glyphs] ...)
-         (let ([f1 (struct-copy font f 
-                                [groups (apply hash-set* 
-                                               (font-groups f)
-                                               (append (list 'name glyphs) ...))])])
-           (space f1 . spacing-forms)))]
-    [(space f (name ...) : l r . spacing-forms)
-     (for-each (lambda (n) (when (not (identifier? n))
-                             (raise-syntax-error #f "Expected identifier in inline group" stx n)))
-               (syntax->list #'(name ...)))
-     #'(let ([group (list 'name ...)])
-         (space f @ group : l r . spacing-forms))]
-    [(space f name : l r . spacing-forms)
-     (unless (identifier? #'name)
-       (raise-syntax-error #f "Expected identifier" stx #'name))
-     #'(let ([fo f])
-         (space (insert-glyph fo (space-glyph ((get-glyph fo 'name) fo) l r)) . spacing-forms))]
-    [(space f ref-group group : l r . spacing-forms)
-     (begin
-       (unless (identifier? #'group)
-         (raise-syntax-error #f "Expected identifier" stx #'group))
-       (unless (eq? '@ (syntax->datum #'ref-group))
-         (raise-syntax-error #f "Unknow operator" stx #'ref-group)))
-     #'(let* ([fo f]
-              [gr (hash-ref (font-groups f) 'group #f)])
-         (space 
-          (foldl (lambda (g fo) 
-                   (insert-glyph fo (space-glyph ((get-glyph fo g) fo) l r)))
-                 fo (if gr gr group))
-          . spacing-forms))]))
 
 
-(define-syntax (parse-space-form stx)
-  (syntax-case stx ()
-    [(_ (first-op second-op)) 
-     #'(list (parse-space-form first-op) 
-             (parse-space-form second-op))]
-    [(_ op) 
-     (let ([s (syntax->datum #'op)])
-       (if (or (eq? s '--)
-               (eq? s '<->)
-               (eq? s '/--/))
-           #''op
-           #'op))]))
-
-(define-syntax (space-glyph-2 stx)
-  (syntax-case stx ()
-    [(_) (raise-syntax-error #f "Expected glyph and spacing forms" stx)]
-    [(_ g) (raise-syntax-error #f "Expected spacing forms" stx)]
-    [(_ (g f)) (raise-syntax-error #f "Expected spacing forms" stx)]
-    [(_ (g f) left-form right-form)
-       #'(space-glyph-fn g f (parse-space-form left-form) (parse-space-form right-form))]
-    [(_ g left-form right-form)
-     #'(space-glyph (g #f) left-form right-form)]))
     
-(define-syntax (space-glyph stx)
-  
-  
+(define-syntax (space-glyph stx)  
   (syntax-parse stx
     #:datum-literals (-- <-> /--/)
     [(_ (g:id f:id) -- --) #'g]
@@ -256,250 +170,6 @@
     [(_ g:expr left:spacing-form right:spacing-form)
      #'(space-glyph (g #f) left right)]))
     
-
-#;
-(define-syntax (space-glyph stx)
-  (syntax-case stx ()
-    [(_) (raise-syntax-error #f "Expected glyph and spacing forms" stx)]
-    [(_ g) (raise-syntax-error #f "Expected spacing forms" stx)]
-    [(_ (g f)) (raise-syntax-error #f "Expected spacing forms" stx)]
-    [(_ (g f) left-form (/--/ aw))
-     (syntax-case #'aw (--)
-       [-- #'(let ([adv (advance-width (glyph-advance g))])
-               (space-glyph (g f) left-form (/--/ adv)))]
-       [w #'(if (not (real? w))
-                (error "Expected real? given: " w)
-                (struct-copy glyph (space-glyph (g f) left-form --) 
-                             [advance (struct-copy advance (glyph-advance g)
-                                                   [width w])]))])]
-    [(_ (g f) (/--/ aw) r)
-     (syntax-case #'aw (--)
-       [-- #'(let ([adv (advance-width (glyph-advance g))])
-               (space-glyph (g f) (/--/ adv) r))]
-       [w #'(if (not (real? w))
-                (error "Expected real? given: " w)
-                (let* ([ng (space-glyph (g f) -- r)]
-                   [adv (advance-width (glyph-advance ng))]
-                   [diff (- w adv)])
-                  (space-glyph (g f) (<-> diff) (/--/ w))))])]
-    [(_ (g f) left-form right-form)
-     (with-syntax ([gd #'(let ([fo f])
-                           (if fo 
-                               (decompose-glyph fo g)
-                               g))])
-                   
-       (let ([make-adj (lambda (s left?)
-                         (syntax-case s (-- <->)
-                           [-- #'0]
-                           [(<-> l) #'(if (not (real? l))
-                                          (error "Expected real? given: " l)
-                                          l)]
-                           [(l h) #`(cond [(not (real? l))
-                                           (error "Expected real? given: " l)]
-                                          [(not (real? h))
-                                           (error "Expected real? given: " h)]
-                                          [else (- l ((if #,left? car cdr) (get-sidebearings-at gd h)))])]
-                           [l #`(if (not (real? l))
-                                          (error "Expected real? given: " l)
-                                          (- l ((if #,left? car cdr) (get-sidebearings gd))))]))])
-         (with-syntax ([l (make-adj #'left-form #t)]
-                       [r (make-adj #'right-form #f)])
-           #'(adjust-sidebearings g l r))))]
-    [(_ g left-form right-form)
-     #'(space-glyph (g #f) left-form right-form)]))
-
-
-(define (space-glyph-fn g f left right)
-  (match (list left right)
-    [(list '-- '--) g]
-    [(list _ (list '/--/ '--))
-     (struct-copy glyph (space-glyph-fn g f left '--) [advance (advance (advance-width (glyph-advance g)) (advance-height (glyph-advance g)))])]
-    [(list _ (list '/--/ value))
-     (struct-copy glyph (space-glyph-fn g f left '--) [advance (advance value (advance-height (glyph-advance g)))])]
-    [(list (list '/--/ '--) _)
-     (let* ([gn (space-glyph-fn g f '-- right)]
-            [adv (advance-width (glyph-advance gn))])
-       (adjust-sidebearings gn (- (advance-width (glyph-advance gn)) adv) 0))]
-    [(list (list '/--/ value) _)
-     (let* ([gn (space-glyph-fn g f '-- right)]
-            [adv (advance-width (glyph-advance gn))])
-       (adjust-sidebearings gn (- value adv) 0))]
-    [(list (list '<-> l) _)
-     (space-glyph-fn (adjust-sidebearings g l 0) f '-- right)]
-    [(list _ (list '<-> r))
-     (space-glyph-fn (adjust-sidebearings g 0 r) f left '--)]
-    [(list (list l h) _)
-     (let ([sb (if f 
-                   (get-sidebearings-at g f h)
-                   (get-sidebearings-at g h))])
-       (space-glyph-fn (adjust-sidebearings g (- l (car sb)) 0) f '-- right))]
-    [(list _ (list r h))
-     (let ([sb (if f 
-                   (get-sidebearings-at g f h)
-                   (get-sidebearings-at g h))])
-       (space-glyph-fn (adjust-sidebearings g 0 (- r (cdr sb))) f left '--))]
-    [(list l '--)
-     (let ([sb (if f 
-                   (get-sidebearings g f)
-                   (get-sidebearings g))])
-       (adjust-sidebearings g (- l (car sb)) 0))]
-    [(list '-- r)
-     (let ([sb (if f 
-                   (get-sidebearings g f)
-                   (get-sidebearings g))])
-       (adjust-sidebearings g 0 (- r (cdr sb))))]
-    [(list l r)
-     (let ([sb (if f 
-                   (get-sidebearings g f)
-                   (get-sidebearings g))])
-       (adjust-sidebearings g (- l (car sb)) (- r (cdr sb))))]
-    [_ (error (format "Unknonwn spacing form ~a ~a" left right))]))
-  
-
-; Symbol -> Symbol
-; add public.kern1 to the group name
-(define (left-kern-group n)
-  (string->symbol (~a "public.kern1." n)))
-
-; Symbol -> Symbol
-; add public.kern2 to the group name
-(define (right-kern-group n)
-  (string->symbol (~a "public.kern2." n)))
-
-(define (add-to-side-group f n s gs)
-  (cond [(eq? s 'side1) (add-to-groups f (left-kern-group n) gs)]
-        [(eq? s 'side2) (add-to-groups f (right-kern-group n) gs)]
-        [else (raise-syntax-error "Side can be either side1 or side2")]))
-
-(define-syntax (kern stx)
-  (syntax-case stx (side1 side2)
-    [(_ f [groups (side1 (n1 gs1) ...) (side2 (n2 gs2) ...)] . kern-forms)
-     #'(let ([f1 (foldl (lambda (n g fo)
-                          (add-to-side-group fo n 'side2 g))
-                          (foldl (lambda (n g fo) 
-                                   (add-to-side-group fo n 'side1 g))
-                                 f
-                                 (list 'n1 ...)
-                                 (list gs1 ...))
-                          (list 'n2 ...)
-                          (list gs2 ...))
-                          ])
-         (kern f1 . kern-forms))]
-    [(_ f . kern-forms) #'(let ([fo f]
-                                [kh (make-hash)])
-                            (struct-copy font fo
-                                         [kerning (make-kerns fo kh . kern-forms)]))]))
-
-(define-syntax (kern-1 stx)
-  (define-syntax-class binding-group
-    #:description "binding group"
-    (pattern (name:id glyphs:expr)))
-  (define-syntax-class side-groups
-    #:description "side kerning groups"
-    (pattern (side g:binding-group ...)
-             #:with (name ...) #'(g.name ...)
-             #:with (glyphs ...) #'(g.glyphs ...)
-             #:fail-unless (or (eq? 'side1 (syntax->datum #'side))
-                                (eq? 'side2 (syntax->datum #'side)))
-             "Invalide side name"))  
-  (define-syntax-class groups
-    #:description "kerning groups"
-    #:datum-literals (groups)
-    (pattern (groups g0:side-groups g1:side-groups))
-    (pattern (groups g0:side-groups)))
-  (syntax-parse stx
-                [(_ f:id g:groups k:expr ...)
-                 (syntax-parse #'g
-                   [(groups g0:side-groups g1:side-groups)
-                    #'(let ([f1 (foldl (lambda (n g fo) 
-                                         (add-to-side-group fo n 'g0.side g))
-                                       f
-                                       (list 'g0.name ...)
-                                       (list g0.glyphs ...))])
-                        (kern-1 f [groups g1] k ...))]
-                   [(groups g0:side-groups)
-                    #'(let ([f1 (foldl (lambda (n g fo) 
-                                         (add-to-side-group fo n 'g0.side g))
-                                       f
-                                       (list 'g0.name ...)
-                                       (list g0.glyphs ...))])
-                        (kern-1 f k ...))])]
-                [(_ f:id k:expr ...)
-                 #'(let ([kh (make-hash)])
-                     (struct-copy font f
-                                  [kerning (make-kerns-1 kh k ...)]))]
-                [(_ f:expr r:expr ...)
-                 #'(let ([f1 f])
-                     (kern-1 f1 r ...))]))
-                
-                
-(define-syntax (make-kerns-1 stx)
-  (define-splicing-syntax-class kern-class-ref
-    #:description "kern class reference"
-    #:datum-literals (@)
-    (pattern (~seq @ k:id)))
-  (define-splicing-syntax-class kern-id
-    #:description "kern identifier"
-    (pattern k:kern-class-ref)
-    (pattern (~seq k:id)))
-  (define-splicing-syntax-class kern-rule
-    #:description "kern rule"
-    #:datum-literals (:)
-    (pattern (~seq l:kern-id r:kern-id : value:expr)))
-  (syntax-parse stx
-    [(_ k:id kern0:kern-rule kern:kern-rule ...)
-     (with-syntax ([left (syntax-parse #'kern0.l
-                           [(ki:kern-class-ref)
-                            #'(left-kern-group 'ki.k)]
-                           [(ki:id) #''ki])]
-                   [right (syntax-parse #'kern0.r
-                            [(ki:kern-class-ref)
-                             #'(right-kern-group 'ki.k)]
-                            [(ki:id) #''ki])])
-       #'(let ([kh (add-kern k left right kern0.value)])
-           (make-kerns-1 kh kern ...)))]
-    [(_ k:id)
-     #'(make-immutable-kerning k)]))
-       
-             
-    
-                 
-             
-     
-
-(define-syntax (make-kerns stx)
-  (syntax-case stx (: @ --)
-    [(make-kerns f1 -- . kern-forms)
-     #'(let ([k (make-hash)])
-       (make-kerns f1 k . kern-forms))]
-    [(make-kerns f1 kh @ l r : v . kern-forms)
-     #'(make-kerns f1 (add-kern kh (left-kern-group 'l) 'r v) . kern-forms)] 
-    [(make-kerns f1 kh l @ r : v . kern-forms)
-     #'(make-kerns f1 (add-kern kh 'l (right-kern-group 'r) v) . kern-forms)] 
-    [(make-kerns f1 kh @ l @ r : v . kern-forms)
-     #'(make-kerns f1 (add-kern kh (left-kern-group 'l) (right-kern-group 'r) v) . kern-forms)] 
-    [(make-kerns f1 kh l r : v . kern-forms)
-     (begin
-       (unless (identifier? #'l)
-         (raise-syntax-error #f "Expected indentifier" stx #'l))
-       (unless (identifier? #'r)
-         (raise-syntax-error #f "Expected indentifier" stx #'r)))
-     #'(make-kerns f1 (add-kern kh 'l 'r v) . kern-forms)] 
-    [(make-kerns f1 kh) #'(make-immutable-kerning kh)]))
-
-    
-(define (add-kern k l r v)
-  (begin
-    (if (hash-has-key? k l)
-        (hash-set! (hash-ref k l) r v)
-        (hash-set! k l (make-hash (list (cons r v)))))    
-    k))
-
-(define (make-immutable-kerning k)
-  (make-immutable-hash
-   (hash-map k (lambda (k v)
-                 (cons k (make-immutable-hash (hash->list v)))))))
-
 
 
 ; define-spacing-rule
