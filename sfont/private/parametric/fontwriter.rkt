@@ -55,20 +55,18 @@
   (translate. (fn (translate. o (- x) (- y)) . args)
               x y))
 
+(begin-for-syntax
+  (define-syntax-class binding
+      #:description "binding pair"
+      (pattern (var:id v:expr))))
 
-
-
+(define current-font (make-parameter #f))
 
 (define-syntax (glyph. stx)
   (define-syntax-class glyph-metrics-form
     #:description "glyph spacing definitions"
     #:datum-literals (metrics)
     (pattern (metrics left:expr right:expr)))  
-  
-  
-  (define-syntax-class binding
-      #:description "binding pair"
-      (pattern (var:id v:expr)))
 
   (define-syntax-class locals-form
     #:description "local variable bindings"
@@ -123,29 +121,6 @@
                  [l.var l.v] ...)
             (g gname)))])]))
       
-            
-;        
-;     #'(glyph. name 
-;               [locals]
-;               [metrics left-form right-form]
-;               . contour-form)]
-;    [(glyph. name 
-;             [locals [s v] ...]
-;             [metrics left-form right-form]
-;             . contour-form)
-;     (with-syntax ([cnts (syntax-case #'contour-form (contours)
-;                           [() #'(list)]
-;                           [((contours cnt . cnts))
-;                            #'(map bezier->contour 
-;                                   (build-contour-list cnt . cnts))])])
-;       #'(let* ([s v] ...)
-;           (space-glyph
-;            (glyph name (advance 0 0) (unicode name) #f #f 
-;                   (list (layer foreground null null cnts null))
-;                   (make-immutable-hash))
-;            left-form right-form)))]
-;    [(glyph. . body) (raise-syntax-error #f "Invalid glyph. definition." stx)]))
-
 
 
 ; (Bezier or (listOf Bezier) ... -> (listOf Bezier)
@@ -242,54 +217,84 @@
 
 
 (define-syntax (font. stx)
-  (syntax-case stx (alignments variables glyphs)
-    [(font. (name [param dflt] ...) . rest)
-     (for-each (lambda (p) 
-                 (unless (identifier? p)
-                   (raise-syntax-error #f "Expected identifier" stx p)))
-               (syntax->list #'(param ...)))
+;  (define-syntax-class parameter-form
+;    #:description "parameters"
+;    (pattern (b:binding ...)
+;             #:fail-when (check-duplicate-identifier
+;                          (syntax->list #'(b.var ...)))
+;             "duplicate parameter name"
+;             #:with (para ...) #'(b.var ...)
+;             #:with (dflt ...) #'(b.v ...)))
+;  (define-splicing-syntax-class parameters
+;    #:description "parameters"
+;    (pattern (~seq 
+  
+  (define-syntax-class alignment-form
+    #:description "alignment"
+    (pattern (name:id align:expr ovs:expr)))
+  (define-syntax-class ascender-alignment-form
+    #:description "ascender alignment"
+    (pattern (name:id align:expr ovs:expr #:font-ascender)))
+  (define-syntax-class descender-alignment-form
+    #:description "descender alignment"
+    (pattern (name:id align:expr ovs:expr #:font-descender)))
+  (define-syntax-class general-alignment-form
+    #:description "alignment"
+    (pattern al:alignment-form
+             #:with name #'al.name
+             #:with align #'al.align
+             #:with ovs #'al.ovs)
+    (pattern al:ascender-alignment-form
+             #:with name #'al.name
+             #:with align #'al.align
+             #:with ovs #'al.ovs)
+    (pattern al:descender-alignment-form
+             #:with name #'al.name
+             #:with align #'al.align
+             #:with ovs #'al.ovs))
+  
+  (syntax-parse stx 
+    #:datum-literals (alignments variables glyphs)
+    [(font. (name:id p:binding ...) . rest)
+     #:fail-when (check-duplicate-identifier
+                  (syntax->list #'(p.var ...)))
+     "duplicate parameter name"
      (with-syntax ([kwarglist
                     (datum->syntax stx
                                    (append*
                                     (map (lambda (p d)
                                            (cons (string->keyword (symbol->string (syntax->datum p))) (list (list p d))))
-                                         (syntax->list #'(param ...))
-                                         (syntax->list #'(dflt  ...)))))])
+                                         (syntax->list #'(p.var ...))
+                                         (syntax->list #'(p.v  ...)))))])
        #'(lambda kwarglist (font. name . rest)))]
     [(font. name
-            [alignments als ...]
-            [variables v ...]
+            [alignments als:general-alignment-form ...]
+            [variables v:binding ...]
             [glyphs glyph-form ...])
-     (for-each (lambda (i) (unless (identifier? i)
-                             (raise-syntax-error #f "Expected identifier" stx #'i)))
-               (cons #'name
-                     (append (map (compose car syntax->list) (syntax->list #'(als ...)))
-                             (map (compose car syntax->list) (syntax->list #'(v ...))))))
      (letrec ([find-blues
                (lambda (s acc)
-                 (syntax-case s (:font-ascender :font-descender)
+                 (syntax-parse s 
                    [() acc]
-                   [([n a o :font-ascender] . as) (find-blues #'as acc)]
-                   [([n a o :font-descender] . as) (find-blues #'as acc)]
-                   [([n a o] . as) (find-blues #'as (datum->syntax s (cons #'n (syntax->list acc))))]))]
+                   [(al:ascender-alignment-form . as) (find-blues #'as acc)]
+                   [(al:descender-alignment-form . as) (find-blues #'as acc)]
+                   [(al:alignment-form . as) (find-blues #'as (datum->syntax s (cons #'al.name (syntax->list acc))))]))]
               [find-ascender
                (lambda (s)
-                 (syntax-case s (:font-ascender)
+                 (syntax-parse s 
                    [() (raise-syntax-error #f "Font doesn't define an alignment to be used as ascender in fontinfo" #'(alignments als ...))]
-                   [([n a o :font-ascender] . as) #'n]
-                   [([n a o] . as) (find-ascender #'as)]
-                   [([n a o r] . as) (find-ascender #'as)]))]
+                   [(al:ascender-alignment-form . as) #'al.name]
+                   [(_ . as) (find-ascender #'as)]))]
               [find-descender
                (lambda (s)
-                 (syntax-case s (:font-descender)
+                 (syntax-parse s 
                    [() (raise-syntax-error #f "Font doesn't define an alignment to be used as descender in fontinfo" #'(alignments als ...))]
-                   [([n a o :font-descender] . as) #'n]
-                   [([n a o . r] . as) (find-descender #'as)]))])
+                   [(al:descender-alignment-form . as) #'al.name]
+                   [(_ . as) (find-descender #'as)]))])
        (with-syntax ([ascender  (find-ascender  #'(als ...))]
                      [descender (find-descender #'(als ...))]
-                     [((alg-name a o . r) ...) #'(als ...)]
+                     
                      [(blue ...) (find-blues #'(als ...) #'())])
-         #'(let* ([alg-name (list a o)] ...)
+         #'(let* ([als.name (list als.align als.ovs)] ...)
              (emit-font-form name 
                              ascender 
                              descender 
@@ -297,9 +302,18 @@
                              (v ...) 
                              glyph-form ...))))]
     [(font. name
-            [alignments als ...]
+            [alignments als:general-alignment-form ...]
             [glyphs glyph-form ...])
      #'(font. name [alignments als ...] [variables] [glyphs glyph-form ...])]))
 
 
 
+(font. abc
+         [alignments (baseline 0 -10)
+                     (xh 500 10)
+                     (asc 750 10 #:font-ascender)
+                     (desc -250 10 #:font-descender)]
+         [glyphs
+          (glyph. 'a
+                  (metrics (/--/ 500) --)
+                  )])
