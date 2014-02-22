@@ -60,7 +60,12 @@
       #:description "binding pair"
       (pattern (var:id v:expr))))
 
-(define current-font (make-parameter #f))
+(define-syntax (component. stx)
+  (syntax-parse stx
+   [(_ base:expr (sx:expr sxy:expr syx:expr sy:expr ox:expr oy:expr))
+    #'(component base (trans-mat sx sxy syx sy ox oy) #f)]
+   [(_ base:expr)
+    #'(component base (trans-mat 1 0 0 1 0 0) #f)]))
 
 (define-syntax (glyph. stx)
   (define-syntax-class glyph-metrics-form
@@ -86,12 +91,19 @@
   
   (define-syntax-class glyph-contours
     #:description "glyph contours"
-    #:datum-literals (metrics)
+    #:datum-literals (contours)
     (pattern (contours cnt:expr ...)))
   (define-splicing-syntax-class maybe-contours
     #:description "glyph contours"
-    #:datum-literals (metrics)
     (pattern (~seq cnt:glyph-contours))
+    (pattern (~seq)))
+  (define-syntax-class glyph-components
+    #:description "glyph components"
+    #:datum-literals (components)
+    (pattern (components cmp:expr ...)))
+  (define-splicing-syntax-class maybe-components
+    #:description "glyph components"
+    (pattern (~seq cmp:glyph-components))
     (pattern (~seq)))
   
   (syntax-parse stx
@@ -99,27 +111,37 @@
     [(glyph. name:expr 
              loc:maybe-locals
              met:glyph-metrics-form
-             contour-form:maybe-contours)
-     (syntax-parse #'loc
-       [()
-        (with-syntax ([cnts (syntax-parse #'contour-form
-                              [() #'(list)]
-                              [(c:glyph-contours)
-                               #'(map bezier->contour 
-                                      (build-contour-list c.cnt ...))])])
-        #'(space-glyph 
-           (glyph name (advance 0 0) (unicode name) #f #f 
-                  (list (layer foreground null null cnts null))
-                  (make-immutable-hash))
-           met.left met.right))]
-       [(l:locals-form)
-        (with-syntax ([g (syntax-parse #'contour-form
-                           [() #'(lambda (n) (glyph. n met))]
-                           [(c:glyph-contours)
-                            #'(lambda (n) (glyph. n met c))])])
-        #'(let* ([gname name]
-                 [l.var l.v] ...)
-            (g gname)))])]))
+             r:expr ...)
+     (let ([layer-contents
+            (foldl 
+             (lambda (e acc)
+               (syntax-parse e
+               [c:glyph-contours
+                (hash-set acc 'contours 
+                          #'(map bezier->contour 
+                                 (build-contour-list c.cnt ...)))]
+               [c:glyph-components 
+                (hash-set acc 'components
+                          #'(build-component-list c.cmp ...))]))
+             (hash 'contours #'null 'components #'null)
+             (syntax->list #'(r ...)))])
+       (with-syntax ([cnts (hash-ref layer-contents 'contours)]
+                     [cmps (hash-ref layer-contents 'components)])
+         (syntax-parse #'loc
+           [()
+            #'(space-glyph 
+               (glyph name (advance 0 0) (unicode name) #f #f 
+                      (list (layer foreground null null cnts cmps))
+                      (make-immutable-hash))
+             met.left met.right)]
+         [(l:locals-form)
+          #'(let* ([gname name]
+                     [l.var l.v] ...)
+                (space-glyph 
+                 (glyph gname (advance 0 0) (unicode name) #f #f 
+                        (list (layer foreground null null cnts cmps))
+                        (make-immutable-hash))
+                 met.left met.right))])))]))
       
 
 
@@ -133,6 +155,17 @@
                    c)))
    '()
    cnts))
+
+; (Component or (listOf Component) ... -> (listOf Component)
+(define/contract (build-component-list . cmps)
+  (->* () () #:rest (listof (or/c component? (listof component?))) (listof component?))
+  (foldl 
+   (lambda (c r)
+     (append r (if (component? c)
+                   (list c)
+                   c)))
+   '()
+   cmps))
 
 
 
@@ -166,43 +199,45 @@
                      descender-id
                      (blue ...)
                      (v ...)
-                     glyph-form ...)
+                     (glyph-form ...)
+                     (spc ...))
      
      (let* (v ...)
-       (font (make-immutable-hash
-              (let* ([all-blues (list (list (alg blue) (ovs blue)) ...)]
-                     [blues (sort (flatten 
-                                   (filter ((curry ormap) 
-                                            (negate negative?)) 
-                                           all-blues))
-                                  <)]
-                     [o-blues (sort (flatten 
-                                     (filter ((curry andmap) negative?)
-                                             all-blues))
-                                    <)]
-                     [infoa (list (cons 'unitsPerEm (+ (alg ascender-id) (- (alg descender-id))))
-                                  (cons 'ascender (alg ascender-id))
-                                  (cons 'descender (alg descender-id))
-                                  (cons 'familyName (symbol->string (quote name)))
-                                  (cons 'postscriptFontName (symbol->string (quote name)))
-                                  (cons 'versionMajor 1)
-                                  (cons 'versionMinor 0))]
-                     [infob (if (null? blues)
-                                infoa
-                                (cons (cons 'postscriptBlueValues blues)
-                                      infoa))])
-                (if (null? o-blues)
-                    infob
-                    (cons (cons 'postscriptBlueValues blues)
-                          infob))))
-             (make-immutable-hash) 
-             (make-immutable-hash) 
-             #f
-             (build-glyphs-list glyph-form ...)
-             (list 
-              (layer-info foreground #f (make-immutable-hash)))
-             (make-immutable-hash)
-             #f #f))]))
+       (let ([f (font (make-immutable-hash
+                       (let* ([all-blues (list (list (alg blue) (ovs blue)) ...)]
+                              [blues (sort (flatten 
+                                            (filter ((curry ormap) 
+                                                     (negate negative?)) 
+                                                    all-blues))
+                                           <)]
+                              [o-blues (sort (flatten 
+                                              (filter ((curry andmap) negative?)
+                                                      all-blues))
+                                             <)]
+                              [infoa (list (cons 'unitsPerEm (+ (alg ascender-id) (- (alg descender-id))))
+                                           (cons 'ascender (alg ascender-id))
+                                           (cons 'descender (alg descender-id))
+                                           (cons 'familyName (symbol->string (quote name)))
+                                           (cons 'postscriptFontName (symbol->string (quote name)))
+                                           (cons 'versionMajor 1)
+                                           (cons 'versionMinor 0))]
+                              [infob (if (null? blues)
+                                         infoa
+                                         (cons (cons 'postscriptBlueValues blues)
+                                               infoa))])
+                         (if (null? o-blues)
+                             infob
+                             (cons (cons 'postscriptBlueValues blues)
+                                   infob))))
+                      (make-immutable-hash) 
+                      (make-immutable-hash) 
+                      #f
+                      (build-glyphs-list glyph-form ...)
+                      (list 
+                       (layer-info foreground #f (make-immutable-hash)))
+                      (make-immutable-hash)
+                      #f #f)])
+         (space f spc ...)))]))
 
 
 ; (Glyph or (listOf Glyph)) ... -> (listOf Glyph)
@@ -252,9 +287,17 @@
              #:with name #'al.name
              #:with align #'al.align
              #:with ovs #'al.ovs))
+  (define-syntax-class spacing
+    #:datum-literals (spacing)
+    #:description "spacing"
+    (pattern (spacing spc:expr ...)))
+  (define-splicing-syntax-class maybe-spacing
+    #:description "spacing"
+    (pattern (~seq))
+    (pattern (~seq s:spacing)))
   
   (syntax-parse stx 
-    #:datum-literals (alignments variables glyphs)
+    #:datum-literals (alignments variables glyphs spacing)
     [(font. (name:id p:binding ...) . rest)
      #:fail-when (check-duplicate-identifier
                   (syntax->list #'(p.var ...)))
@@ -270,7 +313,8 @@
     [(font. name
             [alignments als:general-alignment-form ...]
             [variables v:binding ...]
-            [glyphs glyph-form ...])
+            [glyphs glyph-form ...]
+            s:maybe-spacing)
      (letrec ([find-blues
                (lambda (s acc)
                  (syntax-parse s 
@@ -293,27 +337,25 @@
        (with-syntax ([ascender  (find-ascender  #'(als ...))]
                      [descender (find-descender #'(als ...))]
                      
-                     [(blue ...) (find-blues #'(als ...) #'())])
+                     [(blue ...) (find-blues #'(als ...) #'())]
+                     [(spc ...) (syntax-parse #'s
+                                 [() #'()]
+                                 [(sp:spacing) #'(sp.spc ...)])])
          #'(let* ([als.name (list als.align als.ovs)] ...)
              (emit-font-form name 
                              ascender 
                              descender 
                              (blue ...)
                              (v ...) 
-                             glyph-form ...))))]
+                             (glyph-form ...)
+                             (spc ...)))))]
+               
     [(font. name
             [alignments als:general-alignment-form ...]
-            [glyphs glyph-form ...])
-     #'(font. name [alignments als ...] [variables] [glyphs glyph-form ...])]))
+            [glyphs glyph-form ...]
+            r ...)
+     #'(font. name [alignments als ...] [variables] [glyphs glyph-form ...] r ...)]))
 
 
 
-(font. abc
-         [alignments (baseline 0 -10)
-                     (xh 500 10)
-                     (asc 750 10 #:font-ascender)
-                     (desc -250 10 #:font-descender)]
-         [glyphs
-          (glyph. 'a
-                  (metrics (/--/ 500) --)
-                  )])
+
