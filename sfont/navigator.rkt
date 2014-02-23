@@ -3,14 +3,12 @@
 (require "private/ufo/ufo-def.rkt"
          "geometry.rkt"
          "utilities.rkt"
-         (only-in "private/syntax-keywords.rkt" @ -->)
-         (for-syntax racket/syntax))
+         (for-syntax racket/syntax
+                     syntax/parse))
 
 (provide fref
          fset
-         fupdate
-         -->
-         @)
+         fupdate)
 
    
 ; (listof Pairs) Any/c Symbol Any/c ... -> Any/c
@@ -28,19 +26,18 @@
 
 
 (define-syntax (fref stx)
-  (syntax-case stx (--> @)
-    [(_ o (field --> proc0 . procs)) 
+  (syntax-parse stx 
+    #:datum-literals (--> @)
+    [(_ o:expr (field:id --> proc0:expr . procs)) 
      #'((apply compose (reverse (list proc0 . procs)))  (fref o field))]
-    [(_ o (field @ i)) 
+    [(_ o:expr (field:id @ i:expr)) 
      #'(let ([s (lookup getter o 'field)])
          (cond [(dict? s) (dict-ref s i)]
                [(list? s) (list-ref s i)]))]
-    [(_ o (field arg0 . args)) #'(lookup getter o 'field arg0 . args)]
-    [(_ o field) 
-     (unless (identifier? #'field) 
-       (raise-syntax-error #f "Expected identifier" stx #'field))
+    [(_ o:expr (field:id arg0:expr . args)) #'(lookup getter o 'field arg0 . args)]
+    [(_ o:expr field:id) 
      #'(lookup getter o 'field)]
-    [(_ o field0 field ...) #'(==> (fref o field0) (fref field ...))]))
+    [(_ o:expr field0:expr field:expr ...) #'(==> (fref o field0) (fref field ...))]))
 
 (define (set-in-sequence s i v)
   (cond [(list? s)
@@ -53,16 +50,15 @@
          
 
 (define-syntax (fset stx)
-  (syntax-case stx  (@)
-    [(_ (o (field @ i)) v)
+  (syntax-parse stx  
+    #:datum-literals (@)
+    [(_ (o:expr (field:id @ i:expr)) v:expr)
      #'(fset (o field) (set-in-sequence (fref o field) i v))]
-    [(_ (o (field arg0 . args)) v)
+    [(_ (o:expr (field:id arg0:expr . args)) v:expr)
      #'((lookup setter o 'field arg0 . args) v)]
-    [(_ (o field) v) 
-     (unless (identifier? #'field) 
-       (raise-syntax-error #f "Expected identifier" stx #'field))
+    [(_ (o:expr field:id) v:expr) 
      #'((lookup setter o 'field) v)]
-    [(_ (o field0 field ...) v) 
+    [(_ (o:expr field0:expr field:expr ...) v:expr) 
      #'(fset (o field0) 
                  (fset ((fref o field0) field ...) v))]
     ))
