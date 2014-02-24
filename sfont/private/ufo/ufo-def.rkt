@@ -5,7 +5,6 @@
          "../fontpict.rkt"
          "../../utilities.rkt"
          racket/generic
-         (planet wmfarr/plt-linalg:1:13/matrix)
          slideshow/pict-convert
          (only-in slideshow/pict
                   pict?))
