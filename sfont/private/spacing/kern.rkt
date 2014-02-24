@@ -1,6 +1,5 @@
 #lang racket
 (require "../../main.rkt"
-         "../../geometry.rkt"
          "utils.rkt"
          syntax/parse
          (for-syntax racket/syntax
