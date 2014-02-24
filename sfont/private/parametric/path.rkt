@@ -165,11 +165,7 @@
                                           stx 
                                           (append (syntax->list acc) 
                                                   (list #'(@ 0 0) #'l #'(@ 0 0)))))]
-                           [((insert i) . r)
-                            (p-lines #'r (datum->syntax 
-                                          stx 
-                                          (append (syntax->list acc) 
-                                                  (list #'(insert i) #'(@ 0 0)))))]
+                           
                            [(f . r) 
                             (p-lines #'r (datum->syntax stx (append (syntax->list acc) (list #'f))))]))])
        (with-syntax ([(path-elts ...) (p-lines #'r #'())])
