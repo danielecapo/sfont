@@ -1,12 +1,16 @@
 #lang racket
 (require "../../main.rkt"
-         "utils.rkt"
          syntax/parse
          (for-syntax racket/syntax
                      racket/list
                      syntax/parse))
 
 (provide kern)
+
+; Font Symbol (listof Symbol) -> Font
+(define (add-to-groups f g gs)
+  (struct-copy font f 
+               [groups (hash-set (font-groups f) g gs)]))
 
 ; Symbol -> Symbol
 ; add public.kern1 to the group name
