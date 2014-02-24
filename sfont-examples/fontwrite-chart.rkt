@@ -23,8 +23,8 @@
         (alignments
          [base 0 -10]
          [xh 550 10]
-         [asc 775 0 :font-ascender]
-         [desc -225 0 :font-descender])
+         [asc 775 0 #:font-ascender]
+         [desc -225 0 #:font-descender])
         (variables
          [mid-v (/ (alg xh) 2)]
          [width (+ (alg xh) 100)]
@@ -45,8 +45,8 @@
            (alignments
             [base 0 -10]
             [xh 550 10]
-            [asc 775 0 :font-ascender]
-            [desc -225 0 :font-descender])
+            [asc 775 0 #:font-ascender]
+            [desc -225 0 #:font-descender])
            (variables
             [mid-v (/ (alg xh) 2)]
             [width (+ (alg xh) 100)]

@@ -40,8 +40,8 @@
           ;; (ovs-height xh) ->  10
           [base 0 -10]
           [xh x-height 10]
-          [desc* (/ (- x-height 1000) 2) 0 :font-descender]
-          [asc* (- x-height (alg desc*)) 0 :font-ascender]
+          [desc* (/ (- x-height 1000) 2) 0 #:font-descender]
+          [asc* (- x-height (alg desc*)) 0 #:font-ascender]
           [descender (+ (alg desc*) 10) -10]
           [ascender (- (alg asc*) 10) 10])
          (variables
@@ -110,7 +110,7 @@
                                           (rotate. c pi)))
                         a-cnts)])
           (glyph. 'f
-                  (metrics (space (/ x-height 2)) 0)
+                  (metrics (^ space (/ x-height 2)) 0)
                   [contours 
                    asc-stem
                    (rect 0 (- (alg ascender) h-stem) (* gw 2/3) h-stem)
@@ -184,8 +184,8 @@
                    (translate. half-xhs (- gw v-stem) 0)
                    (translate. half-xhs 0 (/ x-height 2))])
           (glyph. 't
-                  (metrics (space (/ x-height 2)) 
-                           ((* space 1.8) (/ x-height 2)))
+                  (metrics (^ space (/ x-height 2)) 
+                           (^ (* space 1.8) (/ x-height 2)))
                   [contours
                    (rect (- (* gw 1/6)) (- x-height h-stem) (* gw 2/3) h-stem)
                    (rect 0 0 v-stem 

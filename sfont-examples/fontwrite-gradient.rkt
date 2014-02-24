@@ -119,8 +119,8 @@
   (font. (gradients [n 20])
         [alignments
          [base 0 0]
-         [ascender 750 0 :font-ascender]
-         [descender -250 0 :font-descender]]
+         [ascender 750 0 #:font-ascender]
+         [descender -250 0 #:font-descender]]
         [glyphs
          (glyph. 'space
                 (metrics -- (/--/ 1000)))

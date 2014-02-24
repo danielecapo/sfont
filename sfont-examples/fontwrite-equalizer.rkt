@@ -28,8 +28,8 @@
   (font. (equalizer [width 300] [sb 20] [s 5])
         (alignments
          [base 0 0]
-         [ascender 750 0 :font-ascender]
-         [descender -250 0 :font-descender])
+         [ascender 750 0 #:font-ascender]
+         [descender -250 0 #:font-descender])
         (variables
          [space 28])
         (glyphs

@@ -16,8 +16,8 @@
       draw-fn)
      (font. (name params ...)
            (alignments
-            [ascender asc 0 :font-ascender]
-            [descender desc 0 :font-descender])
+            [ascender asc 0 #:font-ascender]
+            [descender desc 0 #:font-descender])
            [glyphs
             (map (lambda (n)
                    (glyph. n 
