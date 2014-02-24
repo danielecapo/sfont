@@ -25,18 +25,42 @@
     (aux dic)))
 
 
+(begin-for-syntax
+  (define-syntax-class simple-field
+    #:description "field"
+    (pattern field:id))
+  (define-syntax-class pass-to-procedures
+    #:description "procedures form"
+    #:datum-literals (-->)
+    (pattern (f:simple-field --> proc0:expr proc:expr ...)
+             #:with field #'f.field))
+  (define-syntax-class sequence-ref
+    #:description "access sequence element"
+    #:datum-literals (@)
+    (pattern (f:simple-field @ i:expr)
+             #:with field #'f.field))
+  (define-syntax-class reference-arg
+    #:description "arguments form"
+    (pattern (f:simple-field arg0:expr arg:expr ...)
+             #:with field #'f.field))
+  (define-syntax-class fi
+    #:description "access sequence element"
+    #:datum-literals (@)
+    (pattern (f:simple-field @ i:expr)
+             #:with field #'f.field)))
+  
 (define-syntax (fref stx)
   (syntax-parse stx 
     #:datum-literals (--> @)
-    [(_ o:expr (field:id --> proc0:expr . procs)) 
-     #'((apply compose (reverse (list proc0 . procs)))  (fref o field))]
-    [(_ o:expr (field:id @ i:expr)) 
-     #'(let ([s (lookup getter o 'field)])
-         (cond [(dict? s) (dict-ref s i)]
-               [(list? s) (list-ref s i)]))]
-    [(_ o:expr (field:id arg0:expr . args)) #'(lookup getter o 'field arg0 . args)]
-    [(_ o:expr field:id) 
-     #'(lookup getter o 'field)]
+    [(_ o:expr f:pass-to-procedures) 
+     #'((apply compose (reverse (list f.proc0 f.proc ...)))  (fref o f.field))]
+    [(_ o:expr f:sequence-ref) 
+     #'(let ([s (lookup getter o 'f.field)])
+         (cond [(dict? s) (dict-ref s f.i)]
+               [(list? s) (list-ref s f.i)]))]
+    [(_ o:expr f:reference-arg) #'(lookup getter o 'f.field f.arg0 f.arg ...)]
+    [(_ o:expr f:simple-field) 
+     #'(lookup getter o 'f.field)]
     [(_ o:expr field0:expr field:expr ...) #'(==> (fref o field0) (fref field ...))]))
 
 (define (set-in-sequence s i v)
@@ -52,12 +76,12 @@
 (define-syntax (fset stx)
   (syntax-parse stx  
     #:datum-literals (@)
-    [(_ (o:expr (field:id @ i:expr)) v:expr)
-     #'(fset (o field) (set-in-sequence (fref o field) i v))]
-    [(_ (o:expr (field:id arg0:expr . args)) v:expr)
-     #'((lookup setter o 'field arg0 . args) v)]
-    [(_ (o:expr field:id) v:expr) 
-     #'((lookup setter o 'field) v)]
+    [(_ (o:expr f:sequence-ref) v:expr)
+     #'(fset (o f.field) (set-in-sequence (fref o f.field) f.i v))]
+    [(_ (o:expr f:reference-arg) v:expr)
+     #'((lookup setter o 'f.field f.arg0 f.arg ...) v)]
+    [(_ (o:expr f:simple-field) v:expr) 
+     #'((lookup setter o 'f.field) v)]
     [(_ (o:expr field0:expr field:expr ...) v:expr) 
      #'(fset (o field0) 
                  (fset ((fref o field0) field ...) v))]
