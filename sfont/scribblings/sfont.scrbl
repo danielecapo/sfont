@@ -516,7 +516,7 @@ This module define functions and macros for spacing fonts.
                [side (code:line --)
                      (code:line (/--/ advance-width))
                      (code:line (<-> adjustment))
-                     (code:line (sidebearing height))
+                     (code:line (^ sidebearing height))
                      (code:line sidebearing)])]{
 
 This syntax form is designed to define the spacing of a font. The result is a new font with the spacing applied.
@@ -525,11 +525,11 @@ One example should clarify how it works:
                     [groups (group1 '(h i l m n))
                             (group2 '(o e c d))]
                     v        : 10 10
-                    f        : 80 (200 100)
+                    f        : 80 (^ 200 100)
                     a        : -- (/--/ 400)
                     k        : (/--/ 400) --
                     (s z)    : (<-> 20) (<-> 20)
-                    \@ group1 : (80 200) (80 100)
+                    \@ group1 : (^ 80 200) (^ 80 100)
                     \@ group2 : 40 --)]
 
 Two groups are defined (group1 and group2) and they are added to the font groups field.
@@ -628,8 +628,8 @@ To make an example, this is a part of the definition of @racket[lowercase-tracy]
 
 @defmodule[sfont/navigator]
 @deftogether[(@defform[(fref ref-form ...)]
-               @defform[(fset [ref-form ...] value)]
-               @defform[(fupdate [ref-form ...] update-proc)])]{
+              @defform[(fset [ref-form ...] value)]
+              @defform[(fupdate [ref-form ...] update-proc)])]{
 
 These macros define another way to access the structures defined above.
 For example
@@ -1217,7 +1217,11 @@ line segments).
 @defform[(glyph. name 
                  maybe-locals
                  [metrics left-form right-form]
-                 [contours contour ...])]
+                 [contours contour ...]
+                 [components component ...])]
+
+@defform*[((component. base)
+           (component. base (sx sxy syx sy ox oy)))]
 
 @defform*[((font. name 
                   [alignments alignment-form ...]
@@ -1226,7 +1230,8 @@ line segments).
            (font. (name (args default-value) ...)
                   [alignments alignment-form ...]
                   maybe-variables
-                  [glyphs glyph-form ...]))]
+                  [glyphs glyph-form ...]
+                  maybe-spacing))]
 
 An example for glyphs:
 @interaction[#:eval ss-eval

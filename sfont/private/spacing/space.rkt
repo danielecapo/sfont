@@ -163,16 +163,17 @@
 
 
 ; define-spacing-rule
-(define-syntax define-spacing-rule 
-  (syntax-rules (groups)
+(define-syntax (define-spacing-rule  stx)
+  (syntax-parse stx
+    #:datum-literals (groups)
     [(define-spacing-rule name (arg ...) (locals ...) [groups (g-name group) ...] body0 . body)
-       (define (name font arg ...)
+       #'(define (name font arg ...)
            (let (locals ...)
              (space font
                     [groups (g-name group) ...]
                     body0 . body)))]
     [(define-spacing-rule name (arg ...) (locals ...) body0 . body)
-     (define-spacing-rule name (arg ...) (locals ...) [groups] body0 . body)]))
+     #'(define-spacing-rule name (arg ...) (locals ...) [groups] body0 . body)]))
 
 
 ; Font Real Real Real Real [Real] [Real] -> Font

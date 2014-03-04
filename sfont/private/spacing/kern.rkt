@@ -51,7 +51,7 @@
              #:with (name ...) #'(g.name ...)
              #:with (glyphs ...) #'(g.glyphs ...)
              #:fail-unless (or (eq? 'side1 (syntax->datum #'side))
-                                (eq? 'side2 (syntax->datum #'side)))
+                               (eq? 'side2 (syntax->datum #'side)))
              "Invalid side name"))  
   (define-syntax-class groups
     #:description "kerning groups"
