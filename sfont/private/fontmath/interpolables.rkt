@@ -79,9 +79,11 @@
 ; (listof Component) -> (listof Component)
 (define (sort-components loc)
   (sort loc (lambda (c1 c2)
-              (or (string<? (symbol->string (component-base c1))
-                            (symbol->string (component-base c2)))
-                  (pos<? (component-pos c1) (component-pos c2))))))
+              (let ([b1 (symbol->string (component-base c1))]
+                    [b2 (symbol->string (component-base c2))])
+                (or (string<? b1 b2)
+                    (and (string=? b1 b2)
+                         (pos<? (component-pos c1) (component-pos c2))))))))
 
 ; (listof Contour) -> (listof Contour)
 (define (sort-contours loc)

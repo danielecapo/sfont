@@ -289,11 +289,11 @@
 ; Font ... -> (listof Font)
 (define (interpolables  f . fs)
   (let ([f0 (foldl (lambda (f acc)
-                     (let-values ([(a b) (interpolable-fonts acc f)])
+                     (let-values ([(a b) (interpolable-fonts acc f #f #t)])
                        a))
                    f fs)])
     (cons f0 (map (lambda (f)
-                    (let-values ([(a b) (interpolable-fonts f f0)])
+                    (let-values ([(a b) (interpolable-fonts f f0 #f #t)])
                       (match-fonts-contours f0 a)))
                   fs))))
 
@@ -329,7 +329,7 @@
 ;;; MACROS
 (define-syntax-rule (define-interpolable-fonts (id f) ...)
   (define-values (id ...)
-    (apply values (get-interpolable-fonts f ...))))
+    (apply values (interpolables f ...))))
 
 
 (define-syntax (define-space stx)
