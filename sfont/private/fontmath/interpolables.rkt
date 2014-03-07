@@ -33,11 +33,12 @@
  
 ; Font Boolean Boolean -> Font
 (define (prepare-font f [weak #t] [auto-directions #f])
-  (struct-copy font (if auto-directions (correct-directions f) f)
-               [layers (list (dict-ref (font-layers f) foreground))]
-               [fontinfo (prepare-info (font-fontinfo f))]
-               [kerning (prepare-kerning (font-kerning f))]
-               [glyphs (map-glyphs (curryr prepare-glyph weak) f)]))
+  (let ([f1 (if auto-directions (correct-directions f) f)])
+    (struct-copy font f1
+                 [layers (list (dict-ref (font-layers f1) foreground))]
+                 [fontinfo (prepare-info (font-fontinfo f1))]
+                 [kerning (prepare-kerning (font-kerning f1))]
+                 [glyphs (map-glyphs (curryr prepare-glyph weak) f1)])))
 
 ; FontInfo -> Fontinfo
 (define (prepare-info i)       
