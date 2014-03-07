@@ -14,6 +14,7 @@
   [ovs (-> alignment/c real?)]
   [ovs-height (-> alignment/c real?)])
  glyph.
+ component.
  font.
  from
  translate.
