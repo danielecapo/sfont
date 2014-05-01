@@ -23,7 +23,7 @@ It can export the font in a minimal type1 plain text format that can be used by 
 
 Once 'loaded' the font is represented in a Racket struct and drawn in the REPL. 
 
-It can perform operations on fonts, using the idea of font math (see http://code.typesupply.com/wiki/FontMath). The operations affect with contours, components, anchors and kerning pairs. To minimize incompatibility between fonts sfont provides some functions that remove line segments (they will be represented as 'curve' segments with aligned control points, sort contours, remove incompatible kerning pairs, components and anchors, etc.)
+It can perform operations on fonts, using the idea of font math (see https://github.com/typesupply/fontMath). The operations affect with contours, components, anchors and kerning pairs. To minimize incompatibility between fonts sfont provides some functions that remove line segments (they will be represented as 'curve' segments with aligned control points, sort contours, remove incompatible kerning pairs, components and anchors, etc.)
 These operations can be used to implement interpolations.
 While they aren't assured to always work they can actually be useful to make complex operations and exporting the result to UFO.
 
