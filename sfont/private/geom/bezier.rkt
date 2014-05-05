@@ -529,14 +529,28 @@
                            (map (lambda (b) (list a b))
                                 ss2))
                          ss1))])
-    (remove-duplicates 
+    (remove-duplicates-positions 
      (flatten (map (lambda (c) (apply cubic-segment-intersections c))
                   cs)))))
+
+; (listof Vec) -> (listof Vec)
+; remove duplicates vectors or vectors very close
+(define (remove-duplicates-positions lov [ts 1])
+  (define (--remove-1 v1 vs)
+    (filter (lambda (v) (> (vec-length (vec- v v1)) ts))
+            vs))
+  (define (--remove-2 lov acc)
+    (if (null? lov)
+        acc
+        (let ([v1 (car lov)]
+              [vs (cdr lov)])
+          (--remove-2 (--remove-1 v1 vs) (cons v1 acc)))))
+  (reverse (--remove-2 lov null)))
 
 ; CubicSegment CubicSegment -> (listOf Vec)
 ; produce a list of intersections between two bezier segments
 (define (cubic-segment-intersections s1 s2)
-  
+  ;(remove-duplicates-positions
   (let ([bb1 (segment-bounding-box s1)]
         [bb2 (segment-bounding-box s2)]
         [ep1 (end-points s1)]
@@ -557,17 +571,27 @@
                        0.002))    
                (let ([i (segment-intersection (car ep1) (cdr ep1)
                                               (car ep2) (cdr ep2))])
-                 (if i i '()))]
+                 (if i (list i) '()))]
               [(and (end-points-at-extrema? s2)
                     (< (vec-length (vec- (car ep2) (cdr ep2)))
                        0.002))
                (let ([i (segment-intersection (car ep1) (cdr ep1)
                                               (car ep2) (cdr ep2))])
-                 (if i i '()))]
+                 (if i (list i) '()))]
               [else 
-               (cubic-bezier-intersections 
-                (call-with-values (lambda () (split s1 0.5)) join-beziers)
-                (call-with-values (lambda () (split s2 0.5)) join-beziers))]))))
+               (append 
+                (if (or (vec= (start-point s1) (start-point s2))
+                        (vec= (start-point s1) (end-point s2)))
+                    (list (start-point s1))
+                    null)
+                (if (or (vec= (end-point s1) (start-point s2))
+                        (vec= (end-point s1) (end-point s2)))
+                    (list (end-point s1))
+                    null)
+                (cubic-bezier-intersections 
+                 (call-with-values (lambda () (split s1 0.5)) join-beziers)
+                 (call-with-values (lambda () (split s2 0.5)) join-beziers)))
+                ]))));)
 
     
 ; Segment Segment -> (listOf Vec)
@@ -747,7 +771,24 @@
  (vec 352.78720000000004 30)
  (vec 420 97.2128)
  (vec 420 180)))
+(define c3
+(list
+ (vec 800 200)
+ (vec 800 310.38300000000004)
+ (vec 710.383 400)
+ (vec 600 400)
+ (vec 489.617 400)
+ (vec 400 310.38300000000004)
+ (vec 400 200)
+ (vec 400 89.617)
+ (vec 489.617 0)
+ (vec 600 0)
+ (vec 710.383 0)
+ (vec 800 89.617)
+ (vec 800 200)))
+
 (define ints (cubic-bezier-intersections c1 c2))
+(define ints-1 (cubic-bezier-intersections c1 c3))
 (define u2 (filter (curryr (negate midpoint-inside?) c1) (split-bezier-with-points c2 ints)))
 (define u1 (filter (curryr (negate midpoint-inside?) c2) (split-bezier-with-points c1 ints)))
 
