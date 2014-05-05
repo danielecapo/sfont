@@ -98,6 +98,16 @@
 (define (end-points c)
   (cons (car c) (last c)))
 
+; Bezier -> Vec
+; produce the start point of the curve
+(define (start-point b)
+  (car b))
+
+; Bezier -> Vec
+; produce the end point of the curve
+(define (end-point b)
+  (last b))
+
 ; Segment -> (listOf Vec)
 ; produce the list of off-curve points of the segment
 (define (off-curve-points s)
@@ -135,6 +145,45 @@
               (map car stages)
               (reverse (map last stages)))))]))
 
+; Segment ClosedBezier -> Boolean
+; True if the point at time t on the segment is inside the closed Bezier
+(define (midpoint-inside? s b)
+      (point-inside-bezier? (point-at s 0.5) b))
+
+; (listof Segment) (Segment -> Boolean) -> (listof Segment)
+; rotate the segment list until the first segment satisfies the predicate
+(define (cycle-segments-until los pred?)
+  (define l (length los))
+  (define (--cycle los n)
+    (if (or (pred? (car los))
+            (= n l))
+        los
+        (--cycle (append (cdr los) (list (car los)))
+                 (+ n 1))))
+  (--cycle los 0))
+
+; (listof Segment) (listof Segment) -> Bezier
+; join the segments of tow list of segments (used for boolean operations)
+(define (join-segment-parts los1 los2)
+    (define (--join los1 los2 res)
+      (cond [(and (null? los1) (null? los2))
+               res]
+            [(null? los1) (--join (cycle-segments-until los2 
+                                                        (lambda (s) (vec= (start-point s)
+                                                                          (end-point res))))
+                                  los1 
+                                  res)]
+              [(vec= (start-point (car los1)) 
+                     (end-point res))
+               (--join (cdr los1) 
+                       los2
+                       (join-beziers res (car los1)))]
+              [else (--join (cycle-segments-until los2 
+                                                        (lambda (s) (vec= (start-point s)
+                                                                          (end-point res))))
+                            los1
+                            res)]))
+    (--join (cdr los1) los2 (car los1)))
 
 ; Bezier Bezier -> (listof Bezier)
 ; produce a list of Beziers subtracting the second curve from the first
@@ -664,3 +713,50 @@
          (for-each (lambda (b) (bezier->path b path)) bs)
          (send dc draw-path path dx dy 'winding)))
      scene-side scene-side)))
+
+
+
+(define c1 
+  (list
+ (vec 400 200)
+ (vec 400 310.38300000000004)
+ (vec 310.38300000000004 400)
+ (vec 200 400)
+ (vec 89.617 400)
+ (vec 0 310.38300000000004)
+ (vec 0 200)
+ (vec 0 89.617)
+ (vec 89.617 0)
+ (vec 200 0)
+ (vec 310.38300000000004 0)
+ (vec 400 89.617)
+ (vec 400 200)))
+
+(define c2 
+  (list
+ (vec 420 180)
+ (vec 420 262.7872)
+ (vec 352.78720000000004 330)
+ (vec 270 330)
+ (vec 187.21280000000002 330)
+ (vec 120 262.7872)
+ (vec 120 180)
+ (vec 120 97.2128)
+ (vec 187.21280000000002 30)
+ (vec 270 30)
+ (vec 352.78720000000004 30)
+ (vec 420 97.2128)
+ (vec 420 180)))
+(define ints (cubic-bezier-intersections c1 c2))
+(define u2 (filter (curryr (negate midpoint-inside?) c1) (split-bezier-with-points c2 ints)))
+(define u1 (filter (curryr (negate midpoint-inside?) c2) (split-bezier-with-points c1 ints)))
+
+(define s2 (filter (curryr midpoint-inside? c1) (split-bezier-with-points (reverse c2) ints)))
+(define s1 (filter (curryr (negate midpoint-inside?) c2) (split-bezier-with-points c1 ints)))
+
+(define i2 (filter (curryr midpoint-inside? c1) (split-bezier-with-points c2 ints)))
+(define i1 (filter (curryr midpoint-inside? c2) (split-bezier-with-points c1 ints)))
+
+(print-beziers (join-segment-parts u1 u2)) ; union
+(print-beziers (join-segment-parts s1 s2)) ; subtraction
+(print-beziers (join-segment-parts i1 i2)) ; intersection
