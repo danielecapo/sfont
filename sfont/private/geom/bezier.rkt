@@ -46,7 +46,8 @@
   [bezier-intersection (-> closed-bezier/c closed-bezier/c (listof closed-bezier/c))]
   [split-at-point (-> segment/c vec? (values segment/c segment/c))]
   [bezier->path (-> cubic-bezier/c (is-a?/c dc-path%) (is-a?/c dc-path%))]
-  [print-beziers (->* () () #:rest (listof cubic-bezier/c) pict:pict?)]))
+  [print-beziers (->* () () #:rest (listof cubic-bezier/c) void?)]
+  [beziers->pict (->* () () #:rest (listof cubic-bezier/c) pict:pict?)]))
   
 
 ; Data Definition
@@ -824,10 +825,14 @@
         (aux ss)))))
 
 ; print-beziers
-; Beziers Curves -> side effect
+; (listof Beziers) -> Void
 ; print the beziers
-
 (define (print-beziers . bs)
+  (print (apply beziers->pict bs)))
+
+; (listof Beziers) -> Pict
+; produce a pict that represents the curves with x and y axes
+(define (beziers->pict . bs)
   (let* ([scene-side 500]
          [real-side 2000]
          [max-x 1000]
