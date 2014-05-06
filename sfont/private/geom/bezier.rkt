@@ -166,28 +166,120 @@
 ; join the segments of tow list of segments (used for boolean operations)
 (define (join-segment-parts los1 los2)
     (define (--join los1 los2 res)
+;      (print (apply print-beziers res))
+;      (newline)
+;      (print los1)
+;      (newline)
+;      (print (car res))
+;      (newline)
       (cond [(and (null? los1) (null? los2))
                res]
             [(null? los1) (--join (cycle-segments-until los2 
                                                         (lambda (s) (vec= (start-point s)
-                                                                          (end-point res))))
+                                                                          (end-point (car res)))))
                                   los1 
                                   res)]
-              [(vec= (start-point (car los1)) 
-                     (end-point res))
+            [(closed? (car res))
+             (--join (cdr los2) los1 (cons (car los2) res))]
+            [(vec= (start-point (car los1)) 
+                   (end-point (car res)))
                (--join (cdr los1) 
                        los2
-                       (join-beziers res (car los1)))]
-              [else (--join (cycle-segments-until los2 
-                                                        (lambda (s) (vec= (start-point s)
-                                                                          (end-point res))))
-                            los1
-                            res)]))
-    (--join (cdr los1) los2 (car los1)))
+                       (cons (join-beziers (car res) (car los1))
+                             (cdr res)))]
+            [else (--join (cycle-segments-until los2 
+                                                (lambda (s) (vec= (start-point s)
+                                                                  (end-point (car res)))))
+                          los1
+                          res)]))
+  (--join (cdr los1) los2 (list (car los1))))
 
 ; Bezier Bezier -> (listof Bezier)
 ; produce a list of Beziers subtracting the second curve from the first
 (define (bezier-subtract b1 b2)
+  (let ([bb1 (c-clockwise b1)]
+        [bb2 (clockwise b2)]
+        [dir2 (if (clockwise? b1)
+                 c-clockwise
+                 clockwise)]
+        [dir1 (if (clockwise? b1)
+                  clockwise
+                  c-clockwise)])
+    (let ([ints (cubic-bezier-intersections bb1 bb2)])
+      (if (> (length ints) 1)
+          (let* ([s1 (split-bezier-with-points bb1 ints)]
+                 [s2 (split-bezier-with-points bb2 ints)]
+                 [ss1 (filter (curryr (negate midpoint-inside?) bb2) s1)]
+                 [ss2 (filter (curryr midpoint-inside? bb1) s2)])
+            (cond [(null? ss2) (list b1)]
+                  [(null? ss1) null]
+                  [(= (length ss1) (length s1))
+                   (list b1 (dir2 b2))]
+                  [else (map dir1 (join-segment-parts ss1 ss2))]))
+                     
+        
+          (if (andmap (curryr point-inside-bezier? b1) (on-curve-points bb2))
+              (list b1 (dir2 b2))
+              (list b1))))))
+
+
+; Bezier Bezier -> (listof Bezier)
+; produce the union of two bezier curves
+(define (bezier-union b1 b2)
+  (let ([bb1 (c-clockwise b1)]
+        [bb2 (c-clockwise b2)]
+        [dir (if (clockwise? b1)
+                 clockwise
+                 c-clockwise)])
+    (let ([ints (cubic-bezier-intersections bb1 bb2)])
+      (if (> (length ints) 1)
+          (let* ([s1 (split-bezier-with-points bb1 ints)]
+                 [s2 (split-bezier-with-points bb2 ints)]
+                 [ss1 (filter (curryr (negate midpoint-inside?) bb2) s1)]
+                 [ss2 (filter (curryr (negate midpoint-inside?) bb1) s2)])
+            (cond [(null? ss2) (list b1)]
+                  [(null? ss1) (list (dir b2))]
+                  [(= (length ss1) (length s1))
+                   (list b1 (dir b2))]
+                  [else (map dir (join-segment-parts ss1 ss2))]))
+                     
+        
+          (list b1 (dir b2))))))
+
+; Bezier Bezier -> (listof Bezier)
+; produce the intersection of two bezier curves
+(define (bezier-intersection b1 b2)
+  (let ([bb1 (c-clockwise b1)]
+        [bb2 (c-clockwise b2)]
+        [dir (if (clockwise? b1)
+                 clockwise
+                 c-clockwise)])
+    (let ([ints (cubic-bezier-intersections bb1 bb2)])
+      (if (> (length ints) 1)
+          (let* ([s1 (split-bezier-with-points bb1 ints)]
+                 [s2 (split-bezier-with-points bb2 ints)]
+                 [ss1 (filter (curryr midpoint-inside? bb2) s1)]
+                 [ss2 (filter (curryr midpoint-inside? bb1) s2)])
+            (cond [(and (null? ss2) (null? ss1)) null]
+                  [(null? ss1) (list (dir b2))]
+                  [(null? ss2) (list b1)]
+                  [(= (length ss1) (length s1)) (list b1)]
+                  [else (map dir (join-segment-parts ss1 ss2))]))
+                     
+        
+          (cond [(andmap (curryr point-inside-bezier? b1) (on-curve-points bb2))
+                 (list b2)]
+                [(andmap (curryr point-inside-bezier? b2) (on-curve-points bb1))
+                 (list b1)]
+                [else null])))))
+               
+
+
+
+
+; Bezier Bezier -> (listof Bezier)
+; produce a list of Beziers subtracting the second curve from the first
+(define (bezier-subtract-old- b1 b2)
   (let ([bb1 (c-clockwise b1)]
         [bb2 (clockwise b2)])
     (let ([ints (cubic-bezier-intersections bb1 bb2)])
@@ -208,7 +300,7 @@
 
 ; Bezier Bezier -> (listof Bezier)
 ; produce the union of two bezier curves
-(define (bezier-union b1 b2)
+(define (bezier-union-old b1 b2)
   (let ([bb1 (c-clockwise b1)]
         [bb2 (c-clockwise b2)])
     (let ([ints (cubic-bezier-intersections bb1 bb2)])
@@ -229,7 +321,7 @@
 
 ; Bezier Bezier -> (listof Bezier)
 ; produce the intersection of two bezier curves
-(define (bezier-intersection b1 b2)
+(define (bezier-intersection-old b1 b2)
   (let ([bb1 (c-clockwise b1)]
         [bb2 (c-clockwise b2)])
     (let ([ints (cubic-bezier-intersections bb1 bb2)])
@@ -339,11 +431,14 @@
             (map (lambda (s)
                    (let-values ([(s1 s2) (split-at-point s i)])
                      
-                     (if (or (null? s1) (null? s2))
-                         (list s)
-                         (list (append (drop-right s1 1)
-                                       (list i))
-                               (cons i (cdr s2))))))
+                     (cond [(and (null? s1) (null? s2)) (list s)]
+                           [(null? s1) (list s2)]
+                           [(null? s2) (list s1)]
+                           
+                         
+                           [else (list (append (drop-right s1 1)
+                                               (list i))
+                                       (cons i (cdr s2)))])))
                  acc)))
          (segments b)
          ints))
@@ -384,15 +479,24 @@
 ; Split a segment at coordinates v
 (define (split-curve-segment-at-point s v)
   (letrec ([aux (lambda (s1 start end)
-                  (cond [(< (vec-length (vec- (car s1) v)) 2) start]
-                          [(< (vec-length (vec- (last s1) v)) 2) end]
-                          [(not (inside-bounding-box? v (segment-bounding-box s1))) #f]
-                          [else (let-values ([(a b) (split s1 0.5)])
-                                  (let ([fa (aux a start (+ start (* 0.5 (- end start))))])
-                                    (if fa fa
-                                        (aux b (+ start (* 0.5 (- end start))) end))))]))])
+                  (cond [(< (vec-length (vec- (car s1) v)) 3) start]
+                        [(< (vec-length (vec- (last s1) v)) 3) end]
+                        [(not (inside-bounding-box? v (segment-bounding-box s1))) #f]
+                        [else (let-values ([(a b) (split s1 0.5)])
+                                (let ([fa (aux a start (+ start (* 0.5 (- end start))))])
+                                  (if fa fa
+                                      (aux b (+ start (* 0.5 (- end start))) end))))]))])
     (let ([f (aux s 0 1)])
-      (if f (split s f) (values null null)))))
+      (if f 
+          (let-values ([(s1 s2) (split s f)])
+            (values (if (null? s1)
+                        null
+                        (reverse (cons v (cdr (reverse s1)))))
+                    (if (null? s2)
+                        null
+                        (cons v (cdr s2)))))
+            
+            (values null null)))))
 
 
 ; Bezier ... -> Bezier
@@ -550,48 +654,51 @@
 ; CubicSegment CubicSegment -> (listOf Vec)
 ; produce a list of intersections between two bezier segments
 (define (cubic-segment-intersections s1 s2)
+  (if (or (andmap vec= s1 s2)
+          (andmap vec= s1 (reverse s2)))
+          (end-points s1)
   ;(remove-duplicates-positions
-  (let ([bb1 (segment-bounding-box s1)]
-        [bb2 (segment-bounding-box s2)]
-        [ep1 (end-points s1)]
-        [ep2 (end-points s2)])
-    (if (not (overlap-bounding-boxes? bb1 bb2))
-        '()
-        (cond [(and (line-segment? s1)
-                    (line-segment? s2))
-               (let ([i (segment-intersection (car ep1) (cdr ep1)
-                                              (car ep2) (cdr ep2))])
-                 (if i i '()))]
-              [(line-segment? s1)
-               (line-segment-intersections s1 s2)]
-              [(line-segment? s2)
-               (line-segment-intersections s2 s1)]
-              [(and (end-points-at-extrema? s1)
-                    (< (vec-length (vec- (car ep1) (cdr ep1)))
-                       0.002))    
-               (let ([i (segment-intersection (car ep1) (cdr ep1)
-                                              (car ep2) (cdr ep2))])
-                 (if i (list i) '()))]
-              [(and (end-points-at-extrema? s2)
-                    (< (vec-length (vec- (car ep2) (cdr ep2)))
-                       0.002))
-               (let ([i (segment-intersection (car ep1) (cdr ep1)
-                                              (car ep2) (cdr ep2))])
-                 (if i (list i) '()))]
-              [else 
-               (append 
-                (if (or (vec= (start-point s1) (start-point s2))
-                        (vec= (start-point s1) (end-point s2)))
-                    (list (start-point s1))
-                    null)
-                (if (or (vec= (end-point s1) (start-point s2))
-                        (vec= (end-point s1) (end-point s2)))
-                    (list (end-point s1))
-                    null)
-                (cubic-bezier-intersections 
-                 (call-with-values (lambda () (split s1 0.5)) join-beziers)
-                 (call-with-values (lambda () (split s2 0.5)) join-beziers)))
-                ]))));)
+      (let ([bb1 (segment-bounding-box s1)]
+            [bb2 (segment-bounding-box s2)]
+            [ep1 (end-points s1)]
+            [ep2 (end-points s2)])
+        (if (not (overlap-bounding-boxes? bb1 bb2))
+            '()
+            (cond [(and (line-segment? s1)
+                        (line-segment? s2))
+                   (let ([i (segment-intersection (car ep1) (cdr ep1)
+                                                  (car ep2) (cdr ep2))])
+                     (if i i '()))]
+                  [(line-segment? s1)
+                   (line-segment-intersections s1 s2)]
+                  [(line-segment? s2)
+                   (line-segment-intersections s2 s1)]
+                  [(and (end-points-at-extrema? s1)
+                        (< (vec-length (vec- (car ep1) (cdr ep1)))
+                           0.002))    
+                   (let ([i (segment-intersection (car ep1) (cdr ep1)
+                                                  (car ep2) (cdr ep2))])
+                     (if i (list i) '()))]
+                  [(and (end-points-at-extrema? s2)
+                        (< (vec-length (vec- (car ep2) (cdr ep2)))
+                           0.002))
+                   (let ([i (segment-intersection (car ep1) (cdr ep1)
+                                                  (car ep2) (cdr ep2))])
+                     (if i (list i) '()))]
+                  [else 
+                   (append 
+                    (if (or (vec= (start-point s1) (start-point s2))
+                            (vec= (start-point s1) (end-point s2)))
+                        (list (start-point s1))
+                        null)
+                    (if (or (vec= (end-point s1) (start-point s2))
+                            (vec= (end-point s1) (end-point s2)))
+                        (list (end-point s1))
+                        null)
+                    (cubic-bezier-intersections 
+                     (call-with-values (lambda () (split s1 0.5)) join-beziers)
+                     (call-with-values (lambda () (split s2 0.5)) join-beziers)))
+                   ])))));)
 
     
 ; Segment Segment -> (listOf Vec)
@@ -798,6 +905,6 @@
 (define i2 (filter (curryr midpoint-inside? c1) (split-bezier-with-points c2 ints)))
 (define i1 (filter (curryr midpoint-inside? c2) (split-bezier-with-points c1 ints)))
 
-(print-beziers (join-segment-parts u1 u2)) ; union
-(print-beziers (join-segment-parts s1 s2)) ; subtraction
-(print-beziers (join-segment-parts i1 i2)) ; intersection
+(apply print-beziers (join-segment-parts u1 u2)) ; union
+(apply print-beziers (join-segment-parts s1 s2)) ; subtraction
+(apply print-beziers (join-segment-parts i1 i2)) ; intersection
