@@ -218,9 +218,11 @@
                   [else (map dir1 (join-segment-parts ss1 ss2))]))
                      
         
-          (if (andmap (curryr point-inside-bezier? b1) (on-curve-points bb2))
-              (list b1 (dir2 b2))
-              (list b1))))))
+          (cond [(andmap (curryr point-inside-bezier? b1) (on-curve-points b2))
+                 (list b1 (dir2 b2))]
+                [(andmap (curryr point-inside-bezier? b2) (on-curve-points b1)) 
+                 null]
+                [else (list b1)])))))
 
 
 ; Bezier Bezier -> (listof Bezier)
@@ -244,7 +246,11 @@
                   [else (map dir (join-segment-parts ss1 ss2))]))
                      
         
-          (list b1 (dir b2))))))
+          (cond [(andmap (curryr point-inside-bezier? b1) (on-curve-points bb2))
+                 (list b1)]
+                [(andmap (curryr point-inside-bezier? b2) (on-curve-points bb1))
+                 (list (dir b2))]
+                [else (list b1 (dir b2))])))))
 
 ; Bezier Bezier -> (listof Bezier)
 ; produce the intersection of two bezier curves
@@ -268,7 +274,7 @@
                      
         
           (cond [(andmap (curryr point-inside-bezier? b1) (on-curve-points bb2))
-                 (list b2)]
+                 (list (dir b2))]
                 [(andmap (curryr point-inside-bezier? b2) (on-curve-points bb1))
                  (list b1)]
                 [else null])))))
