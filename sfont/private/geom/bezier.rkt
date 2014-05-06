@@ -847,64 +847,64 @@
 
 
 
-(define c1 
-  (list
- (vec 400 200)
- (vec 400 310.38300000000004)
- (vec 310.38300000000004 400)
- (vec 200 400)
- (vec 89.617 400)
- (vec 0 310.38300000000004)
- (vec 0 200)
- (vec 0 89.617)
- (vec 89.617 0)
- (vec 200 0)
- (vec 310.38300000000004 0)
- (vec 400 89.617)
- (vec 400 200)))
-
-(define c2 
-  (list
- (vec 420 180)
- (vec 420 262.7872)
- (vec 352.78720000000004 330)
- (vec 270 330)
- (vec 187.21280000000002 330)
- (vec 120 262.7872)
- (vec 120 180)
- (vec 120 97.2128)
- (vec 187.21280000000002 30)
- (vec 270 30)
- (vec 352.78720000000004 30)
- (vec 420 97.2128)
- (vec 420 180)))
-(define c3
-(list
- (vec 800 200)
- (vec 800 310.38300000000004)
- (vec 710.383 400)
- (vec 600 400)
- (vec 489.617 400)
- (vec 400 310.38300000000004)
- (vec 400 200)
- (vec 400 89.617)
- (vec 489.617 0)
- (vec 600 0)
- (vec 710.383 0)
- (vec 800 89.617)
- (vec 800 200)))
-
-(define ints (cubic-bezier-intersections c1 c2))
-(define ints-1 (cubic-bezier-intersections c1 c3))
-(define u2 (filter (curryr (negate midpoint-inside?) c1) (split-bezier-with-points c2 ints)))
-(define u1 (filter (curryr (negate midpoint-inside?) c2) (split-bezier-with-points c1 ints)))
-
-(define s2 (filter (curryr midpoint-inside? c1) (split-bezier-with-points (reverse c2) ints)))
-(define s1 (filter (curryr (negate midpoint-inside?) c2) (split-bezier-with-points c1 ints)))
-
-(define i2 (filter (curryr midpoint-inside? c1) (split-bezier-with-points c2 ints)))
-(define i1 (filter (curryr midpoint-inside? c2) (split-bezier-with-points c1 ints)))
-
-(apply print-beziers (join-segment-parts u1 u2)) ; union
-(apply print-beziers (join-segment-parts s1 s2)) ; subtraction
-(apply print-beziers (join-segment-parts i1 i2)) ; intersection
+;(define c1 
+;  (list
+; (vec 400 200)
+; (vec 400 310.38300000000004)
+; (vec 310.38300000000004 400)
+; (vec 200 400)
+; (vec 89.617 400)
+; (vec 0 310.38300000000004)
+; (vec 0 200)
+; (vec 0 89.617)
+; (vec 89.617 0)
+; (vec 200 0)
+; (vec 310.38300000000004 0)
+; (vec 400 89.617)
+; (vec 400 200)))
+;
+;(define c2 
+;  (list
+; (vec 420 180)
+; (vec 420 262.7872)
+; (vec 352.78720000000004 330)
+; (vec 270 330)
+; (vec 187.21280000000002 330)
+; (vec 120 262.7872)
+; (vec 120 180)
+; (vec 120 97.2128)
+; (vec 187.21280000000002 30)
+; (vec 270 30)
+; (vec 352.78720000000004 30)
+; (vec 420 97.2128)
+; (vec 420 180)))
+;(define c3
+;(list
+; (vec 800 200)
+; (vec 800 310.38300000000004)
+; (vec 710.383 400)
+; (vec 600 400)
+; (vec 489.617 400)
+; (vec 400 310.38300000000004)
+; (vec 400 200)
+; (vec 400 89.617)
+; (vec 489.617 0)
+; (vec 600 0)
+; (vec 710.383 0)
+; (vec 800 89.617)
+; (vec 800 200)))
+;
+;(define ints (cubic-bezier-intersections c1 c2))
+;(define ints-1 (cubic-bezier-intersections c1 c3))
+;(define u2 (filter (curryr (negate midpoint-inside?) c1) (split-bezier-with-points c2 ints)))
+;(define u1 (filter (curryr (negate midpoint-inside?) c2) (split-bezier-with-points c1 ints)))
+;
+;(define s2 (filter (curryr midpoint-inside? c1) (split-bezier-with-points (reverse c2) ints)))
+;(define s1 (filter (curryr (negate midpoint-inside?) c2) (split-bezier-with-points c1 ints)))
+;
+;(define i2 (filter (curryr midpoint-inside? c1) (split-bezier-with-points c2 ints)))
+;(define i1 (filter (curryr midpoint-inside? c2) (split-bezier-with-points c1 ints)))
+;
+;(apply print-beziers (join-segment-parts u1 u2)) ; union
+;(apply print-beziers (join-segment-parts s1 s2)) ; subtraction
+;(apply print-beziers (join-segment-parts i1 i2)) ; intersection
