@@ -10,6 +10,7 @@
  (contract-out
   [display-size (parameter/c natural-number/c)]
   [display-text (parameter/c (listof (listof symbol?)))]
+  [display-leading (parameter/c number?)]
   [display-pen (parameter/c (is-a?/c pen%))]
   [show-kerning? (parameter/c boolean?)])
  set-contour-view! 
@@ -27,6 +28,7 @@
 
 (define display-size (make-parameter 100))
 (define display-text (make-parameter '((a b c d e f g h i j k l m n o p q r s t u v w x y z))))
+(define display-leading (make-parameter 1.2))
 (define show-kerning? (make-parameter #t))
 
 
@@ -70,7 +72,8 @@
 (define (advance glyph) (cadr glyph))
 (define (contours glyph) (cddr glyph))
 
-
+; remove this
+#;
 (define (draw-contour path c)
   (define (aux pts)
     (match pts
@@ -125,7 +128,7 @@
 ; Number Number (listOf DrawableGlyph) ((Symbol Symbol) -> Number) -> pict
 ; draw the current (display-text)
 (define (pictf:font ascender descender glyphs [kerning (lambda (p) 0)])
-   (let* ([leading 1.2]
+   (let* ([leading (display-leading)]
           [n-lines (lines (display-text))] 
           [area-height (* (display-size) (+ 1 n-lines (* (- leading 1) (- n-lines 1))))])
      (dc
