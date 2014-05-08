@@ -2,7 +2,9 @@
 
 (require "../../geometry.rkt"
          "../../properties.rkt"
-         "../fontpict.rkt"
+         "../pict-parameters.rkt"
+         "../pict-utils.rkt"
+         "../draw.rkt"
          "../../utilities.rkt"
          racket/generic
          slideshow/pict-convert
@@ -1049,6 +1051,17 @@
   (append (list (glyph-name g)
                 (advance-width (glyph-advance g)))
           (map-contours contour->bezier g)))
+
+(define (pictf:draw-glyph dc glyph [kv 0])
+  (begin
+    (send dc translate kv 0)
+    (define path (new dc-path%))
+    
+    (for-each (lambda (c) (geom:bezier->path c path))
+              (contours glyph))
+    (send dc draw-path path 0 0 'winding)
+    (send dc translate (advance glyph) 0)))
+
 
 ; Contour -> DrawableContour
 ; produce a printable version of the contour
