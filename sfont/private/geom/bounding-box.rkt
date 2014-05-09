@@ -9,7 +9,13 @@
   [inside-bounding-box? (-> vec? bounding-box/c boolean?)]
   [combine-bounding-boxes (->* (bounding-box/c) () #:rest (listof bounding-box/c) bounding-box/c)]
   [overlap-bounding-boxes? (-> bounding-box/c bounding-box/c boolean?)]
-  [include-bounding-box? (-> bounding-box/c bounding-box/c boolean?)]))
+  [include-bounding-box? (-> bounding-box/c bounding-box/c boolean?)]
+  [bounding-box-width (-> bounding-box/c number?)]
+  [bounding-box-height (-> bounding-box/c number?)]
+  [bounding-box-max-x (-> bounding-box/c (or/c #f number?))]
+  [bounding-box-min-x (-> bounding-box/c (or/c #f number?))]
+  [bounding-box-max-y (-> bounding-box/c (or/c #f number?))]
+  [bounding-box-min-y (-> bounding-box/c (or/c #f number?))]))
   
 ; BoundingBox
 ; is represented by a pair of Vec, the first one is the lower left point,
@@ -88,4 +94,34 @@
       (andmap (lambda (v) 
                 (inside-bounding-box? v bb1))
               (list (car bb2) (cdr bb2)))))
+
+; BoundingBox -> Number
+; Produce the width of the BoundingBox
+(define (bounding-box-width bb)
+  (if bb
+      (abs (- (vec-x (cdr bb)) (vec-x (car bb))))
+      0))
+
+; BoundingBox -> Number
+; Produce the height of the BoundingBox
+(define (bounding-box-height bb)
+  (if bb
+      (abs (- (vec-x (cdr bb)) (vec-x (car bb))))
+      0))
+
+; BoundingBox -> Number or False
+(define (bounding-box-max-x bb)
+  (if bb (vec-x (cdr bb)) #f))
+
+; BoundingBox -> Number or False
+(define (bounding-box-min-x bb)
+  (if bb (vec-x (car bb)) #f))
+
+; BoundingBox -> Number or False
+(define (bounding-box-max-y bb)
+  (if bb (vec-y (cdr bb)) #f))
+
+; BoundingBox -> Number or False
+(define (bounding-box-min-y bb)
+  (if bb (vec-y (car bb)) #f))
 

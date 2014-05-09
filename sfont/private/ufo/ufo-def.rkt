@@ -159,9 +159,9 @@
   [lookup-kerning-pair (-> font? name/c name/c (values real? boolean?))]
   [kerning-value (-> font? name/c name/c real?)]
   [sorted-kerning-list (-> kerning/c (listof (cons/c name/c (listof (cons/c name/c real?)))))])
- draw-glyph
- draw-contour
- draw-points
+ ;draw-glyph
+ ;draw-contour
+ ;draw-points
  ==>
  seq)         
              
@@ -406,14 +406,13 @@
                  [anchors (map t (layer-anchors l))]
                  [contours (map t (layer-contours l))])))
  
+(define glyph-draw-function 
+  (make-parameter draw-glyph))
+
+
 ; Glyph -> Pict
 (define (glyph->pict g)
-  (let* ([cs (map-contours contour->bezier g)]
-         [bb (if (null? cs)
-                 (cons (vec 0 0) (vec 0 0))
-                 (apply combine-bounding-boxes
-                        (map bezier-bounding-box cs)))])
-    (pictf:glyph (draw-glyph g) bb 1000)))
+  ((glyph-draw-function) g))
 
 ;;; Glyph
 ;;; (glyph Natural Symbol Advance (listOf Unicode) String Image (listOf Layer) HashTable)
@@ -428,20 +427,7 @@
              lib))
   #:transparent
   #:property prop:pict-convertible glyph->pict
-  #:property prop:draw (lambda (g)
-                         (let* ([cs (map-contours contour->bezier g)]
-                                [bb (if (null? cs)
-                                        (cons (vec 0 0) (vec 0 0))
-                                        (apply combine-bounding-boxes
-                                               (map bezier-bounding-box cs)))]
-                                [vbb (vec- (cdr bb) (car bb))]
-                                [w (vec-x vbb)]
-                                [h (vec-y vbb)]
-                                [x-min (vec-x (car bb))]
-                                [by-max (vec-y (cdr bb))])
-                           (lambda (dc height upm)
-                             (let ([f (/ height upm)])
-                               (draw-glyph-dc dc g f x-min by-max)))))
+  #:property prop:draw (curry draw-glyph-in-dc g)
                                 
   #:methods gen:geometric
   [(define/generic super-transform transform)
@@ -1045,22 +1031,51 @@
 (define (for-each-points proc c)
   (for-each proc (contour-points c)))
 
-; Glyph -> DrawableGlyph
-; produce a printable version of the glyph
-(define (draw-glyph g)
-  (append (list (glyph-name g)
-                (advance-width (glyph-advance g)))
-          (map-contours contour->bezier g)))
 
-(define (pictf:draw-glyph dc glyph [kv 0])
-  (begin
-    (send dc translate kv 0)
+; Glyph DrawingContext -> void
+(define (draw-glyph-in-dc g dc)
+  (begin 
     (define path (new dc-path%))
-    
-    (for-each (lambda (c) (geom:bezier->path c path))
-              (contours glyph))
+    (for-each-contours (lambda (c) (bezier->path (contour->bezier c) path)) g)
     (send dc draw-path path 0 0 'winding)
-    (send dc translate (advance glyph) 0)))
+    (send dc translate (advance-width (glyph-advance g)) 0)))
+
+; Glyph DrawingContext -> void
+(define (draw-glyph-in-font-view g dc) 
+  (begin
+    (draw-glyph-in-dc g dc)
+    (send dc translate (advance-width (glyph-advance g)) 0)))
+
+; Glyph  BoundingBox (Number or False)
+(define (draw-glyph-view g bb [upm #f])
+  (let* ([x-min (bounding-box-min-x bb)]
+         [h (bounding-box-height bb)]
+         [y-max (bounding-box-max-y bb)]
+         [f (cond [upm (/ (glyph-height) upm)]
+                  [(> h 0) (/ (glyph-height) h)]
+                  [else 1])])
+    (dc 
+     (lambda (dc dx dy)
+       (begin
+         (send dc set-brush (display-brush))
+         (send dc set-pen (display-pen))
+         (send dc scale f (- f))
+         (send dc translate (- x-min) (- y-max))
+         (draw-glyph-in-dc g dc)))
+     (* f w) (* f h))))
+  
+
+
+; Glyph DrawingContext [Font] -> void
+(define draw-glyph
+  (case-lambda 
+    [(g) 
+     (draw-glyph-view g (glyph-bounding-box g) 1000)]
+    [(g f)
+     (let* ([gd (decompose-glyph f g)]
+            [upm (hash-ref (font-fontinfo f) 'unitsPerEm 1000)])
+       (draw-glyph-view gd (glyph-bounding-box g) upm))]))
+
 
 
 ; Contour -> DrawableContour
