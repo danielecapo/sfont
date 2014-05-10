@@ -1,6 +1,10 @@
-#lang racket
+#lang racket/base
 
-(require "vec.rkt")
+(require racket/contract
+         (only-in racket/list
+                  cons?)
+         racket/match
+         "vec.rkt")
 
 (provide 
  (contract-out
