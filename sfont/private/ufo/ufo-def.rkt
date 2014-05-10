@@ -7,9 +7,12 @@
          "../draw.rkt"
          "../../utilities.rkt"
          racket/generic
+         racket/draw
          slideshow/pict-convert
          (only-in slideshow/pict
-                  pict?))
+                  pict?
+                  dc
+                  blank))
 
 (provide 
  (contract-out
@@ -25,6 +28,11 @@
   [foreground name/c]
   [background name/c]
   [sfont-creator string?]
+  [glyph-draw-function (parameter/c (case-> (-> glyph? pict?)
+                                            (-> glyph? font? pict?)))] 
+
+  [font-draw-function (parameter/c (-> font? pict?))]
+  [glyph-in-font-draw-function (parameter/c (-> glyph? font? (is-a?/c dc<%>) void?))]  
   [struct font  
   ((fontinfo fontinfo/c) 
    (groups groups/c) 
@@ -116,7 +124,8 @@
   [lowercase-stems (-> font? real?)]
   [uppercase-stems (-> font? real?)]
   [correct-directions (-> font? font?)]
-  [print-glyph (-> font? name/c pict?)]
+  [glyph-draw (-> font? name/c pict?)]
+  [print-glyph (-> font? name/c void?)]
   [font-round (-> font? font?)]
   [layer-round (-> layer? layer?)]
   [kerning-round (-> kerning/c kerning/c)]
@@ -220,6 +229,20 @@
      (trans r ... reflect-y super-reflect-y id)]))
   
 
+;;; PARAMETERS
+
+(define glyph-draw-function 
+  (make-parameter (case-lambda [(g) (blank)]
+                               [(g f) (blank)])))
+
+(define font-draw-function 
+  (make-parameter (lambda (f) (blank))))
+
+(define glyph-in-font-draw-function 
+  (make-parameter (lambda (g f dc) (void))))
+
+
+
 ;;; CONSTANTS
 
 (define foreground 'public.default)
@@ -275,12 +298,29 @@
 (define images/c (flat-named-contract 'images/c any/c))
 
 ; Font -> Pict
+(define (draw-font f)
+  (let* ([ascender (dict-ref (font-fontinfo f) 'ascender 750)]
+         [descender (dict-ref (font-fontinfo f) 'descender -250)]
+         [glyphs (make-immutable-hash
+                  (map (lambda (g) 
+                         (cons (glyph-name g)
+                               (curry (glyph-in-font-draw-function) g f)))
+                       (get-glyphs f (unique-letters (display-text)))))]
+         [n-lines (lines (display-text))] 
+         [text-height (* (display-size) (+ 1 n-lines (* (- (display-leading) 1) (- n-lines 1))))])
+    (dc 
+     (lambda (dc dx dy)
+       (send dc set-brush (display-brush))
+       (send dc set-pen (display-pen))
+       (draw-text-in-dc dc ascender descender (display-size) (display-text) (display-leading) glyphs 
+                        (if (show-kerning?)
+                            (lambda (p) (apply kerning-value f p))
+                            (lambda (p) 0))))
+     (text-width) text-height)))
+
+; Font -> Pict
 (define (font->pict f)
-  (let ([ascender (dict-ref (font-fontinfo f) 'ascender 750)]
-        [descender (dict-ref (font-fontinfo f) 'descender -250)]
-        [glyphs (map (lambda (g) (draw-glyph (decompose-glyph f g)))
-                     (get-glyphs f (unique-letters (display-text))))])
-    (pictf:font ascender descender glyphs (lambda (p) (apply kerning-value f p)))))
+  ((font-draw-function) f))
 
 ;;; Font
 ;;; (font Number String HashTable HashTable HashTable String (listOf Glyph) (listOf Layer) HashTable ... ...)
@@ -309,9 +349,15 @@
     (let ([ascender (dict-ref (font-fontinfo f) 'ascender 750)]
           [descender (dict-ref (font-fontinfo f) 'descender -250)])
       (lambda (dc leading text size)
-          (let ([glyphs (map (lambda (g) (draw-glyph (decompose-glyph f g)))
-                             (get-glyphs f (unique-letters text)))])
-            (draw-font-dc dc ascender descender leading glyphs (lambda (p) (apply kerning-value f p)) size text)))))
+          (let ([glyphs (make-immutable-hash
+                  (map (lambda (g) 
+                         (cons (glyph-name g)
+                               (curry (glyph-in-font-draw-function) g f)))
+                       (get-glyphs f (unique-letters text))))])
+            (draw-text-in-dc dc ascender descender size text leading glyphs 
+                        (if (show-kerning?)
+                            (lambda (p) (apply kerning-value f p))
+                            (lambda (p) 0)))))))
   #:property prop:pict-convertible font->pict
   #:methods gen:geometric
   [(define/generic super-transform transform)
@@ -406,8 +452,7 @@
                  [anchors (map t (layer-anchors l))]
                  [contours (map t (layer-contours l))])))
  
-(define glyph-draw-function 
-  (make-parameter draw-glyph))
+
 
 
 ; Glyph -> Pict
@@ -427,7 +472,7 @@
              lib))
   #:transparent
   #:property prop:pict-convertible glyph->pict
-  #:property prop:draw (curry draw-glyph-in-dc g)
+  #:property prop:draw (lambda (g) (curry draw-glyph-in-dc g))
                                 
   #:methods gen:geometric
   [(define/generic super-transform transform)
@@ -868,20 +913,21 @@
   (struct-copy font f
                [glyphs (map-glyphs glyph-correct-directions f)]))        
 
-; Font Symbol -> Any
+; Font Symbol -> Pict
+; Print the glyph           
+(define (glyph-draw f gn)
+  (let ([gp (get-glyph f gn)])
+    (if (not gp) 
+        (error "Glyph not in font")
+        ((glyph-draw-function) (get-glyph f gn) f))))
+
+; Font Symbol -> void
 ; Print the glyph           
 (define (print-glyph f gn)
   (let ([gp (get-glyph f gn)])
     (if (not gp) 
-        (error "Glyph not in font")
-        (let* ([g (decompose-glyph f (get-glyph f gn))]
-               [upm (hash-ref (font-fontinfo f) 'unitsPerEm 1000)]
-               [cs (map-contours contour->bezier g)]
-               [bb (if (null? cs)
-                       (cons (vec 0 0) (vec 0 0))
-                       (apply combine-bounding-boxes
-                              (map bezier-bounding-box cs)))])
-          (pictf:glyph (draw-glyph g) bb upm)))))
+        (print "Glyph not in font")
+        (print (glyph-draw f gn)))))
                      
 ; Font -> Font
 ; Round the coordinates of the font 
@@ -1037,19 +1083,19 @@
   (begin 
     (define path (new dc-path%))
     (for-each-contours (lambda (c) (bezier->path (contour->bezier c) path)) g)
-    (send dc draw-path path 0 0 'winding)
-    (send dc translate (advance-width (glyph-advance g)) 0)))
+    (send dc draw-path path 0 0 'winding)))
 
 ; Glyph DrawingContext -> void
-(define (draw-glyph-in-font-view g dc) 
+(define (draw-glyph-in-font-view g f dc) 
   (begin
-    (draw-glyph-in-dc g dc)
+    (draw-glyph-in-dc (decompose-glyph f g) dc)
     (send dc translate (advance-width (glyph-advance g)) 0)))
 
-; Glyph  BoundingBox (Number or False)
+; Glyph  BoundingBox (Number or False) -> Pict
 (define (draw-glyph-view g bb [upm #f])
   (let* ([x-min (bounding-box-min-x bb)]
          [h (bounding-box-height bb)]
+         [w (bounding-box-width bb)]
          [y-max (bounding-box-max-y bb)]
          [f (cond [upm (/ (glyph-height) upm)]
                   [(> h 0) (/ (glyph-height) h)]
@@ -1060,13 +1106,13 @@
          (send dc set-brush (display-brush))
          (send dc set-pen (display-pen))
          (send dc scale f (- f))
-         (send dc translate (- x-min) (- y-max))
+         (send dc translate (- (if x-min x-min 0)) (- (if y-max y-max 0)))
          (draw-glyph-in-dc g dc)))
      (* f w) (* f h))))
   
 
 
-; Glyph DrawingContext [Font] -> void
+; Glyph [Font] -> Pict
 (define draw-glyph
   (case-lambda 
     [(g) 
@@ -1074,7 +1120,7 @@
     [(g f)
      (let* ([gd (decompose-glyph f g)]
             [upm (hash-ref (font-fontinfo f) 'unitsPerEm 1000)])
-       (draw-glyph-view gd (glyph-bounding-box g) upm))]))
+       (draw-glyph-view gd (glyph-bounding-box gd) upm))]))
 
 
 
@@ -1593,5 +1639,9 @@
 
   
 
+(glyph-draw-function draw-glyph)
+(font-draw-function draw-font)
+
+(glyph-in-font-draw-function draw-glyph-in-font-view)
 
 

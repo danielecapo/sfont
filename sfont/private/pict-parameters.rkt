@@ -10,6 +10,7 @@
   [display-text (parameter/c (listof (listof symbol?)))]
   [display-leading (parameter/c number?)]
   [display-pen (parameter/c (is-a?/c pen%))]
+  [display-brush (parameter/c (is-a?/c brush%))]
   [show-kerning? (parameter/c boolean?)]
   [text-width (parameter/c natural-number/c)]
   [glyph-height (parameter/c natural-number/c)]))
@@ -17,6 +18,9 @@
 
 ; The pen used to trace contours
 (define display-pen (make-parameter (new pen% [style 'transparent])))
+
+; The brush used to trace contours
+(define display-brush (make-parameter (new brush% [color "black"] [style 'solid])))
 
 ; Size of text
 (define display-size (make-parameter 100))

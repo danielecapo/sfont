@@ -106,7 +106,7 @@
 ; Produce the height of the BoundingBox
 (define (bounding-box-height bb)
   (if bb
-      (abs (- (vec-x (cdr bb)) (vec-x (car bb))))
+      (abs (- (vec-y (cdr bb)) (vec-y (car bb))))
       0))
 
 ; BoundingBox -> Number or False
