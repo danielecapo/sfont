@@ -1,18 +1,13 @@
-#lang racket
+#lang racket/base
 
 (require "private/ufo/ufo-def.rkt"
          "private/ufo/ufo-read-write.rkt"
-         "private/fontpict.rkt")
+         "private/pict-parameters.rkt"
+         "private/pict-utils.rkt"
+         "private/draw.rkt")
 
 (provide (all-from-out "private/ufo/ufo-def.rkt"
-                       "private/ufo/ufo-read-write.rkt")
-         display-size
-         display-text
-         display-pen
-         show-kerning?
-         set-contour-view!
-         with-contour-view
-         draw-font-dc
-         draw-glyph-dc
-         lines
-         unique-letters)
+                       "private/ufo/ufo-read-write.rkt"
+                       "private/pict-parameters.rkt"
+                       "private/pict-utils.rkt"
+                       "private/draw.rkt"))

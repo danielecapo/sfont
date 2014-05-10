@@ -1,18 +1,27 @@
-#lang racket
+#lang racket/base
 
-(require "../../geometry.rkt"
+(require racket/contract/base
+         racket/generic
+         racket/draw
+         racket/dict
+         racket/function
+         racket/class
+         racket/list
+         racket/string
+         racket/match
+         slideshow/pict-convert
+         (only-in slideshow/pict
+                  pict?
+                  dc
+                  blank)
+         (for-syntax racket/base)
+         "../../geometry.rkt"
          "../../properties.rkt"
          "../pict-parameters.rkt"
          "../pict-utils.rkt"
          "../draw.rkt"
          "../../utilities.rkt"
-         racket/generic
-         racket/draw
-         slideshow/pict-convert
-         (only-in slideshow/pict
-                  pict?
-                  dc
-                  blank))
+         )
 
 (provide 
  (contract-out
