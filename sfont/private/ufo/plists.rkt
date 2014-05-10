@@ -1,6 +1,11 @@
-#lang racket
+#lang racket/base
 
-(require xml/plist
+(require racket/contract/base
+         racket/match
+         racket/format
+         racket/dict
+         racket/function
+         xml/plist
          xml/path
          xml)
 
