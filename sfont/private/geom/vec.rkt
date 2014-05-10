@@ -1,9 +1,10 @@
-#lang racket
+#lang racket/base
 
-(require "geometric-generic.rkt"
-         "../../properties.rkt"
-         "../../utilities.rkt"
-         racket/generic)
+(require racket/math
+         racket/match
+         racket/contract/base
+         "geometric-generic.rkt"
+         "../../utilities.rkt")
 
 (provide 
  (all-from-out "geometric-generic.rkt")

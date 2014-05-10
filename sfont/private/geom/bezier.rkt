@@ -1,6 +1,11 @@
-#lang racket
+#lang racket/base
 
 (require racket/draw
+         racket/contract
+         racket/list
+         racket/function
+         racket/match
+         racket/class
          (prefix-in pict: slideshow/pict)
          "vec.rkt"
          "bounding-box.rkt"
