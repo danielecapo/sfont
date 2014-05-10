@@ -28,14 +28,18 @@
 ; DrawingContext Line Number (hash (Symbol . (-> void))) ((Symbol Symbol) -> Number) -> void
 ; draw the line in the drawing context 
 (define (draw-line-in-dc dc l leading glyphs [kerning (lambda (p) 0)])
-  (let* ([glyphs-to-display (filter identity (map (lambda (g) (hash-ref glyphs g #f)) l))]
+  (let* ([glyphs-to-display (filter identity (map (lambda (g) (and (hash-ref glyphs g #f) g)) l))]
          [k (if (null? glyphs-to-display)
                 '()
-                (cons 0 (map kerning (n-groups (hash-keys glyphs) 2))))])
+                (cons 0 (map kerning (n-groups glyphs-to-display 2))))])
+    (print k)
+    (newline)
+    (print glyphs-to-display)
+    (newline)
     (begin
       (for-each (lambda (g kv) 
                   (begin
                     (send dc translate kv 0)
-                    (g dc))) 
+                    ((hash-ref glyphs g) dc))) 
                 glyphs-to-display k)
       (send dc translate 0 leading))))
