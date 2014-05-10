@@ -1,12 +1,22 @@
-#lang racket
+#lang racket/base
 
-(require "plists.rkt"
-         "ufo-def.rkt"
-         "names.rkt"
-         "../../geometry.rkt"
+(require racket/match
+         racket/function
+         racket/list
+         racket/port
+         racket/dict
+         racket/file
+         racket/string
+         racket/path
+         racket/format
+         racket/contract/base
          xml
          xml/path
-         xml/plist)
+         xml/plist
+         "plists.rkt"
+         "ufo-def.rkt"
+         "names.rkt"
+         "../../geometry.rkt")
 
 (provide 
  (contract-out
