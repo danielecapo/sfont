@@ -14,7 +14,11 @@
                   pict?
                   dc
                   blank)
-         (for-syntax racket/base)
+         (only-in gls
+                  add-method
+                  method)
+         (for-syntax racket/base
+                     racket/syntax)
          "../../geometry.rkt"
          "../../properties.rkt"
          "../pict-parameters.rkt"
@@ -204,47 +208,123 @@
 
 (define-syntax (position-based-trans stx)
   (syntax-case stx ()
-    [(position-based-trans t sup id arg ...)
-     #'(define (t o arg ...)
-       (struct-copy id o [pos (sup (get-position o) (clean-arg arg) ...)]))]))
-
+    [(position-based-trans pred? id)
+     #'(begin 
+         (add-method transform
+                     (method ((p pred?) (m trans-mat?))
+                             (struct-copy id p [pos (transform (get-position p) m)])))
+         (add-method translate
+                     (method ((p pred?) (x number?) (y number?))
+                             (struct-copy id p [pos (translate (get-position p) x y)])))
+         (add-method scale
+                     (method ((p pred?) (fx number?))
+                             (struct-copy id p [pos (scale (get-position p) fx)])))
+         (add-method scale
+                     (method ((p pred?) (fx number?) (fy number?))
+                             (struct-copy id p [pos (scale (get-position p) fx fy)])))
+         (add-method rotate
+                     (method ((p pred?) (a number?))
+                             (struct-copy id p [pos (rotate (get-position p) a)])))
+         (add-method skew-x
+                     (method ((p pred?) (a number?))
+                             (struct-copy id p [pos (skew-x (get-position p) a)])))
+         (add-method skew-y
+                     (method ((p pred?) (a number?))
+                             (struct-copy id p [pos (skew-y (get-position p) a)])))
+         (add-method reflect-x
+                     (method ((p pred?))
+                             (struct-copy id p [pos (reflect-x (get-position p))])))
+         (add-method reflect-y
+                     (method ((p pred?))
+                             (struct-copy id p [pos (reflect-y (get-position p))]))))]))
+         
+         
 (define-syntax (matrix-based-trans stx)
   (syntax-case stx ()
-    [(matrix-based-trans t sup id arg ...)
-     #'(define (t o arg ...)
-       (struct-copy id o [matrix (sup (get-matrix o) (clean-arg arg) ...)]))]))
+    [(position-based-trans pred? id)
+     #'(begin 
+         (add-method transform
+                     (method ((p pred?) (m trans-mat?))
+                             (struct-copy id p [matrix (transform (get-matrix p) m)])))
+         (add-method translate
+                     (method ((p pred?) (x number?) (y number?))
+                             (struct-copy id p [matrix (translate (get-matrix p) x y)])))
+         (add-method scale
+                     (method ((p pred?) (fx number?))
+                             (struct-copy id p [matrix (scale (get-matrix p) fx)])))
+         (add-method scale
+                     (method ((p pred?) (fx number?) (fy number?))
+                             (struct-copy id p [matrix (scale (get-matrix p) fx fy)])))
+         (add-method rotate
+                     (method ((p pred?) (a number?))
+                             (struct-copy id p [matrix (rotate (get-matrix p) a)])))
+         (add-method skew-x
+                     (method ((p pred?) (a number?))
+                             (struct-copy id p [matrix (skew-x (get-matrix p) a)])))
+         (add-method skew-y
+                     (method ((p pred?) (a number?))
+                             (struct-copy id p [matrix (skew-y (get-matrix p) a)])))
+         (add-method reflect-x
+                     (method ((p pred?))
+                             (struct-copy id p [matrix (reflect-x (get-matrix p))])))
+         (add-method reflect-y
+                     (method ((p pred?))
+                             (struct-copy id p [matrix (reflect-y (get-matrix p))]))))]))
 
 (define-syntax (compound-based-trans stx)
   (syntax-case stx ()
-    [(compound-based-trans field get-field t sup id arg ...)
-     #'(define (t o arg ...)
-       (struct-copy id o [field (map (lambda (o) (sup o (clean-arg arg) ...))
-                                     (get-field o))]))]))
+    [(compound-based-trans pred? id field get-field)
+     #'(begin 
+         (add-method transform
+                     (method ((p pred?) (m trans-mat?))
+                             (struct-copy id p [field (map (lambda (p) (transform p m))
+                                                           (get-field p))])))
+         (add-method translate
+                     (method ((p pred?) (x number?) (y number?))
+                             (struct-copy id p [field (map (lambda (p) (translate p x y))
+                                                           (get-field p))])))
+         (add-method scale
+                     (method ((p pred?) (fx number?))
+                             (struct-copy id p [field (map (lambda (p) (scale p fx))
+                                                           (get-field p))])))
+         (add-method scale
+                     (method ((p pred?) (fx number?) (fy number?))
+                             (struct-copy id p [field (map (lambda (p) (scale p fx fy))
+                                                           (get-field p))])))
+         (add-method rotate
+                     (method ((p pred?) (a number?))
+                             (struct-copy id p [field (map (lambda (p) (rotate p a))
+                                                           (get-field p))])))
+         (add-method skew-x
+                     (method ((p pred?) (a number?))
+                             (struct-copy id p [field (map (lambda (p) (skew-x p a))
+                                                           (get-field p))])))
+         (add-method skew-y
+                     (method ((p pred?) (a number?))
+                             (struct-copy id p [field (map (lambda (p) (skew-y p a))
+                                                           (get-field p))])))
+         (add-method reflect-y
+                     (method ((p pred?))
+                             (struct-copy id p [field (map (lambda (p) (reflect-x p))
+                                                           (get-field p))])))
+         (add-method reflect-y
+                     (method ((p pred?))
+                             (struct-copy id p [field (map (lambda (p) (reflect-y p))
+                                                           (get-field p))]))))]))
 
 (define-syntax (clean-arg stx)
   (syntax-case stx ()
     [(clean-arg [a d]) #'a]
     [(clean-arg a) #'a]))
 
-(define-syntax-rule (geometric-struct (trans r ...) id expr ...)
-  (struct id expr ...
-    #:methods gen:geometric
-    [(define/generic super-transform transform)
-     (define/generic super-translate translate)
-     (define/generic super-scale scale)
-     (define/generic super-rotate rotate)
-     (define/generic super-skew-x skew-x)
-     (define/generic super-skew-y skew-y)
-     (define/generic super-reflect-x reflect-x)
-     (define/generic super-reflect-y reflect-y)
-     (trans r ... transform super-transform id m)
-     (trans r ... translate super-translate id x y)
-     (trans r ... scale super-scale id fx [fy fx])   
-     (trans r ... rotate super-rotate id a)
-     (trans r ... skew-x super-skew-x id a)
-     (trans r ... skew-y super-skew-y id a)
-     (trans r ... reflect-x super-reflect-x id)
-     (trans r ... reflect-y super-reflect-y id)]))
+(define-syntax (geometric-struct stx)
+  (syntax-case stx ()
+    [(_ (trans r ...) id expr ...)
+     (with-syntax ([pred (format-id stx "~a?" #'id)])
+       #'(begin
+           (struct id expr ...)
+           (trans pred id r ...)))]))
+    
   
 
 ;;; PARAMETERS
@@ -388,34 +468,34 @@
                         (if (show-kerning?)
                             (lambda (p) (apply kerning-value f p))
                             (lambda (p) 0)))))))
-  #:property prop:pict-convertible font->pict
-  #:methods gen:geometric
-  [(define/generic super-transform transform)
-   (define/generic super-translate translate)
-   (define/generic super-scale scale)
-   (define/generic super-rotate rotate)
-   (define/generic super-skew-x skew-x)
-   (define/generic super-skew-y skew-y)
-   (define/generic super-reflect-x reflect-x)
-   (define/generic super-reflect-y reflect-y)
-   (define (transform f m)
-     (apply-font-trans f super-transform m))
-   (define (translate f x y)
-     (apply-font-trans f super-translate x y))
-   (define (scale f fx [fy fx])
-     (apply-font-trans f super-scale fx fy))
-   (define (rotate f a)
-     (apply-font-trans f super-rotate a))
-   (define (skew-x f a)
-     (apply-font-trans f super-skew-x a))
-   (define (skew-y f a)
-     (apply-font-trans f super-skew-y a))
-   (define (reflect-x f)
-     (apply-font-trans f super-reflect-x))
-   (define (reflect-y f)
-     (apply-font-trans f super-reflect-y))])
+  #:property prop:pict-convertible font->pict)
 
 
+
+; transformations
+
+(define-syntax-rule (add-transformation-font t (arg pred?) ...)
+  (add-method t
+              (method ((f font?) (arg pred?) ...)
+                      (apply-font-trans f t arg ...))))
+
+(add-transformation-font transform (m trans-mat?))
+
+(add-transformation-font translate (x number?) (y number?))
+
+(add-transformation-font scale (fx number?))
+
+(add-transformation-font scale (fx number?) (fy number?))
+
+(add-transformation-font rotate (a number?))
+
+(add-transformation-font skew-x (a number?))
+
+(add-transformation-font skew-y (a number?))
+
+(add-transformation-font reflect-x)
+
+(add-transformation-font reflect-y)
 
 ; Font (T -> T) . T1 -> Font
 ; Produce a new Font applying the transformation
@@ -446,32 +526,7 @@
 ;;; Layer
 ;;; (layer Symbol (listOf Guideline) (listOf Anchor) (listOf Contour) (listOf Component))
 (struct layer (name guidelines anchors contours components)
-  #:transparent
-  #:methods gen:geometric
-  [(define/generic super-transform transform)
-   (define/generic super-translate translate)
-   (define/generic super-scale scale)
-   (define/generic super-rotate rotate)
-   (define/generic super-skew-x skew-x)
-   (define/generic super-skew-y skew-y)
-   (define/generic super-reflect-x reflect-x)
-   (define/generic super-reflect-y reflect-y)
-   (define (transform l m)
-     (apply-layer-trans l super-transform m))
-   (define (translate l x y)
-     (apply-layer-trans l super-translate x y))
-   (define (scale l fx [fy fx])
-     (apply-layer-trans l super-scale fx fy))
-   (define (rotate l a)
-     (apply-layer-trans l super-rotate a))
-   (define (skew-x l a)
-     (apply-layer-trans l super-skew-x a))
-   (define (skew-y l a)
-     (apply-layer-trans l super-skew-y a))
-   (define (reflect-x l)
-     (apply-layer-trans l super-reflect-x))
-   (define (reflect-y l)
-     (apply-layer-trans l super-reflect-y))])
+  #:transparent)
 
 ; Layer  (T . ... -> T) . ... -> Layer
 ; apply a geometric transformations to a layer
@@ -482,7 +537,27 @@
                  [anchors (map t (layer-anchors l))]
                  [contours (map t (layer-contours l))])))
  
+(define-syntax-rule (add-transformation-layer t (arg pred?) ...)
+  (add-method t (method ((l layer?) (arg pred?) ...)
+                        (apply-layer-trans l t arg ...))))
+             
+(add-transformation-layer transform (m trans-mat?))
 
+(add-transformation-layer translate (x number?) (y number?))
+
+(add-transformation-layer scale (fx number?))
+
+(add-transformation-layer scale (fx number?) (fy number?))
+
+(add-transformation-layer rotate (a number?))
+
+(add-transformation-layer skew-x (a number?))
+
+(add-transformation-layer skew-y (a number?))
+
+(add-transformation-layer reflect-x)
+
+(add-transformation-font reflect-y)
 
 
 ; Glyph -> Pict
@@ -502,33 +577,7 @@
              lib))
   #:transparent
   #:property prop:pict-convertible glyph->pict
-  #:property prop:draw (lambda (g) (curry draw-glyph-in-dc g))
-                                
-  #:methods gen:geometric
-  [(define/generic super-transform transform)
-   (define/generic super-translate translate)
-   (define/generic super-scale scale)
-   (define/generic super-rotate rotate)
-   (define/generic super-skew-x skew-x)
-   (define/generic super-skew-y skew-y)
-   (define/generic super-reflect-x reflect-x)
-   (define/generic super-reflect-y reflect-y)
-   (define (transform g m)
-     (apply-glyph-trans g super-transform m))
-  (define (translate g x y)
-    (apply-glyph-trans g super-translate x y))
-  (define (scale g fx [fy fx])
-    (glyph-scale g fx fy))
-  (define (rotate g a)
-    (apply-glyph-trans g super-rotate a))
-  (define (skew-x g a)
-    (apply-glyph-trans g super-skew-x a))
-  (define (skew-y g a)
-    (apply-glyph-trans g super-skew-y a))
-  (define (reflect-x g)
-    (apply-glyph-trans g super-reflect-x))
-  (define (reflect-y g)
-    (apply-glyph-trans g super-reflect-y))])
+  #:property prop:draw (lambda (g) (curry draw-glyph-in-dc g)))
 
 
 ; Glyph  (T . ... -> T) . ... -> Glyph
@@ -536,6 +585,33 @@
 (define (apply-glyph-trans g fn . args)
   (let ([t (lambda (o) (apply fn o args))])
     (struct-copy glyph g [layers (map-layers t g)])))
+
+(define-syntax-rule (add-transformation-glyph t (arg pred?) ...)
+  (add-method t (method ((l layer?) (arg pred?) ...)
+                        (apply-glyph-trans l t arg ...))))
+             
+(add-transformation-glyph transform (m trans-mat?))
+
+(add-transformation-glyph translate (x number?) (y number?))
+
+
+(add-method scale 
+            (method ((g glyph?) (fx number?))
+                    (glyph-scale g fx fx))) 
+
+(add-method scale 
+            (method ((g glyph?) (fx number?) (fy number?))
+                    (glyph-scale g fx fy))) 
+
+(add-transformation-glyph rotate (a number?))
+
+(add-transformation-glyph skew-x (a number?))
+
+(add-transformation-glyph skew-y (a number?))
+
+(add-transformation-glyph reflect-x)
+
+(add-transformation-glyph reflect-y)
 
 ; Glyph Real Real -> Glyph
 (define (glyph-scale g fx [fy fx])
