@@ -42,6 +42,7 @@
 
   [font-draw-function (parameter/c (-> font? pict?))]
   [glyph-in-font-draw-function (parameter/c (-> glyph? font? (is-a?/c dc<%>) void?))]  
+  [contours-direction (parameter/c (one-of/c 'ccw 'cw))]
   [struct font  
   ((fontinfo fontinfo/c) 
    (groups groups/c) 
@@ -133,6 +134,8 @@
   [lowercase-stems (-> font? real?)]
   [uppercase-stems (-> font? real?)]
   [correct-directions (-> font? font?)]
+  [clockwise-directions (-> font? font?)]
+  [counter-clockwise-directions (-> font? font?)]
   [glyph-draw (-> font? name/c pict?)]
   [print-glyph (-> font? name/c void?)]
   [font-round (-> font? font?)]
@@ -164,9 +167,15 @@
   [bezier->contour (-> bezier/c contour?)]
   [component->outlines (-> component? glyph? (listof contour?))]
   [contour-open? (-> contour? boolean?)]
+  [contour-clockwise? (-> contour? boolean?)]
+  [contour-counter-clockwise? (-> contour? boolean?)]
+  [clockwise-contour (-> contour? contour?)]
+  [counter-clockwise-contour (-> contour? contour?)]
   [reverse-contour (-> contour? contour?)]
   [glyph-reverse-directions (-> glyph? glyph?)]
   [glyph-correct-directions (-> glyph? glyph?)]
+  [glyph-clockwise-directions (-> glyph? glyph?)]
+  [glyph-counter-clockwise-directions (-> glyph? glyph?)]
   [kern-groups2->3 (-> font? font?)]
   [kerning-group-names (-> font? (cons/c (listof name/c) (listof name/c)))]
   [valid-kerning-group-name? (-> name/c (or/c 'left 'right) boolean?)]
@@ -240,15 +249,27 @@
 
 ;;; PARAMETERS
 
+; Glyph [Font] -> Pict
+; parameter used to draw the glyph in a pict
 (define glyph-draw-function 
   (make-parameter (case-lambda [(g) (blank)]
                                [(g f) (blank)])))
 
+; Font -> Pict
+; parameter used to draw the font in a pict
 (define font-draw-function 
   (make-parameter (lambda (f) (blank))))
 
+; Glyph Font DrawingContext -> Void
+; parameter used to draw the glyph in a Drawing Context
+; This is used in a "font view" (to print the font in the REPL)
 (define glyph-in-font-draw-function 
   (make-parameter (lambda (g f dc) (void))))
+
+; (oneOf ccw cw)
+; parameter used to set the 'correct' direction of contours
+(define contours-direction
+  (make-parameter 'ccw))
 
 
 
@@ -920,7 +941,19 @@
 ; produces a new font with contour in the correct direction
 (define (correct-directions f)
   (struct-copy font f
-               [glyphs (map-glyphs glyph-correct-directions f)]))        
+               [glyphs (map-glyphs glyph-correct-directions f)])) 
+
+; Font -> Font
+; produces a new font with contour in the correct direction
+(define (clockwise-directions f)
+  (struct-copy font f
+               [glyphs (map-glyphs glyph-clockwise-directions f)]))
+
+; Font -> Font
+; produces a new font with contour in the correct direction
+(define (counter-clockwise-directions f)
+  (struct-copy font f
+               [glyphs (map-glyphs glyph-counter-clockwise-directions f)]))
 
 ; Font Symbol -> Pict
 ; Print the glyph           
@@ -1373,6 +1406,25 @@
     (map-contours (lambda (c) (transform c m))
                   b)))
      
+; Contour -> Boolean
+; true if the contour direction is clockwise
+(define (contour-clockwise? c)
+  (clockwise? (map point-pos c)))
+
+; Contour -> Boolean
+; true if the contour direction is counterclockwise
+(define (contour-counter-clockwise? c)
+  (not (contour-clockwise? c)))
+
+; Contour -> Contour
+; produce a clockwise contour 
+(define (clockwise-contour c)
+  (if (contour-clockwise? c) c (reverse-contour c)))
+
+; Contour -> Contour
+;  produce a counterclockwise contour 
+(define (counter-clockwise-contour c)
+  (if (contour-counter-clockwise? c) c (reverse-contour c)))
 
 ; Contour -> Boolean
 ; True if the contour starts with a point of type 'move
@@ -1451,11 +1503,30 @@
                [contours (map-contours reverse-contour l)]))
 
 ; Glyph -> Glyph
-; reverse the direction of all contours in the glyph if the area is negative
+; set the directions of contours using the contours-direction parameter
 (define (glyph-correct-directions g)
-  (if (< (glyph-signed-area g 30) 0)
-      (glyph-reverse-directions g)
-      g))
+  (let ([a (glyph-signed-area g 30)])
+    (cond [(and (< a 0) (eq? (contours-direction) 'ccw))
+           (glyph-reverse-directions g)]
+          [(and (< a 0) (eq? (contours-direction) 'cw)) g]
+          [(and (> a 0) (eq? (contours-direction) 'ccw)) g]
+          [(and (> a 0) (eq? (contours-direction) 'cw))
+           (glyph-reverse-directions g)]
+          [else g])))
+
+; Glyph -> Glyph
+; 
+(define (glyph-clockwise-directions g)
+  (if (<= (glyph-signed-area g 30) 0)
+      g
+      (glyph-reverse-directions g)))
+
+; Glyph -> Glyph
+; 
+(define (glyph-counter-clockwise-directions g)
+  (if (>= (glyph-signed-area g 30) 0)
+      g
+      (glyph-reverse-directions g)))
 
 
 ; Font -> Font
