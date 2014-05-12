@@ -3,6 +3,9 @@
 (require racket/math
          racket/match
          racket/contract/base
+         (only-in gls
+                  method
+                  add-method)
          "geometric-generic.rkt"
          "../../utilities.rkt")
 
@@ -84,34 +87,9 @@
   #:transparent
   #:guard (lambda (x y tn)
             (values (approx x)
-                    (approx y)))
-  #:methods gen:geometric
-  [(define (transform v m) 
-     (let ([v1 (vec3 (vec-x v) (vec-y v) 1)])
-     (vec3->vec (trans-mat-vec* m v1))))
-  (define (translate v x y)
-    (vec (+ (vec-x v) x)
-         (+ (vec-y v) y)))
-  (define (scale v fx [fy fx])
-    (vec (* (vec-x v) fx)
-         (* (vec-y v) fy)))
-  (define (rotate v a)
-    (let ([c (cos a)]
-          [s (sin a)]
-          [x (vec-x v)]
-          [y (vec-y v)])
-      (vec (- (* c x) (* s y))
-           (+ (* s x) (* c y)))))
-  (define (skew-x v a)
-    (vec (+ (vec-x v) (* (vec-y v) (- (approx (tan a)))))
-         (vec-y v)))
-  (define (skew-y v a)
-    (vec (vec-x v)
-         (+ (* (vec-x v) (approx (tan a))) (vec-y v))))
-  (define (reflect-x v)
-    (vec (- (vec-x v)) (vec-y v)))
-  (define (reflect-y v)
-    (vec (vec-x v) (- (vec-y v))))])
+                    (approx y))))
+
+
 
 (struct vec3 (x y z) #:transparent)
 
@@ -133,31 +111,96 @@
                     yx
                     y
                     (approx x-offset)
-                    (approx y-offset)))
-  #:methods gen:geometric
-  [(define (transform m1 m2)
-     (trans-mat* m2 m1))
-  (define (translate m x y)
-    (struct-copy trans-mat m 
+                    (approx y-offset))))
+
+;; Transformations
+(add-method transform 
+            (method ((v vec?) (m trans-mat?)) 
+                    (let ([v1 (vec3 (vec-x v) (vec-y v) 1)])
+                      (vec3->vec (trans-mat-vec* m v1)))))
+(add-method translate
+            (method ((v vec?) (x number?) (y number?))
+                    (vec (+ (vec-x v) x)
+                         (+ (vec-y v) y))))
+
+(add-method scale
+            (method ((v vec?) (fx number?))
+                    (vec (* (vec-x v) fx)
+                         (* (vec-y v) fx))))
+(add-method scale
+            (method ((v vec?) (fx number?) (fy number?))
+                    (vec (* (vec-x v) fx)
+                         (* (vec-y v) fy))))
+
+(add-method rotate
+            (method ((v vec?) (a number?))
+                    (let ([c (cos a)]
+                          [s (sin a)]
+                          [x (vec-x v)]
+                          [y (vec-y v)])
+                      (vec (- (* c x) (* s y))
+                           (+ (* s x) (* c y))))))
+
+(add-method skew-x 
+            (method ((v vec?) (a number?))
+                    (vec (+ (vec-x v) (* (vec-y v) (- (approx (tan a)))))
+                         (vec-y v))))
+(add-method skew-y 
+            (method ((v vec?) (a number?))
+                    (vec (vec-x v)
+                         (+ (* (vec-x v) (approx (tan a))) (vec-y v)))))
+(add-method reflect-x 
+            (method ((v vec?))
+                    (vec (- (vec-x v)) (vec-y v))))
+
+(add-method reflect-y 
+            (method ((v vec?))
+                     (vec (vec-x v) (- (vec-y v)))))
+
+(add-method transform 
+            (method ((m1 trans-mat?) (m2 trans-mat?)) 
+                    (trans-mat* m2 m1)))
+(add-method translate
+            (method ((m trans-mat?) (x number?) (y number?))
+                    (struct-copy trans-mat m 
                  [x-offset (+ (trans-mat-x-offset m) x)]
-                 [y-offset (+ (trans-mat-y-offset m) y)]))                 
-  (define (scale m fx [fy fx])
-    (match m
-      [(trans-mat x xy yx y x-offset y-offset)
-       (trans-mat (* fx x) (* fx xy) 
-                  (* fy yx) (* fy y)
-                  (* fx x-offset)
-                  (* fy y-offset))]))
-  (define (rotate m a)
-    (transform m (rotation-matrix a)))
-  (define (skew-x m a)
-    (transform m (shear-matrix (- (approx (tan a))) 0)))
-  (define (skew-y m a)
-    (transform m (shear-matrix 0 (approx (tan a)))))
-  (define (reflect-x m)
-    (scale m -1 1))
-  (define (reflect-y m)
-    (scale m 1 -1))])
+                 [y-offset (+ (trans-mat-y-offset m) y)])))
+
+(add-method scale
+            (method ((m trans-mat?) (fx number?))
+                    (match m
+                      [(trans-mat x xy yx y x-offset y-offset)
+                       (trans-mat (* fx x) (* fx xy) 
+                                  (* fx yx) (* fx y)
+                                  (* fx x-offset)
+                                  (* fx y-offset))])))
+(add-method scale
+            (method ((m trans-mat?) (fx number?) (fy number?))
+                    (match m
+                      [(trans-mat x xy yx y x-offset y-offset)
+                       (trans-mat (* fx x) (* fx xy) 
+                                  (* fy yx) (* fy y)
+                                  (* fx x-offset)
+                                  (* fy y-offset))])))
+
+(add-method rotate
+            (method ((m trans-mat?) (a number?))
+                    (transform m (rotation-matrix a))))
+
+(add-method skew-x 
+            (method ((m trans-mat?) (a number?))
+                    (transform m (shear-matrix (- (approx (tan a))) 0))))
+(add-method skew-y 
+            (method ((m trans-mat?) (a number?))
+                    (transform m (shear-matrix 0 (approx (tan a))))))
+(add-method reflect-x 
+            (method ((m trans-mat?))
+                    (scale m -1 1)))
+
+(add-method reflect-y 
+            (method ((m trans-mat?))
+                    (scale m 1 -1)))
+
 
 
 ; Vec -> Boolean
