@@ -303,7 +303,7 @@
                      (method ((p pred?) (a number?))
                              (struct-copy id p [field (map (lambda (p) (skew-y p a))
                                                            (get-field p))])))
-         (add-method reflect-y
+         (add-method reflect-x
                      (method ((p pred?))
                              (struct-copy id p [field (map (lambda (p) (reflect-x p))
                                                            (get-field p))])))
@@ -557,7 +557,7 @@
 
 (add-transformation-layer reflect-x)
 
-(add-transformation-font reflect-y)
+(add-transformation-layer reflect-y)
 
 
 ; Glyph -> Pict
@@ -587,8 +587,8 @@
     (struct-copy glyph g [layers (map-layers t g)])))
 
 (define-syntax-rule (add-transformation-glyph t (arg pred?) ...)
-  (add-method t (method ((l layer?) (arg pred?) ...)
-                        (apply-glyph-trans l t arg ...))))
+  (add-method t (method ((g glyph?) (arg pred?) ...)
+                        (apply-glyph-trans g t arg ...))))
              
 (add-transformation-glyph transform (m trans-mat?))
 
