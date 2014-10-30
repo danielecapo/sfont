@@ -1,6 +1,12 @@
-#lang racket
+#lang racket/base
 
-(require "../../main.rkt"
+(require racket/contract/base
+         racket/list
+         racket/dict
+         racket/set
+         racket/function
+         racket/match
+         "../../main.rkt"
          "../../geometry.rkt")
 
 
@@ -25,13 +31,18 @@
   
 
 
-; Font Font Boolean Boolean -> Font
+; Font Font Boolean Boolean -> Font Font
+; produce two interpolable fonts, if weak is true it doesn't change contours,
+; if auto-directions is true the directions of the font will be adjusted
 (define (interpolable-fonts f1 f2 [weak #t] [auto-directions #f])
   (compatible-fonts (prepare-font f1 weak auto-directions)
                     (prepare-font f2 weak auto-directions)))
 
  
 ; Font Boolean Boolean -> Font
+; produce a font prepared for interpolation in order to minimize incompatibilities
+; if weak is true it doesn't change contours, 
+; if auto-directions is true the directions of the font will be adjusted
 (define (prepare-font f [weak #t] [auto-directions #f])
   (let ([f1 (if auto-directions (correct-directions f) f)])
     (struct-copy font f1
