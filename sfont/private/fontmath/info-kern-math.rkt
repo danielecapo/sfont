@@ -1,6 +1,10 @@
-#lang racket
+#lang racket/base
 
-(require "../../main.rkt")
+(require racket/contract/base
+         racket/dict
+         racket/match
+         racket/function
+         "../../main.rkt")
 
 
 (provide 
