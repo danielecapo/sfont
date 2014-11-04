@@ -52,6 +52,7 @@
                  [glyphs (map-glyphs (curryr prepare-glyph weak) f1)])))
 
 ; FontInfo -> Fontinfo
+; produce a new fontinfo prepared for interpolation
 (define (prepare-info i)       
   (let* ([keys (map car *infos*)]
          [psname (dict-ref i 'postscriptFontName "untitled")]
@@ -71,6 +72,8 @@
   k)
 
 ; Layer Boolean -> Layer
+; produce a new layer prepared for interpolation;
+; if weak is true it doesn't change contours
 (define (prepare-layer l [weak #t])
   (struct-copy layer l
                [anchors (sort-anchors (layer-anchors l))]
@@ -80,15 +83,20 @@
                           (map-contours (lambda (c) (prepare-contour c weak)) l))]))
 
 ; Glyph Boolean -> Glyph
+; produce a new glyph  prepared for interpolation;
+; if weak is true it doesn't change contours
 (define (prepare-glyph g [weak #t])
   (struct-copy glyph g
                [layers (list (prepare-layer (get-layer g foreground) weak))]))
 
 ; (listof Anchor) -> (listof Anchor)
+; produce a new list of anchors sorted by name
 (define (sort-anchors loa)
   (sort loa #:key anchor-name string<?))
 
 ; (listof Component) -> (listof Component)
+; produce a new list of components sorted by name,
+; if tow anchors have the same name they are sorted by position
 (define (sort-components loc)
   (sort loc (lambda (c1 c2)
               (let ([b1 (symbol->string (component-base c1))]
@@ -98,17 +106,21 @@
                          (pos<? (component-pos c1) (component-pos c2))))))))
 
 ; (listof Contour) -> (listof Contour)
+; produce a new list of contours sorted with contour<?
 (define (sort-contours loc)
   (sort loc contour<?))
 
 ; Contour Boolean -> Contour
+; produce a new contour prepared for interpolation,
+; if weak is true it doesn't change contours
 (define (prepare-contour c [weak #t])    
   (let ([ci (remove-line-segments c)])
     (if weak ci (struct-copy contour ci
                              [points (sort-points (contour-points ci))]))))
 
 ; Contour -> Contour
-; transform every segment in a curve segment
+; transform every segment in a curve segment,
+; quadratic beziers will be transformed in cubic ones
 (define (remove-line-segments c)
   (letrec ([aux (lambda (vs)
                   (match vs
@@ -127,6 +139,7 @@
                                    (drop-right rpts 1)))]))))
 
 ; Font Font -> Font Font
+; produce two new fonts that can be interpolated
 (define (compatible-fonts f1 f2)
   (let*-values ([(i1 i2)   (compatible-infos       (font-fontinfo f1) 
                                                    (font-fontinfo f2))]
@@ -152,6 +165,8 @@
                   [glyphs   gl2]))))
 
 ; FontInfo FontInfo -> FontInfo FontInfo 
+; produce two new fontinfo that can be interpolated
+; (it will keep only common infos)
 (define (compatible-infos i1 i2) 
   (let ([loi1 (sort-by-key (hash->list i1))]
         [loi2 (sort-by-key (hash->list i2))])
@@ -160,6 +175,8 @@
               (make-immutable-hash li2)))))
 
 ; Font Font -> (listof Glyph) (listof Glyph)
+; produce two list of glyph (one for each font) that can be interpolated
+; (it will keep only common glyphs provided that they can be interpolated)
 (define (compatible-font-glyphs f1 f2)
   (let*-values ([(gs1 gs2) (commons (map-glyphs identity f1 #:sorted #t)
                                     (map-glyphs identity f2 #:sorted #t)
@@ -167,6 +184,7 @@
     (compatible-list-of-glyphs gs1 gs2)))
 
 ; (listof Glyph) (listof Glyph) -> (listof Glyph) (listof Glyph)
+; produce two list of glyph that can be interpolated
 (define (compatible-list-of-glyphs log1 log2)
   (let ([cl (map (lambda (g1 g2)
                    (let-values ([(ng1 ng2) (compatible-glyphs g1 g2)])
@@ -177,6 +195,7 @@
             (filter identity (map cdr cl)))))
 
 ; Glyph Glyph -> Glyph or False Glyph or False
+; produce two glyphs that can be interpolated (or false if they can't)
 (define (compatible-glyphs g1 g2)
   (let-values ([(l1 l2) (compatible-layers (get-layer g1 foreground)
                                            (get-layer g2 foreground))])
@@ -186,6 +205,7 @@
         (values #f #f))))
 
 ; Layer Layer -> Layer or False Layer or False
+; produce two layers that can be interpolated (or false if they can't)
 (define (compatible-layers l1 l2)
   (let ([cs1 (layer-contours l1)]
         [cs2 (layer-contours l2)])
@@ -201,17 +221,19 @@
                           (struct-copy layer l2 [components c2] [anchors a2])))])))
 
 ; (listof Component) (listof Component) -> (listof Component) (listof Component)
+; produce two list of components that can be interpolated
 (define (compatible-components loc1 loc2)
   (commons loc1 loc2 component-base eq? symbol<?))
 
 ; (listof Anchor) (listof Anchor) -> (listOf Anchor) (listof Anchor)
-; produce two interpolable anchor lists
+; produce two list of anchors that can be interpolated
 (define (compatible-anchors loa1 loa2)
   (commons loa1 loa2 anchor-name string=? string<?))
 
 
                 
 ; Groups Groups -> Groups Groups 
+; produce two groups that can be interpolated
 (define (compatible-groups g1 g2 gs)
   (let* ([ng1 (purge-groups g1 gs)]
          [ng2 (purge-groups g2 gs)])
@@ -219,6 +241,9 @@
 
 
 ; Groups (listof Symbol) -> Groups
+; produce a new group hashtable removing references to glyphs not in the list of symbols
+; (since the process of making fonts interpolables can remove glyphs
+; we need to remove them also in groups)
 (define (purge-groups gs los)
   (let ([gl (hash->list gs)])
     (make-immutable-hash
@@ -230,6 +255,7 @@
                   gl)))))
 
 ; Groups Groups -> Groups Groups
+; produce two groups hashtables keeping only common groups
 (define (common-groups g1 g2)
   (let-values ([(ng1 ng2) (commons (sort-by-key (hash->list g1))
                                    (sort-by-key (hash->list g2))
@@ -248,6 +274,7 @@
 
 
 ; Kerning Kerning (listof Symbol) (listof Symbol) -> Kerning Kerning 
+; produce two new kernings that can be intepolated
 (define (compatible-kernings k1 k2 lgl lgr)
   (let ([los (append lgl lgr)])
     (let ([nk1 (purge-kerns k1 los)]
@@ -255,6 +282,9 @@
       (common-kerns nk1 nk2))))
 
 ; Kerning (listof Symbol) -> Kerning
+; produce a new kerning removing kerning pairs that uses names outside the list of symbols
+; (since the process of making fonts interpolables can remove glyphs and groups
+; we need to remove them also in kerning pairs)
 (define (purge-kerns k los)
   (let ([k (hash-map k (lambda (key val) (cons key (hash->list val))))])
     (make-immutable-hash
@@ -265,13 +295,15 @@
                            (filter (lambda (v) (member (car v) los)) (cdr kg)))))
                   k)))))
 
+; Kerning Kerning -> Kerning Kerning
+; produce two new kerning keeping only the common pairs
 (define (common-kerns k1 k2)
   (let [(pairs (common-pairs k1 k2))]
     (values (filter-kerning k1 pairs)
             (filter-kerning k2 pairs))))
 
 ; Kerning Kerning -> (listOf (Symbol . Symbol))
-; produce a list of kerning pairs used in noth fonts
+; produce a list of kerning pairs used in both fonts
 (define (common-pairs k1 k2)
   (let ([k1 (hash-map k1 (lambda (key val) (cons key (hash->list val))))]
         [k2 (hash-map k2 (lambda (key val) (cons key (hash->list val))))])
@@ -303,6 +335,7 @@
 
         
 ; (listof Point) -> (listof Point)
+; produce a new list of points ensuring that the first one is the minimum (with point<?) on curve point of the list
 (define (sort-points lop)                     
   (if (eq? (point-type (car lop)) 'move)
       lop
@@ -315,6 +348,7 @@
           (rotate-until lop)))))
 
 ; (listof Point) -> Vec
+; produce a vec of the position of the minimum (with point<?) point of the list
 (define (minimum-curve-point lop)
   (car (sort (map point-pos 
                   (filter (lambda (p) (eq? 'curve (point-type p))) 
@@ -355,7 +389,8 @@
                     [m (car (argmin cdr (filter (lambda (i) (identity (cdr i)))
                                                 (map (lambda (c)
                                                        (cons c
-                                                             (if (= (length (contour-points c)) (length (contour-points cm)))
+                                                             (if (= (length (contour-points c)) 
+                                                                    (length (contour-points cm)))
                                                                     (contour-distance cm c)
                                                                     #f)))
                                                      cs))))])
