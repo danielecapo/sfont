@@ -1,13 +1,19 @@
-#lang racket
-(require "interpolables.rkt"
+#lang racket/base
+
+(require racket/contract/base
+         racket/list
+         racket/match
+         racket/function
+         "interpolables.rkt"
          "info-kern-math.rkt"
          "../../main.rkt"
          "../../geometry.rkt"
          "../../properties.rkt"
          "../../utilities.rkt"
-         (for-syntax racket/syntax))
+         (for-syntax racket/base
+                     racket/syntax))
 
-(provide (except-out (all-from-out racket) + - * /)
+(provide (except-out (all-from-out racket/base) + - * /)
          (contract-out
           [fontmath-object/c (-> any/c boolean?)]
           [font-intp-object/c (-> any/c boolean?)]
@@ -16,8 +22,8 @@
           [rename add  + (->* (fontmath-object/c) () #:rest (listof fontmath-object/c) fontmath-object/c)]
           [rename sub  - (->* (fontmath-object/c) () #:rest (listof fontmath-object/c) fontmath-object/c)]
           [rename div  / (->* (fontmath-object/c) () #:rest (listof fontmath-object/c) fontmath-object/c)]
-          [x-> (-> geometric? geometric?)]
-          [y-> (-> geometric? geometric?)]
+          [x-> (-> any/c any/c)]
+          [y-> (-> any/c any/c)]
           [fix-components (-> font? font? font?)])
          define-interpolable-fonts
          define-space
