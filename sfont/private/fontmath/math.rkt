@@ -26,8 +26,7 @@
           [y-> (-> any/c any/c)]
           [fix-components (-> font? font? font?)])
          define-interpolable-fonts
-         define-space
-         use-only-glyphs)
+         define-space)
    
          
 (define fontmath-object/c
@@ -40,103 +39,64 @@
    'font-object/c
    (or/c vec? font? glyph? layer? contour? anchor? component? fontinfo/c kerning/c)))
 
-(define mathfilter
-  (make-parameter #f))
 
-(define-syntax use-only-glyphs 
-  (syntax-rules ()
-    [(_ gs . body)
-     (parameterize [(mathfilter gs)] . body)]))
-
-; Font (listof Symbol) -> Font
-(define (only-glyphs-in gl f)
-    (struct-copy font f
-                 [glyphs (filter-glyphs 
-                          (lambda (g)
-                            (member (glyph-name g) gl))
-                          f)]))
-;                 [layers (map-layers
-;                          (lambda (l)
-;                            (struct-copy layer l
-;                                         [glyphs (filter-glyphs 
-;                                                  (lambda (g)
-;                                                    (member (glyph-name g) gl))
-;                                                  l)]))
-;                            f)]))
-
-; Symbol Font -> (listof Symbol)
-(define (component-deps g f)
-    (let ([cs (map component-base (layer-components (get-layer (get-glyph f g) foreground)))])
-      (append* cs (map (lambda (g) (component-deps g f)) cs))))
-
-; Font -> Font
-(define (reduced-font f)
-  (let ([ls (if (mathfilter)
-                 (remove-duplicates 
-                  (apply append (mathfilter) 
-                         (map (lambda (g) (component-deps g f)) (mathfilter))))
-                 #f)])
-    (if ls (only-glyphs-in ls f) f)))
+(define-syntax-rule (define-operation (name o1 o2) body)
+  (define name
+    (case-lambda 
+      [(o1) o1]
+      [(o1 o2) body]
+      [(o1 . os) (foldl name o1 os)])))
 
 
 ; Point ... -> Point
-(define (point+ p1 . ps)
-  (letrec ([p+ (lambda (p1 p2)
-                 (struct-copy point p1
-                              [pos (vec+ (point-pos p1) (point-pos p2))]))])
-    (foldl p+ p1 ps)))
-
+; produce a new point summing the position vectors of all points
+; and keeping the other fields of the first point
+(define-operation (point+ p1 p2)
+  (struct-copy point p1 [pos (vec+ (point-pos p1) (point-pos p2))]))
+  
 ; Contour ... -> Contour
-(define (contour+ c1 . cs)
-  (struct-copy contour c1
-               [points (apply map 
-                              (lambda (p1 . ps)
-                                (foldl point+ p1 ps))
-                              (contour-points c1)
-                              (map contour-points cs))]))
+(define-operation (contour+ c1 c2)
+  (struct-copy contour c1 
+               [points (map point+ 
+                            (contour-points c1) 
+                            (contour-points c2))]))  
 
 ; Component ... -> Component
-(define (component+ c1 . cs)
-  (struct-copy component c1
-        [matrix (foldl (lambda (cc1 cc2) 
-                         (match cc1
+(define-operation (component+ c1 c2)
+  (let ([cc1 (get-matrix c1)]
+        [cc2 (get-matrix c2)])
+    (struct-copy component c1
+                 [matrix (match cc1
                            [(trans-mat x xy yx y xo yo)
                             (match cc2
                               [(trans-mat x2 xy2 yx2 y2 xo2 yo2)
-                               (trans-mat (+ x x2) (+ xy xy2) (+ yx yx2) (+ y y2) (+ xo xo2) (+ yo yo2))])]))
-                       (get-matrix c1)
-                       (map get-matrix cs))]))
+                               (trans-mat (+ x x2) (+ xy xy2) (+ yx yx2) (+ y y2) (+ xo xo2) (+ yo yo2))])])])))
 
+  
 ; Anchor ... -> Anchor
-(define (anchor+ a1 . as)
-  (struct-copy anchor a1
-               [pos (foldl vec+ (get-position a1)
-                           (map get-position as))]))
+(define-operation (anchor+ a1 a2)
+  (struct-copy anchor a1 [pos (vec+ (anchor-pos a1) (anchor-pos a2))]))
 
 ; Advance ... -> Advance
-(define (advance+ a1 . as)
-  (struct-copy advance a1
-               [width  (foldl + (advance-width  a1) (map advance-width  as))]
-               [height (foldl + (advance-height a1) (map advance-height as))]))
+(define-operation (advance+ a1 a2)
+ (struct-copy advance a1 
+              [width (+ (advance-width  a1) (advance-width  a2))]
+              [height (+ (advance-height  a1) (advance-height  a2))]))
 
 ; Layer ... -> Layer
-(define (layer+ l1 . ls)
-  (let [(lss (cons l1 ls))]
-    (struct-copy layer l1
-                 [contours
-                  (apply map contour+ (map layer-contours lss))]
-                 [components
-                  (apply map component+ (map layer-components lss))]
-                 [anchors
-                  (apply map anchor+ (map layer-anchors lss))])))
+(define-operation (layer+ l1 l2)
+  (struct-copy layer l1
+               [contours (map contour+ (layer-contours l1) (layer-contours l2))]
+               [components (map component+ (layer-components l1) (layer-components l2))]
+               [anchors (map anchor+ (layer-anchors l1) (layer-anchors l2))]))
+  
 
 ; Glyph ... -> Glyph
-(define (glyph+ g1 . gs)
-  (let [(gss (cons g1 gs))]
-    (struct-copy glyph g1
-                 [advance (apply advance+ (map glyph-advance gss))]
-                 [layers 
-                  (list (apply layer+ (map (curryr get-layer foreground) gss)))])))
+(define-operation (glyph+ g1 g2)
+  (struct-copy glyph g1
+               [advance (advance+ (glyph-advance g1) (glyph-advance g2))]
+               [layers (list (layer+ (get-layer g1 foreground)
+                                     (get-layer g2 foreground)))]))
 
 ; Font Real Real -> Any
 (define (font-scale* o fx [fy fx])
@@ -154,15 +114,14 @@
                                [fontinfo (info+ (font-fontinfo f1) (font-fontinfo f2))]
                                [kerning (kerning+ (font-kerning f1) (font-kerning f2))]
                                [glyphs (map glyph+ (font-glyphs-list f1) 
-                                                   (font-glyphs-list f2))]))]
-            [fonts (map reduced-font (cons f1 fs))])
-        (foldl f+ (car fonts) (cdr fonts)))))
+                                                   (font-glyphs-list f2))]))])
+        (foldl f+ f1 fs))))
 
 ; Font Real ... -> Font
 (define (font* f s1 . ss)
   (let ([s (apply * (cons s1 ss))])
     (if (= 1 s) f
-        (font-scale* (reduced-font f) s))))
+        (font-scale* f s))))
 
 ; FontObject Real ... -> FontObject
 (define (font:* o s1 . ss)
