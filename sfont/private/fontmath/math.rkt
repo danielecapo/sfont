@@ -17,7 +17,7 @@
          (contract-out
           [fontmath-object/c (-> any/c boolean?)]
           [font-intp-object/c (-> any/c boolean?)]
-          [get-interpolable-fonts (->* () () #:rest (listof font?) (listof font?))]
+          [interpolables (->* (font?) (#:weak? boolean? #:auto-directions? boolean? #:match-contours? #f) #:rest (listof font?) (listof font?))]
           [rename prod * (->* (fontmath-object/c) () #:rest (listof fontmath-object/c) fontmath-object/c)]
           [rename add  + (->* (fontmath-object/c) () #:rest (listof fontmath-object/c) fontmath-object/c)]
           [rename sub  - (->* (fontmath-object/c) () #:rest (listof fontmath-object/c) fontmath-object/c)]
@@ -106,16 +106,13 @@
                  [kerning (kerning-scale (font-kerning o1) fx)])))
 
 ; Font ... -> Font
-(define (font+ f1 . fs)
-  (if (null? fs)
-      f1
-      (let ([f+ (lambda (f1 f2)
-                  (struct-copy font f1
-                               [fontinfo (info+ (font-fontinfo f1) (font-fontinfo f2))]
-                               [kerning (kerning+ (font-kerning f1) (font-kerning f2))]
-                               [glyphs (map glyph+ (font-glyphs-list f1) 
-                                                   (font-glyphs-list f2))]))])
-        (foldl f+ f1 fs))))
+(define-operation (font+ f1 f2)
+  (struct-copy font f1
+               [fontinfo (info+ (font-fontinfo f1) (font-fontinfo f2))]
+               [kerning (kerning+ (font-kerning f1) (font-kerning f2))]
+               [glyphs (map glyph+ (font-glyphs-list f1) 
+                            (font-glyphs-list f2))]))
+
 
 ; Font Real ... -> Font
 (define (font* f s1 . ss)
@@ -179,6 +176,7 @@
 ; FontMathObject -> FontMathObject
 (define (sub a . as)
   (match (cons a as)
+    [(list _) (prod a -1)]
     [(list (? font? _) ...)
      (apply font:+ a (map (lambda (i) (prod i -1)) as))]
     [(list (? glyph? _) ...)
@@ -241,34 +239,33 @@
 
 ;; PROJECTIONS
 
-; Geometric -> Geometric
+; Any -> Any
 ; project the object on the x axis (set every y coord. to zero)
 (define (x-> o)
   ((if (font? o) font-scale* scale) o 1 0))
 
-; Geometric -> Geometric
+; Any -> Any
 ; project the object on the y axis (set every x coord. to zero)
 (define (y-> o)
   ((if (font? o) font-scale* scale) o 0 1))  
 
 ; Font ... -> (listof Font)
-(define (interpolables  f . fs)
-  (let ([f0 (foldl (lambda (f acc)
-                     (let-values ([(a b) (interpolable-fonts acc f #f #t)])
+(define (interpolables  f #:weak? [weak? #f] #:auto-directions? [auto-directions? #t] #:match-contours? [match-contours? #t] . fs)
+  (let* ([fonts (map (curryr prepare-font weak? auto-directions?) (cons f fs))]
+         [f0 (foldl (lambda (f acc)
+                     (let-values ([(a b) (compatible-fonts acc f)])
                        a))
-                   f fs)])
+                   (car fonts) 
+                   (cdr fonts))])
     (cons f0 (map (lambda (f)
-                    (let-values ([(a b) (interpolable-fonts f f0 #f #t)])
-                      (match-fonts-contours f0 a)))
-                  fs))))
+                    (let-values ([(a b) (compatible-fonts f f0)])
+                      (if match-contours?
+                          (match-fonts-contours f0 a)
+                          a)))
+                  (cdr fonts)))))
 
 
-; Font ... -> Font ...
-(define (get-interpolable-fonts . fs)
-  (apply interpolables
-         (map (lambda (f)
-                (prepare-font f #f #t))
-              fs)))
+
 
 
 
