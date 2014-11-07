@@ -1,5 +1,8 @@
-#lang racket
-(require "../../geometry.rkt"
+#lang racket/base
+
+(require racket/contract/base
+         racket/set
+         "../../geometry.rkt"
          "../../utilities.rkt"
          (only-in "fontwriter.rkt" 
                   from
@@ -10,7 +13,8 @@
                   skew-y.
                   reflect-x.
                   reflect-y.)
-         (for-syntax racket/list
+         (for-syntax racket/base
+                     racket/list
                      syntax/parse))
 
 (provide 
