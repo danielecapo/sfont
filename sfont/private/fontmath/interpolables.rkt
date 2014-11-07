@@ -12,7 +12,6 @@
 
 (provide 
  (contract-out
-  [interpolable-fonts (->* (font? font?) (boolean? boolean? boolean?) (values font? font?))]
   [prepare-font (->* (font?) (boolean? boolean?) font?)]
   [prepare-info (-> fontinfo/c fontinfo/c)]
   [prepare-kerning (-> kerning/c kerning/c)]
@@ -31,18 +30,7 @@
   
 
 
-; Font Font Boolean Boolean -> Font Font
-; produce two interpolable fonts, if weak is true it doesn't change contours,
-; if auto-directions is true the directions of the font will be adjusted
-(define (interpolable-fonts f1 f2 [skip-prepare #f] [weak #t] [auto-directions #f])
-  (compatible-fonts (if skip-prepare
-                        (prepare-font f1 weak auto-directions)
-                        f1)
-                    (if skip-prepare
-                        (prepare-font f2 weak auto-directions)
-                        f2)))
 
- 
 ; Font Boolean Boolean -> Font
 ; produce a font prepared for interpolation in order to minimize incompatibilities
 ; if weak is true it doesn't change contours, 
