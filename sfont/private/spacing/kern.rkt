@@ -1,7 +1,10 @@
-#lang racket
-(require "../../main.rkt"
+#lang racket/base
+(require racket/contract/base
+         racket/format
+         "../../main.rkt"
          syntax/parse
-         (for-syntax racket/syntax
+         (for-syntax racket/base
+                     racket/syntax
                      racket/list
                      syntax/parse))
 
