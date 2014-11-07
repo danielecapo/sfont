@@ -1,9 +1,13 @@
-#lang racket
-(require "../../geometry.rkt"
+#lang racket/base
+
+(require racket/contract/base
+         racket/contract/region
+         "../../geometry.rkt"
          "../../main.rkt"
          "../../utilities.rkt"
          "../spacing/space.rkt"
-         (for-syntax racket/list
+         (for-syntax racket/base
+                     racket/list
                      syntax/parse))
 
 
