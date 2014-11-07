@@ -32,10 +32,6 @@
          [k (if (null? glyphs-to-display)
                 '()
                 (cons 0 (map kerning (n-groups glyphs-to-display 2))))])
-    (print k)
-    (newline)
-    (print glyphs-to-display)
-    (newline)
     (begin
       (for-each (lambda (g kv) 
                   (begin
