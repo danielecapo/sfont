@@ -11,7 +11,8 @@
          "../../properties.rkt"
          "../../utilities.rkt"
          (for-syntax racket/base
-                     racket/syntax))
+                     racket/syntax
+                     syntax/parse))
 
 (provide (except-out (all-from-out racket/base) + - * /)
          (contract-out
@@ -289,10 +290,14 @@
 
 
 ;;; MACROS
-(define-syntax-rule (define-interpolable-fonts (id f) ...)
-  (define-values (id ...)
-    (apply values (interpolables f ...))))
-
+(define-syntax (define-interpolable-fonts stx)
+  (define-splicing-syntax-class prepolation-parameters
+    #:description "Parameters for prepolation"
+    (pattern (~seq k:keyword v:expr)))
+  (syntax-parse stx
+    [(_ prepolation:prepolation-parameters ... (name:id f:expr) ...+)
+     #'(define-values (name ...)
+         (apply values (keyword-apply interpolables (list prepolation.k ...) (list prepolation.v ...) (list f ...))))]))
 
 (define-syntax (define-space stx)
   (syntax-case stx ()
@@ -310,7 +315,7 @@
              (apply values (map (lambda (f) (add origin f)) (cons f fs))))
            (define fname (sub font origin)) ...))]))
 
-
-
-
- 
+;(define f (read-ufo "/Users/daniele/Downloads/source-sans-pro-master/RomanMM/SourceSansPro_0.ufo"))
+;(define f1 (read-ufo "/Users/daniele/Downloads/source-sans-pro-master/RomanMM/SourceSansPro_1.ufo"))
+;(define-int [light f] [bold f1])
+; 
