@@ -1,7 +1,7 @@
 #lang racket/base
 
 (require racket/draw
-         racket/contract
+         racket/contract/base
          racket/list
          racket/function
          racket/match
