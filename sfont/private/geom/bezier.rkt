@@ -7,6 +7,9 @@
          racket/match
          racket/class
          (prefix-in pict: slideshow/pict)
+         (only-in gls
+                  method
+                  add-method)
          "vec.rkt"
          "bounding-box.rkt"
          "../../utilities.rkt")
@@ -78,6 +81,44 @@
                                             (and/c bezier/c 
                                                    (lambda (b) 
                                                      (= (remainder (- (length b) 1) 3) 0)))))
+
+
+;; Transformations
+(add-method transform 
+            (method ((b bezier/c) (m trans-mat?)) 
+                    (map (curryr transform m) b)))
+
+(add-method translate
+            (method ((b bezier/c) (x number?) (y number?))
+                    (map (curryr translate x y) b)))
+
+(add-method scale
+            (method ((b bezier/c) (fx number?))
+                    (map (curryr scale fx) b)))
+
+(add-method scale
+            (method ((b bezier/c) (fx number?) (fy number?))
+                    (map (curryr scale fx fy) b)))
+
+(add-method rotate
+            (method ((b bezier/c) (a number?))
+                    (map (curryr rotate a) b)))
+
+(add-method skew-x 
+            (method ((b bezier/c) (a number?))
+                    (map (curryr skew-x a) b)))
+(add-method skew-y 
+            (method ((b bezier/c) (a number?))
+                    (map (curryr skew-y a) b)))
+
+(add-method reflect-x 
+            (method ((b bezier/c))
+                    (map reflect-x b)))
+
+(add-method reflect-y 
+            (method ((b bezier/c))
+                     (map reflect-y b)))
+
 
 ; Bezier -> Boolean
 ; check if the first and last node of the Bezier vec=
