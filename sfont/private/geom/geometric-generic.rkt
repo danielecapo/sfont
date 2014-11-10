@@ -25,3 +25,7 @@
 (defgeneric skew-y)
 (defgeneric reflect-x)
 (defgeneric reflect-y)
+
+(define-syntax-rule (from (x y) (fn o . args))
+  (translate (fn (translate o (- x) (- y)) . args)
+              x y))

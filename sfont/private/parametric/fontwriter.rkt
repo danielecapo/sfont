@@ -56,10 +56,6 @@
 (define-transform reflect-y. reflect-y)
 
 
-(define-syntax-rule (from (x y) (fn o . args))
-  (translate. (fn (translate. o (- x) (- y)) . args)
-              x y))
-
 (begin-for-syntax
   (define-syntax-class binding
       #:description "binding pair"
