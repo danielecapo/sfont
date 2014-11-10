@@ -34,28 +34,6 @@
           
 
 
-
-; Syntax for defining geometric transformations
-(define-syntax-rule (define-transform name fn)
-  (define-syntax name
-    (syntax-rules (from)
-      [(name o from (x y) . args)
-       (from (x y) (name o . args))]
-      [(name o . args)
-       (cond [(list? o) (map (lambda (i) (fn i . args)) o)]
-             [else (fn o . args)])])))
-
-
-
-(define-transform translate. translate)
-(define-transform rotate. rotate)
-(define-transform scale. scale)
-(define-transform skew-x. skew-x)
-(define-transform skew-y. skew-y)
-(define-transform reflect-x. reflect-x)
-(define-transform reflect-y. reflect-y)
-
-
 (begin-for-syntax
   (define-syntax-class binding
       #:description "binding pair"
