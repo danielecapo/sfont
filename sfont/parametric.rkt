@@ -1,4 +1,5 @@
-#lang racket
+#lang racket/base
+
 (require "private/parametric/fontwriter.rkt"
          "private/parametric/path.rkt")
 

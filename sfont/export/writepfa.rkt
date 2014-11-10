@@ -1,5 +1,9 @@
-#lang racket
-(require "../geometry.rkt"
+#lang racket/base
+
+(require racket/contract/base
+         racket/string
+         racket/match
+         "../geometry.rkt"
          "../utilities.rkt")
 
 (provide 

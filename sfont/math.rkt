@@ -1,4 +1,4 @@
-#lang racket
+#lang racket/base
 
 ;;; used only to simplify the use of math
 

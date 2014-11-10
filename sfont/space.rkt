@@ -1,4 +1,5 @@
-#lang racket
+#lang racket/base
+
 (require "private/spacing/space.rkt"
          "private/spacing/kern.rkt")
 

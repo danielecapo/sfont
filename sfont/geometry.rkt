@@ -1,4 +1,5 @@
-#lang racket
+#lang racket/base
+
 (require "private/geom/vec.rkt"
          "private/geom/bounding-box.rkt"
          "private/geom/bezier.rkt")

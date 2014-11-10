@@ -1,5 +1,9 @@
-#lang racket
-(require "../main.rkt"
+#lang racket/base
+
+(require racket/contract/base
+         racket/dict
+         racket/format
+         "../main.rkt"
          "../geometry.rkt"
          "writepfa.rkt"
          "../utilities.rkt")

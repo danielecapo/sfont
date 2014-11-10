@@ -1,9 +1,12 @@
-#lang racket
+#lang racket/base
 
-(require "private/ufo/ufo-def.rkt"
+(require racket/list
+         racket/dict
+         "private/ufo/ufo-def.rkt"
          "geometry.rkt"
          "utilities.rkt"
-         (for-syntax racket/syntax
+         (for-syntax racket/base
+                     racket/syntax
                      syntax/parse))
 
 (provide fref

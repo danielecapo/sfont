@@ -1,4 +1,4 @@
-#lang racket
+#lang racket/base
 
 ;;;; Adobe glyph list
 ;;;; http://partners.adobe.com/public/developer/en/opentype/glyphlist.txt

@@ -1,6 +1,10 @@
-#lang racket
+#lang racket/base
 
-(require "glyphlist.rkt")
+(require racket/contract/base
+         racket/math
+         racket/string
+         racket/list
+         "glyphlist.rkt")
 
 (provide 
  code+expr

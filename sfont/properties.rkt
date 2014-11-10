@@ -1,4 +1,4 @@
-#lang racket
+#lang racket/base
 
 (require racket/generic
          "private/gui/draw-property.rkt")

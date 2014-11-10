@@ -1,6 +1,9 @@
-#lang racket
+#lang racket/base
 
-(require "draw-property.rkt"
+(require racket/contract/base
+         racket/class
+         racket/function
+         "draw-property.rkt"
          racket/gui/base
          "../../main.rkt"
          "../../utilities.rkt")
