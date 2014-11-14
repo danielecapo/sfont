@@ -7,7 +7,10 @@
          racket/function
          racket/match
          "../../main.rkt"
-         "../../geometry.rkt")
+         "../../geometry.rkt"
+         (for-syntax racket/base
+                     racket/syntax
+                     syntax/parse))
 
 
 (provide 
@@ -25,7 +28,9 @@
   [compatible-groups (-> groups/c groups/c (listof symbol?) (values groups/c groups/c))]
   [compatible-kernings (-> kerning/c kerning/c (listof symbol?) (listof symbol?) (values kerning/c kerning/c))]
   [match-fonts-contours (-> font? font? font?)]
-  [import-component-scale (-> component? component? component?)]))
+  [import-component-scale (-> component? component? component?)]
+  [interpolables (->* (font?) (#:weak? boolean? #:auto-directions? boolean? #:match-contours? #f) #:rest (listof font?) (listof font?))])
+  define-interpolable-fonts)
   
   
 
@@ -398,6 +403,31 @@
      (match c2
        [(component _ (trans-mat x-scale xy-scale yx-scale y-scale _ _) _)
         (component base (trans-mat x-scale xy-scale yx-scale y-scale x-offset y-offset) id)])]))
+
+
+; Font ... -> (listof Font)
+(define (interpolables  f #:weak? [weak? #f] #:auto-directions? [auto-directions? #t] #:match-contours? [match-contours? #t] . fs)
+  (let* ([fonts (map (curryr prepare-font weak? auto-directions?) (cons f fs))]
+         [f0 (foldl (lambda (f acc)
+                     (let-values ([(a b) (compatible-fonts acc f)])
+                       a))
+                   (car fonts) 
+                   (cdr fonts))])
+    (cons f0 (map (lambda (f)
+                    (let-values ([(a b) (compatible-fonts f f0)])
+                      (if match-contours?
+                          (match-fonts-contours f0 a)
+                          a)))
+                  (cdr fonts)))))
+
+(define-syntax (define-interpolable-fonts stx)
+  (define-splicing-syntax-class prepolation-parameters
+    #:description "Parameters for prepolation"
+    (pattern (~seq k:keyword v:expr)))
+  (syntax-parse stx
+    [(_ prepolation:prepolation-parameters ... (name:id f:expr) ...+)
+     #'(define-values (name ...)
+         (apply values (keyword-apply interpolables (list prepolation.k ...) (list prepolation.v ...) (list f ...))))]))
 
 ; Component -> Vec
 ; Produce a Vec from x and y offset

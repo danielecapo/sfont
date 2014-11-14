@@ -18,7 +18,6 @@
          (contract-out
           [fontmath-object/c (-> any/c boolean?)]
           [font-intp-object/c (-> any/c boolean?)]
-          [interpolables (->* (font?) (#:weak? boolean? #:auto-directions? boolean? #:match-contours? #f) #:rest (listof font?) (listof font?))]
           [rename prod * (->* (fontmath-object/c) () #:rest (listof fontmath-object/c) fontmath-object/c)]
           [rename add  + (->* (fontmath-object/c) () #:rest (listof fontmath-object/c) fontmath-object/c)]
           [rename sub  - (->* (fontmath-object/c) () #:rest (listof fontmath-object/c) fontmath-object/c)]
@@ -26,7 +25,6 @@
           [x-> (-> any/c any/c)]
           [y-> (-> any/c any/c)]
           [fix-components (-> font? font? font?)])
-         define-interpolable-fonts
          define-space)
    
          
@@ -250,24 +248,6 @@
 (define (y-> o)
   ((if (font? o) font-scale* scale) o 0 1))  
 
-; Font ... -> (listof Font)
-(define (interpolables  f #:weak? [weak? #f] #:auto-directions? [auto-directions? #t] #:match-contours? [match-contours? #t] . fs)
-  (let* ([fonts (map (curryr prepare-font weak? auto-directions?) (cons f fs))]
-         [f0 (foldl (lambda (f acc)
-                     (let-values ([(a b) (compatible-fonts acc f)])
-                       a))
-                   (car fonts) 
-                   (cdr fonts))])
-    (cons f0 (map (lambda (f)
-                    (let-values ([(a b) (compatible-fonts f f0)])
-                      (if match-contours?
-                          (match-fonts-contours f0 a)
-                          a)))
-                  (cdr fonts)))))
-
-
-
-
 
 
 ; Font, Font -> Font
@@ -290,14 +270,6 @@
 
 
 ;;; MACROS
-(define-syntax (define-interpolable-fonts stx)
-  (define-splicing-syntax-class prepolation-parameters
-    #:description "Parameters for prepolation"
-    (pattern (~seq k:keyword v:expr)))
-  (syntax-parse stx
-    [(_ prepolation:prepolation-parameters ... (name:id f:expr) ...+)
-     #'(define-values (name ...)
-         (apply values (keyword-apply interpolables (list prepolation.k ...) (list prepolation.v ...) (list f ...))))]))
 
 (define-syntax (define-space stx)
   (syntax-case stx ()
