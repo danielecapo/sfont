@@ -4,5 +4,7 @@
 (define version "1.1")
 
 (define deps '("base" "draw-lib" "gui-lib" "slideshow-lib"))
-(define build-deps '("scribble-lib"))
+(define build-deps '("pict-doc"
+                     "racket-doc"
+                     "scribble-lib"))
 
