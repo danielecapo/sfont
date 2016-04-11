@@ -420,12 +420,18 @@
          [text-height (* (display-size) (+ 1 n-lines (* (- (display-leading) 1) (- n-lines 1))))])
     (dc 
      (lambda (dc dx dy)
+       (define old-brush (send dc get-brush))
+       (define old-pen (send dc get-pen))
+       (define old-trans (send dc get-transformation))
        (send dc set-brush (display-brush))
        (send dc set-pen (display-pen))
        (draw-text-in-dc dc ascender descender (display-size) (display-text) (display-leading) glyphs 
                         (if (show-kerning?)
                             (lambda (p) (apply kerning-value f p))
-                            (lambda (p) 0))))
+                            (lambda (p) 0)))
+       (send dc set-brush old-brush)
+       (send dc set-pen old-pen)
+       (send dc set-transformation old-trans))
      (text-width) text-height)))
 
 ; Font -> Pict
@@ -1221,11 +1227,17 @@
     (dc 
      (lambda (dc dx dy)
        (begin
+         (define old-brush (send dc get-brush))
+         (define old-pen (send dc get-pen))
+         (define old-trans (send dc get-transformation))
          (send dc set-brush (display-brush))
          (send dc set-pen (display-pen))
          (send dc scale f (- f))
          (send dc translate (- (if x-min x-min 0)) (- (if y-max y-max 0)))
-         (draw-glyph-in-dc g dc)))
+         (draw-glyph-in-dc g dc)
+         (send dc set-brush old-brush)
+         (send dc set-pen old-pen)
+         (send dc set-transformation old-trans)))
      (* f w) (* f h))))
   
 
