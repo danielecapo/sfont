@@ -191,6 +191,14 @@
                   [(> h 0) (/ 400 h)]
                   [else 1])])
     (dc
-     (lambda (dc dx dy) (draw-glyph-dc dc g f x-min by-max))
-       (* f w) (* f h))))
+     (lambda (dc dx dy)
+       (let ([old-brush (send dc get-brush)]
+             [old-pen (send dc get-pen)]
+             [old-transform (send dc get-transformation)])
+         (draw-glyph-dc dc g f x-min by-max)
+         
+         (send dc set-brush old-brush)
+         (send dc set-pen old-pen)
+         (send dc set-transformation old-transform)))
+     (* f w) (* f h))))
       
