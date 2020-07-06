@@ -652,7 +652,9 @@
          [path (new dc-path%)])
     (pict:dc
      (lambda (dc dx dy)
-       (begin
+       (let ([old-transform (send dc get-transformation)]
+             [old-pen (send dc get-pen)]
+             [old-brush (send dc get-brush)])
          (send dc scale f (- f))
          (send dc translate (- min-x) (- max-y))
          (send dc set-pen "Gainsboro" 10 'solid)
@@ -662,5 +664,9 @@
          (send dc set-pen "LightGray" 1 'solid)
          
          (for-each (lambda (b) (bezier->path b path)) bs)
-         (send dc draw-path path dx dy 'winding)))
+         (send dc draw-path path dx dy 'winding)
+
+         (send dc set-brush old-brush)
+         (send dc set-pen old-pen)
+         (send dc set-transformation old-transform)))
      scene-side scene-side)))
